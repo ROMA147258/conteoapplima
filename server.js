@@ -42,7 +42,7 @@ const server = http.createServer((req, res) => {
         'Access-Control-Allow-Origin': '*'
       });
       let cfg = {
-        apiUrl: 'https://script.google.com/macros/s/AKfycbzVgQlnwieHYH-tiZTlsT9GRAvEyTq7sPUa945XeTeMBKIavl-ksSW0gcgkDSjOmkrJ/exec',
+        apiUrl: 'https://script.google.com/macros/s/AKfycbwSWszhtwGJ9OllDBZH7YlieVZkJ2CuyKDAca23P2tM6uc6nhHDYwl__zqTokREQucQ/exec',
         geminiApiKey: '',
         googleSheetId: ''
       };

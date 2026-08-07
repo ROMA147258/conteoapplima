@@ -1,5 +1,5 @@
 // --- STATE MANAGEMENT & CONFIG ---
-const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbzVgQlnwieHYH-tiZTlsT9GRAvEyTq7sPUa945XeTeMBKIavl-ksSW0gcgkDSjOmkrJ/exec';
+const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbwSWszhtwGJ9OllDBZH7YlieVZkJ2CuyKDAca23P2tM6uc6nhHDYwl__zqTokREQucQ/exec';
 const DEFAULT_GEMINI_KEY = '';
 
 // Forzar siempre la URL activa de Google Apps Script tanto en local como en producción
