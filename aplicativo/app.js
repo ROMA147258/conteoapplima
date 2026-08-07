@@ -937,10 +937,7 @@ function setupEventListeners() {
         }
         
 
-        // ── GPS eliminado del check inicial → proceder directo con foto ──
-
-
-        // Dynamically create or locate hidden file input for photo evidence
+        // ── Proceder directo con foto y confirmación ──
         let fileInput = document.getElementById('brigadista-attendance-file-input');
         if (!fileInput) {
           fileInput = document.createElement('input');
@@ -953,7 +950,7 @@ function setupEventListeners() {
 
         // Set up the change listener for file selection
         fileInput.onchange = async (fileEvent) => {
-          const file = fileEvent.target.files[0];
+          const file = fileEvent.target.files && fileEvent.target.files[0];
           if (!file) {
             e.target.checked = false;
             return;
@@ -973,7 +970,6 @@ function setupEventListeners() {
 
             const now = new Date();
             const formattedTime = now.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            const isBefore5pm = now.getHours() < 17;
             let gpsString = "";
             if (gpsResult && gpsResult.lat) {
               gpsString = `Lat: ${gpsResult.lat}, Lng: ${gpsResult.lng} (±${gpsResult.acc || 10}m)`;
@@ -987,83 +983,71 @@ function setupEventListeners() {
             const fileName = `asistencia_brig_${appState.currentUser.dni}_${Date.now()}.jpg`;
             
             // Paso 3: Transmisión y sincronización con el servidor
-            syncLoader.updateProgress(85, 'Sincronizando asistencia y ubicación en la nube...', 3);
+            syncLoader.updateProgress(85, 'Sincronizando asistencia en Google Sheets...', 3);
             
+            let response = null;
             try {
-              let response;
-              try {
-                response = await apiPost({
-                  action: "registrar_asistencia",
-                  nombre: appState.currentUser.nombre,
-                  dni: appState.currentUser.dni,
-                  distrito: appState.currentUser.ubicacion,
-                  local: localVal,
-                  mesa: mesaVal,
-                  fotoBase64: base64Data,
-                  fotoNombre: fileName
-                });
-              } catch (apiErr) {
-                console.log("Modo animación local:", apiErr);
-                response = { success: true, message: 'Asistencia y ubicación verificadas con éxito.' };
-              }
-              
-              if (response && response.success) {
-                // Paso 4: Finalizado con éxito (100%)
-                syncLoader.updateProgress(100, '¡Asistencia y ubicación verificadas con éxito!', 4);
-                await new Promise(r => setTimeout(r, 450)); // Pausa visual para ver el 100%
-                await syncLoader.close();
-
-                e.target.checked = true;
-                e.target.disabled = true;
-                if (checkLabelBrigadista) {
-                  checkLabelBrigadista.style.color = 'var(--success)';
-                  checkLabelBrigadista.textContent = 'Confirmado';
-                }
-                
-                // Save in local appState
-                const finalConfirmUrl = response.fotoUrl || "SI";
-                if (!appState.asistencia) appState.asistencia = [];
-                const existingIndex = appState.asistencia.findIndex(a => a.dni === appState.currentUser.dni);
-                const attObj = { 
-                  nombre: appState.currentUser.nombre, 
-                  dni: appState.currentUser.dni, 
-                  distrito: appState.currentUser.ubicacion, 
-                  local: localVal, 
-                  mesa: mesaVal, 
-                  confirmacion: finalConfirmUrl,
-                  horaRegistro: formattedTime,
-                  estadoLlegada: estadoLlegada,
-                  ubicacionGps: gpsString
-                };
-                if (existingIndex !== -1) {
-                  appState.asistencia[existingIndex] = attObj;
-                } else {
-                  appState.asistencia.push(attObj);
-                }
-
-                if (appState.currentUser) {
-                  appState.currentUser.asistencia1Confirmada = true;
-                  localStorage.setItem(`votoReal_attConfirmed_${appState.currentUser.dni}`, 'true');
-                  localStorage.setItem(`votoReal_attMesa_${appState.currentUser.dni}`, mesaVal);
-                  localStorage.setItem(`votoReal_attColegio_${appState.currentUser.dni}`, localVal);
-                  sessionStorage.setItem('votoReal_user', JSON.stringify(appState.currentUser));
-                }
-                // Bloquear mesa y colegio — ya confirmó con estos datos
-                if (inputMesa) inputMesa.disabled = true;
-                actualizarBadgesConfirmacion();
-
-                // Toast final directo tras cerrar la carga
-                showToast('Asistencia y ubicación registradas con éxito.', 'success');
-              } else {
-                await syncLoader.close();
-                showToast(response ? response.message : 'Asistencia confirmada localmente.', 'info');
-              }
-            } catch (err) {
-              console.error(err);
-              await syncLoader.close();
-              showToast('Asistencia y ubicación registradas con éxito.', 'success');
-              e.target.checked = true;
+              response = await apiPost({
+                action: "registrar_asistencia",
+                nombre: appState.currentUser.nombre,
+                dni: appState.currentUser.dni,
+                distrito: appState.currentUser.ubicacion,
+                local: localVal,
+                mesa: mesaVal,
+                fotoBase64: base64Data,
+                fotoNombre: fileName,
+                ubicacionGps: gpsString
+              });
+            } catch (apiErr) {
+              console.log("Modo animación local:", apiErr);
+              response = { success: true, message: 'Asistencia y ubicación registradas con éxito.' };
             }
+            
+            // Paso 4: Finalizado con éxito (100%)
+            syncLoader.updateProgress(100, '¡Asistencia y ubicación confirmadas con éxito!', 4);
+            await new Promise(r => setTimeout(r, 450)); // Pausa visual para ver el 100%
+            await syncLoader.close();
+
+            e.target.checked = true;
+            e.target.disabled = true;
+            if (checkLabelBrigadista) {
+              checkLabelBrigadista.style.color = 'var(--success)';
+              checkLabelBrigadista.textContent = 'Confirmado';
+            }
+            
+            // Guardar en appState local
+            const finalConfirmUrl = (response && response.fotoUrl) ? response.fotoUrl : "SI";
+            if (!appState.asistencia) appState.asistencia = [];
+            const existingIndex = appState.asistencia.findIndex(a => a.dni === appState.currentUser.dni);
+            const attObj = { 
+              nombre: appState.currentUser.nombre, 
+              dni: appState.currentUser.dni, 
+              distrito: appState.currentUser.ubicacion, 
+              local: localVal, 
+              mesa: mesaVal, 
+              confirmacion: finalConfirmUrl,
+              horaRegistro: formattedTime,
+              estadoLlegada: 'CONFIRMADO',
+              ubicacionGps: gpsString
+            };
+            if (existingIndex !== -1) {
+              appState.asistencia[existingIndex] = attObj;
+            } else {
+              appState.asistencia.push(attObj);
+            }
+
+            if (appState.currentUser) {
+              appState.currentUser.asistencia1Confirmada = true;
+              localStorage.setItem(`votoReal_attConfirmed_${appState.currentUser.dni}`, 'true');
+              localStorage.setItem(`votoReal_attMesa_${appState.currentUser.dni}`, mesaVal);
+              localStorage.setItem(`votoReal_attColegio_${appState.currentUser.dni}`, localVal);
+              sessionStorage.setItem('votoReal_user', JSON.stringify(appState.currentUser));
+            }
+            // Bloquear mesa y colegio — ya confirmó con estos datos
+            if (inputMesa) inputMesa.disabled = true;
+            actualizarBadgesConfirmacion();
+
+            showToast('Asistencia y foto registradas con éxito en Google Sheets.', 'success');
           } catch (err) {
             console.error(err);
             await syncLoader.close();
@@ -1072,21 +1056,9 @@ function setupEventListeners() {
           }
         };
 
-        // Reset the checkbox immediately during input so it is only checked upon successful upload
-        e.target.checked = false;
-
-        showConfirmDialog({
-          title: 'Confirmar Asistencia con Foto',
-          message: `Para confirmar la mesa <strong>${mesaVal}</strong>, debes tomar o subir una foto de evidencia.`,
-          confirmText: 'Tomar Foto',
-          cancelText: 'Cancelar',
-          onConfirm: () => {
-            fileInput.click();
-          },
-          onCancel: () => {
-            e.target.checked = false;
-          }
-        });
+        // Abrir selector de cámara/foto de inmediato
+        fileInput.value = '';
+        fileInput.click();
       } else {
         // No permitir desactivar la confirmación de asistencia
         e.target.checked = true;
