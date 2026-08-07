@@ -4,7 +4,7 @@ const path = require('path');
 const https = require('https');
 const { spawn } = require('child_process');
 
-const PORT = 5180;
+const PORT = process.env.PORT || 5180;
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -41,16 +41,22 @@ const server = http.createServer((req, res) => {
         'Content-Type': 'application/json; charset=utf-8',
         'Access-Control-Allow-Origin': '*'
       });
-      if (err) {
-        // Return default configuration
-        res.end(JSON.stringify({
-          apiUrl: 'https://script.google.com/macros/s/AKfycbzVgQlnwieHYH-tiZTlsT9GRAvEyTq7sPUa945XeTeMBKIavl-ksSW0gcgkDSjOmkrJ/exec',
-          geminiApiKey: '',
-          googleSheetId: ''
-        }));
-      } else {
-        res.end(data);
+      let cfg = {
+        apiUrl: 'https://script.google.com/macros/s/AKfycbzVgQlnwieHYH-tiZTlsT9GRAvEyTq7sPUa945XeTeMBKIavl-ksSW0gcgkDSjOmkrJ/exec',
+        geminiApiKey: '',
+        googleSheetId: ''
+      };
+      if (!err && data) {
+        try { cfg = JSON.parse(data); } catch(e) {}
       }
+      // Inject environment variables from Render or Cloud Host if defined
+      if (process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY) {
+        cfg.geminiApiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+      }
+      if (process.env.API_URL || process.env.GOOGLE_APPS_SCRIPT_URL) {
+        cfg.apiUrl = process.env.API_URL || process.env.GOOGLE_APPS_SCRIPT_URL;
+      }
+      res.end(JSON.stringify(cfg));
     });
     return;
   }
