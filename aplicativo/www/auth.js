@@ -35,7 +35,7 @@ function fetchAsistenciaDb() {
     : (typeof DEFAULT_API_URL !== 'undefined' ? DEFAULT_API_URL : '');
   if (!apiUrl) return Promise.resolve();
 
-  return fetch(`${apiUrl}?action=obtener_asistencia`)
+  return fetch(`${apiUrl}?action=obtener_asistencia`, { mode: 'cors', redirect: 'follow' })
     .then(res => res.json())
     .then(data => {
       if (data && data.success && Array.isArray(data.asistencia)) {
@@ -66,7 +66,11 @@ function fetchUsuariosDb(forceRefresh = false) {
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 30000);
-      const response = await fetch(`${apiUrl}?action=obtener_usuarios`, { signal: controller.signal });
+      const response = await fetch(`${apiUrl}?action=obtener_usuarios`, { 
+        signal: controller.signal,
+        mode: 'cors',
+        redirect: 'follow'
+      });
       clearTimeout(timer);
 
       if (response.ok) {
@@ -230,7 +234,11 @@ async function llamarLoginGAS(apiUrl, dniInput, nombreInput) {
 
     try {
       const params = new URLSearchParams({ action: 'login', dni: dniInput, nombre: nombreInput });
-      const resp = await fetch(`${apiUrl}?${params.toString()}`, { signal: controller.signal });
+      const resp = await fetch(`${apiUrl}?${params.toString()}`, { 
+        signal: controller.signal,
+        mode: 'cors',
+        redirect: 'follow'
+      });
       clearTimeout(abortTimer);
       gasWarmupDone = true;
 

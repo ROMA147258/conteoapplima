@@ -2246,9 +2246,10 @@ function applyScannedVotes() {
 
 
 async function fetchAndSyncReport() {
-  if (!appState.apiUrl) return;
+  const url = (appState && appState.apiUrl) ? appState.apiUrl : DEFAULT_API_URL;
+  if (!url) return;
   try {
-    const response = await fetch(appState.apiUrl);
+    const response = await fetch(`${url}?action=obtener_reporte`, { mode: 'cors', redirect: 'follow' });
     if (!response.ok) throw new Error('Failed to fetch report');
     const data = await response.json();
     if (data && data.success) {

@@ -2,21 +2,11 @@
 const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbzVgQlnwieHYH-tiZTlsT9GRAvEyTq7sPUa945XeTeMBKIavl-ksSW0gcgkDSjOmkrJ/exec';
 const DEFAULT_GEMINI_KEY = '';
 
-// Forzar siempre la URL actualizada de Google Apps Script
-// Si la URL guardada es distinta, limpiar también el caché de usuarios
-const _storedUrl = localStorage.getItem('votoReal_apiUrl');
-if (_storedUrl !== DEFAULT_API_URL) {
-  localStorage.setItem('votoReal_apiUrl', DEFAULT_API_URL);
-  localStorage.removeItem('votoReal_usuariosDb'); // limpiar caché de usuarios obsoleto
-}
-
-
-// Set default Gemini key for all users (overwrite if changed)
-localStorage.setItem('votoReal_geminiApiKey', DEFAULT_GEMINI_KEY);
-
+// Forzar siempre la URL activa de Google Apps Script tanto en local como en producción
+localStorage.setItem('votoReal_apiUrl', DEFAULT_API_URL);
 
 let appState = {
-  apiUrl: localStorage.getItem('votoReal_apiUrl') || DEFAULT_API_URL,
+  apiUrl: DEFAULT_API_URL,
   geminiApiKey: localStorage.getItem('votoReal_geminiApiKey') || DEFAULT_GEMINI_KEY,
   googleSheetId: localStorage.getItem('votoReal_googleSheetId') || '',
   currentUser: JSON.parse(sessionStorage.getItem('votoReal_user')) || null,
@@ -82,23 +72,37 @@ function closeConfigModal() {
 async function loadServerConfig() {
   try {
     const response = await fetch('/api/config');
-    if (response.ok) {
+    const contentType = response.headers.get('content-type') || '';
+    if (response.ok && contentType.includes('application/json')) {
       const config = await response.json();
-      appState.apiUrl = config.apiUrl || DEFAULT_API_URL;
-      appState.geminiApiKey = config.geminiApiKey || '';
-      appState.googleSheetId = config.googleSheetId || '';
+      if (config.apiUrl) {
+        appState.apiUrl = config.apiUrl;
+        localStorage.setItem('votoReal_apiUrl', config.apiUrl);
+      }
+      if (config.geminiApiKey) {
+        appState.geminiApiKey = config.geminiApiKey;
+      }
+      if (config.googleSheetId) {
+        appState.googleSheetId = config.googleSheetId;
+      }
       
-      // Update DOM values if they exist
       const urlInput = document.getElementById('config-url');
       const keyInput = document.getElementById('config-gemini-key');
       const sheetInput = document.getElementById('config-sheet-id');
       if (urlInput) urlInput.value = appState.apiUrl;
       if (keyInput) keyInput.value = appState.geminiApiKey;
       if (sheetInput) sheetInput.value = appState.googleSheetId;
-      console.log('[CONFIG] Configuración cargada desde el servidor.');
+      console.log('[CONFIG] Configuración cargada desde servidor local.');
+    } else {
+      // Alojamiento estático en la nube (Netlify / Vercel / GitHub Pages)
+      appState.apiUrl = DEFAULT_API_URL;
+      localStorage.setItem('votoReal_apiUrl', DEFAULT_API_URL);
+      console.log('[CONFIG] Servidor en la nube detectado, conectado directamente a Google Apps Script.');
     }
   } catch (e) {
-    console.warn("No se pudo cargar la configuración desde el servidor, usando locales:", e);
+    appState.apiUrl = DEFAULT_API_URL;
+    localStorage.setItem('votoReal_apiUrl', DEFAULT_API_URL);
+    console.log('[CONFIG] Conectado a Google Apps Script por defecto.');
   }
 }
 
