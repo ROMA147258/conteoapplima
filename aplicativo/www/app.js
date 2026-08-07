@@ -4538,8 +4538,11 @@ function createAttendanceSyncLoader() {
         <i data-lucide="cloud-upload" id="sync-icon-status" style="width: 36px; height: 36px; color: #c084fc;"></i>
       </div>
     </div>
+
+    <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #fff;">Confirmando Asistencia</h3>
+    <p id="sync-loader-subtext" style="margin: 0; font-size: 0.88rem; color: #94a3b8;">Procesando foto de confirmación...</p>
     
-    <!-- Progress Bar Only -->
+    <!-- Progress Bar -->
     <div style="width: 100%; background: rgba(255, 255, 255, 0.08); border-radius: 10px; height: 10px; overflow: hidden; position: relative;">
       <div id="sync-loader-progressbar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #a855f7 0%, #3b82f6 50%, #22c55e 100%); transition: width 0.4s ease; border-radius: 10px;"></div>
     </div>
