@@ -1385,9 +1385,15 @@ async function handleVotesSubmit(e) {
   };
 
   const userKey = (appState.currentUser ? appState.currentUser.dni : mesa).trim();
-  // Transmisión libre sin bloqueo de tablas
-  document.body.style.overflow = '';
+  localStorage.setItem(`votoReal_transmitted_${origenVal}_${userKey}_${mesa}`, 'true');
+  localStorage.setItem(`votoReal_transmitted_${origenVal}_${userKey}`, 'true');
+  localStorage.setItem(`votoReal_transmitted_${origenVal}_${mesa}`, 'true');
+
+  // Bloqueo y desenfoque INMEDIATO al presionar Transmitir
   evaluarBloqueoTransmisiones();
+
+  // ── ÉXITO INMEDIATO: mostrar confirmación y desbloquear UI sin esperar GAS ──
+  document.body.style.overflow = '';
   showToast(
     origenVal === 'IMAGEN'
       ? 'Acta de imagen enviada con éxito.'
@@ -5154,7 +5160,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setTimeout(evaluarBloqueoTransmisiones, 800);
 });
 
-// EVALUAR BLOQUEO Y DESENFOQUE HORARIO (5:00 PM)
+// EVALUAR BLOQUEO Y DESENFOQUE POST-TRANSMISIÓN (Manual e Imagen por Personero)
 function evaluarBloqueoTransmisiones() {
   const manualGroup = document.getElementById('manual-table-group');
   const ocrGroup = document.getElementById('ocr-table-group');
@@ -5162,64 +5168,163 @@ function evaluarBloqueoTransmisiones() {
   const btnSubmitOcr = document.getElementById('btn-submit-ocr-votes');
   const btnScanActa = document.getElementById('btn-scan-acta');
 
-  // Si aún no son las 5:00 PM y no es Super Admin, aplicar restricción horaria
-  if (!isCountingTimeEnabled()) {
-    actualizarRestriccionHoraria();
+  const currentUser = appState.currentUser;
+  if (!currentUser) return;
+
+  const isSuperAdmin = currentUser.dni === 'Admin#2026$Secure!VotoReal' || 
+                       currentUser.dni === '99999999' || 
+                       (currentUser.nombre || "").toLowerCase().includes('super admin');
+
+  // Super Admin siempre tiene acceso desbloqueado total para pruebas
+  if (isSuperAdmin) {
+    if (manualGroup) {
+      manualGroup.classList.remove('transmitted-locked-panel', 'group-locked-container', 'schedule-locked-blur');
+      manualGroup.style.filter = 'none';
+      manualGroup.style.opacity = '1';
+      manualGroup.style.pointerEvents = 'auto';
+      const badgeM = manualGroup.querySelector('.transmitted-overlay-badge');
+      if (badgeM) badgeM.remove();
+      document.querySelectorAll('#manual-table-group input, #candidates-table-body input').forEach(inp => {
+        inp.disabled = false;
+        inp.readOnly = false;
+      });
+    }
+    if (ocrGroup) {
+      ocrGroup.classList.remove('transmitted-locked-panel', 'group-locked-container', 'schedule-locked-blur');
+      ocrGroup.style.filter = 'none';
+      ocrGroup.style.opacity = '1';
+      ocrGroup.style.pointerEvents = 'auto';
+      const badgeO = ocrGroup.querySelector('.transmitted-overlay-badge');
+      if (badgeO) badgeO.remove();
+      document.querySelectorAll('#ocr-candidates-table-body input, #ocr-table-group input').forEach(inp => {
+        inp.disabled = false;
+        inp.readOnly = false;
+      });
+    }
+    if (btnSubmitManual) { btnSubmitManual.disabled = false; btnSubmitManual.style.opacity = '1'; btnSubmitManual.style.pointerEvents = 'auto'; }
+    if (btnSubmitOcr) { btnSubmitOcr.disabled = false; btnSubmitOcr.style.opacity = '1'; btnSubmitOcr.style.pointerEvents = 'auto'; }
+    if (btnScanActa) { btnScanActa.disabled = false; btnScanActa.style.opacity = '1'; btnScanActa.style.pointerEvents = 'auto'; }
     return;
   }
 
-  // A partir de las 5:00 PM: Desbloqueo total del formulario
-  const lockCard = document.getElementById('schedule-lock-overlay-card');
-  if (lockCard) lockCard.remove();
+  const mesaVal = (document.getElementById('input-mesa')?.value || currentUser.mesa || "").trim();
+  const dniStr = (currentUser.dni || "").trim();
+  const normDni = (s) => (s || "").toString().toLowerCase().trim();
 
-  const form = document.getElementById('form-votos');
-  if (form) form.classList.remove('schedule-locked');
+  // ── 1. Verificar si este personero/mesa ya transmitió Conteo Manual ──────
+  const isManualSent = 
+    (dniStr && localStorage.getItem(`votoReal_transmitted_MANUAL_${dniStr}`) === 'true') ||
+    (dniStr && mesaVal && localStorage.getItem(`votoReal_transmitted_MANUAL_${dniStr}_${mesaVal}`) === 'true') ||
+    (dniStr && (appState.mesas || []).some(m => normDni(m.dni) === normDni(dniStr) && (m.origen || "").toUpperCase() === 'MANUAL')) ||
+    (dniStr && (appState.offlineVotes || []).some(v => normDni(v.dni) === normDni(dniStr) && (v.origen || "").toUpperCase() === 'MANUAL'));
 
-  // Desbloqueo total del grupo manual a las 5:00 PM
+  // ── 2. Verificar si este personero/mesa ya transmitió Conteo por Imagen ───
+  const isOcrSent = 
+    (dniStr && localStorage.getItem(`votoReal_transmitted_IMAGEN_${dniStr}`) === 'true') ||
+    (dniStr && mesaVal && localStorage.getItem(`votoReal_transmitted_IMAGEN_${dniStr}_${mesaVal}`) === 'true') ||
+    (dniStr && (appState.mesas || []).some(m => normDni(m.dni) === normDni(dniStr) && (m.origen || "").toUpperCase() === 'IMAGEN')) ||
+    (dniStr && (appState.offlineVotes || []).some(v => normDni(v.dni) === normDni(dniStr) && (v.origen || "").toUpperCase() === 'IMAGEN'));
+
+  // 🔒 BLOQUEO Y DESENFOQUE BORROSO DE CONTEO MANUAL
   if (manualGroup) {
-    manualGroup.classList.remove('transmitted-locked-panel', 'group-locked-container', 'schedule-locked-blur');
-    manualGroup.style.filter = 'none';
-    manualGroup.style.opacity = '1';
-    manualGroup.style.pointerEvents = 'auto';
-    manualGroup.style.userSelect = 'auto';
-    const badgeM = manualGroup.querySelector('.transmitted-overlay-badge');
-    if (badgeM) badgeM.remove();
-    document.querySelectorAll('#manual-table-group input, #candidates-table-body input').forEach(inp => {
-      inp.disabled = false;
-      inp.readOnly = false;
-    });
+    let badgeM = manualGroup.querySelector('.transmitted-overlay-badge');
+    if (isManualSent) {
+      manualGroup.classList.add('transmitted-locked-panel', 'group-locked-container', 'schedule-locked-blur');
+      manualGroup.style.filter = 'blur(6px) grayscale(0.5)';
+      manualGroup.style.opacity = '0.35';
+      manualGroup.style.pointerEvents = 'none';
+      manualGroup.style.userSelect = 'none';
+      manualGroup.style.transition = 'filter 0.4s ease, opacity 0.4s ease';
+
+      if (!badgeM) {
+        badgeM = document.createElement('div');
+        badgeM.className = 'transmitted-overlay-badge';
+        badgeM.style.pointerEvents = 'auto';
+        badgeM.innerHTML = '<i data-lucide="lock" style="width: 18px; height: 18px;"></i> <span>✅ CONTEO MANUAL TRANSMITIDO Y BLOQUEADO</span>';
+        manualGroup.appendChild(badgeM);
+      }
+      document.querySelectorAll('#manual-table-group input, #candidates-table-body input').forEach(inp => {
+        inp.disabled = true;
+        inp.readOnly = true;
+      });
+      if (btnSubmitManual) {
+        btnSubmitManual.disabled = true;
+        btnSubmitManual.style.opacity = '0.4';
+        btnSubmitManual.style.pointerEvents = 'none';
+      }
+    } else {
+      manualGroup.classList.remove('transmitted-locked-panel', 'group-locked-container', 'schedule-locked-blur');
+      manualGroup.style.filter = 'none';
+      manualGroup.style.opacity = '1';
+      manualGroup.style.pointerEvents = 'auto';
+      manualGroup.style.userSelect = 'auto';
+      if (badgeM) badgeM.remove();
+      document.querySelectorAll('#manual-table-group input, #candidates-table-body input').forEach(inp => {
+        inp.disabled = false;
+        inp.readOnly = false;
+      });
+      if (btnSubmitManual) {
+        btnSubmitManual.disabled = false;
+        btnSubmitManual.style.opacity = '1';
+        btnSubmitManual.style.pointerEvents = 'auto';
+      }
+    }
   }
 
-  // Desbloqueo total del grupo OCR imagen a las 5:00 PM
+  // 🔒 BLOQUEO Y DESENFOQUE BORROSO DE CONTEO POR IMAGEN
   if (ocrGroup) {
-    ocrGroup.classList.remove('transmitted-locked-panel', 'group-locked-container', 'schedule-locked-blur');
-    ocrGroup.style.filter = 'none';
-    ocrGroup.style.opacity = '1';
-    ocrGroup.style.pointerEvents = 'auto';
-    ocrGroup.style.userSelect = 'auto';
-    const badgeO = ocrGroup.querySelector('.transmitted-overlay-badge');
-    if (badgeO) badgeO.remove();
-    document.querySelectorAll('#ocr-candidates-table-body input, #ocr-table-group input').forEach(inp => {
-      inp.disabled = false;
-      inp.readOnly = false;
-    });
-  }
+    let badgeO = ocrGroup.querySelector('.transmitted-overlay-badge');
+    if (isOcrSent) {
+      ocrGroup.classList.add('transmitted-locked-panel', 'group-locked-container', 'schedule-locked-blur');
+      ocrGroup.style.filter = 'blur(6px) grayscale(0.5)';
+      ocrGroup.style.opacity = '0.35';
+      ocrGroup.style.pointerEvents = 'none';
+      ocrGroup.style.userSelect = 'none';
+      ocrGroup.style.transition = 'filter 0.4s ease, opacity 0.4s ease';
 
-  if (btnSubmitManual) {
-    btnSubmitManual.disabled = false;
-    btnSubmitManual.style.opacity = '1';
-    btnSubmitManual.style.pointerEvents = 'auto';
-  }
-  if (btnSubmitOcr) {
-    btnSubmitOcr.disabled = false;
-    btnSubmitOcr.style.opacity = '1';
-    btnSubmitOcr.style.pointerEvents = 'auto';
-  }
-  if (btnScanActa) {
-    btnScanActa.disabled = false;
-    btnScanActa.style.opacity = '1';
-    btnScanActa.style.pointerEvents = 'auto';
-    btnScanActa.classList.remove('schedule-locked-blur');
+      if (!badgeO) {
+        badgeO = document.createElement('div');
+        badgeO.className = 'transmitted-overlay-badge';
+        badgeO.style.pointerEvents = 'auto';
+        badgeO.innerHTML = '<i data-lucide="lock" style="width: 18px; height: 18px;"></i> <span>✅ ACTA EN IMAGEN TRANSMITIDA Y BLOQUEADA</span>';
+        ocrGroup.appendChild(badgeO);
+      }
+      document.querySelectorAll('#ocr-candidates-table-body input, #ocr-table-group input').forEach(inp => {
+        inp.disabled = true;
+        inp.readOnly = true;
+      });
+      if (btnSubmitOcr) {
+        btnSubmitOcr.disabled = true;
+        btnSubmitOcr.style.opacity = '0.4';
+        btnSubmitOcr.style.pointerEvents = 'none';
+      }
+      if (btnScanActa) {
+        btnScanActa.disabled = true;
+        btnScanActa.style.opacity = '0.4';
+        btnScanActa.style.pointerEvents = 'none';
+      }
+    } else {
+      ocrGroup.classList.remove('transmitted-locked-panel', 'group-locked-container', 'schedule-locked-blur');
+      ocrGroup.style.filter = 'none';
+      ocrGroup.style.opacity = '1';
+      ocrGroup.style.pointerEvents = 'auto';
+      ocrGroup.style.userSelect = 'auto';
+      if (badgeO) badgeO.remove();
+      document.querySelectorAll('#ocr-candidates-table-body input, #ocr-table-group input').forEach(inp => {
+        inp.disabled = false;
+        inp.readOnly = false;
+      });
+      if (btnSubmitOcr) {
+        btnSubmitOcr.disabled = false;
+        btnSubmitOcr.style.opacity = '1';
+        btnSubmitOcr.style.pointerEvents = 'auto';
+      }
+      if (btnScanActa) {
+        btnScanActa.disabled = false;
+        btnScanActa.style.opacity = '1';
+        btnScanActa.style.pointerEvents = 'auto';
+      }
+    }
   }
 
   if (typeof lucide !== 'undefined' && lucide.createIcons) {
