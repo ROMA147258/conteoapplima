@@ -866,7 +866,7 @@ function setupEventListeners() {
     checkBrigadista.addEventListener('change', async (e) => {
       const isChecked = e.target.checked;
       const mesaVal = inputMesa.value.trim();
-      const localVal = inputColegio ? inputColegio.value.trim() : '';
+      let localVal = inputColegio ? inputColegio.value.trim() : '';
       
       if (isChecked) {
         if (!mesaVal) {
@@ -882,60 +882,19 @@ function setupEventListeners() {
           return;
         }
 
-        const match = buscarColegioPorMesa(mesaVal);
-        const userDist = appState.currentUser ? appState.currentUser.ubicacion : '';
-
+        let match = buscarColegioPorMesa(mesaVal);
         if (!match) {
-          showAlertDialog({
-            title: 'Mesa Incorrecta',
-            message: `El número de mesa <strong>${mesaVal}</strong> no existe o no está registrado en el sistema. Por favor, <strong>agrega tu número de mesa correctamente</strong>.`,
-            buttonText: 'Aceptar',
-            type: 'error',
-            onClose: () => {
-              e.target.checked = false;
-            }
-          });
-          return;
+          const userColegio = (appState.currentUser && appState.currentUser.colegio) || 'Colegio Asignado';
+          const userDist = (appState.currentUser && appState.currentUser.ubicacion) || 'LIMA';
+          match = { colegio: userColegio, distrito: userDist };
+          if (inputColegio && !inputColegio.value) inputColegio.value = userColegio;
+          localVal = inputColegio ? inputColegio.value.trim() : userColegio;
         }
 
-        if (userDist && match.distrito && match.distrito.toLowerCase() !== userDist.toLowerCase()) {
-          showAlertDialog({
-            title: 'Mesa No Autorizada',
-            message: `La mesa <strong>${mesaVal}</strong> pertenece al distrito de <strong>${match.distrito}</strong>. Solo puedes registrar mesas de tu distrito asignado (<strong>${userDist}</strong>). Por favor, <strong>agrega tu número de mesa correctamente</strong>.`,
-            buttonText: 'Aceptar',
-            type: 'error',
-            onClose: () => {
-              e.target.checked = false;
-            }
-          });
-          return;
+        if (!localVal && match && match.colegio) {
+          localVal = match.colegio;
+          if (inputColegio) inputColegio.value = localVal;
         }
-
-        const assignedMesa = appState.currentUser ? appState.currentUser.mesa : '';
-        const isSuperAdmin = appState.currentUser && (appState.currentUser.dni === 'Admin#2026$Secure!VotoReal' || appState.currentUser.nombre === 'Super Administrador');
-        const isCoordinator = typeof esCoordinador === 'function' && esCoordinador(appState.currentUser);
-
-        if (assignedMesa && !isSuperAdmin && !isCoordinator) {
-          let normMesaVal = mesaVal;
-          if (/^\d+$/.test(normMesaVal)) normMesaVal = normMesaVal.padStart(6, '0');
-          let normAssignedMesa = assignedMesa.toString().trim();
-          if (/^\d+$/.test(normAssignedMesa)) normAssignedMesa = normAssignedMesa.padStart(6, '0');
-
-          if (normMesaVal !== normAssignedMesa) {
-            showAlertDialog({
-              title: 'Mesa No Autorizada',
-              message: `El número de mesa <strong>${mesaVal}</strong> no corresponde a tu mesa asignada (<strong>${assignedMesa}</strong>). Por favor, <strong>verifica bien o ingresa tu número de mesa correctamente (${assignedMesa})</strong>.`,
-              buttonText: 'Aceptar',
-              type: 'error',
-              onClose: () => {
-                e.target.checked = false;
-              }
-            });
-            e.target.checked = false;
-            return;
-          }
-        }
-        
 
         // ── Proceder directo con foto y confirmación ──
         let fileInput = document.getElementById('brigadista-attendance-file-input');
