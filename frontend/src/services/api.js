@@ -28,7 +28,7 @@ export async function saveServerConfig(configData) {
 }
 
 export async function apiPost(data, customApiUrl = null) {
-  let url = customApiUrl || localStorage.getItem('votoReal_apiUrl') || DEFAULT_API_URL;
+  const url = customApiUrl || DEFAULT_API_URL;
   const payload = { ...data };
 
   const response = await fetch(url, {
@@ -47,7 +47,7 @@ export async function apiPost(data, customApiUrl = null) {
 }
 
 export async function apiGet(params = {}, customApiUrl = null) {
-  let baseUrl = customApiUrl || localStorage.getItem('votoReal_apiUrl') || DEFAULT_API_URL;
+  const baseUrl = customApiUrl || DEFAULT_API_URL;
   const url = new URL(baseUrl, window.location.origin);
   
   Object.entries(params).forEach(([key, val]) => {

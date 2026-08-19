@@ -28,10 +28,9 @@ export const ConfigModal = () => {
       setApiUrl(configData.apiUrl);
       setGeminiApiKey(configData.geminiApiKey);
 
-      localStorage.setItem('votoReal_apiUrl', configData.apiUrl);
       localStorage.setItem('votoReal_geminiApiKey', configData.geminiApiKey);
 
-      showToast('Configuración guardada en el servidor correctamente.', 'success');
+      showToast('Configuración guardada correctamente.', 'success');
       setIsConfigModalOpen(false);
     } catch (err) {
       showToast('Error al guardar la configuración en el servidor.', 'error');

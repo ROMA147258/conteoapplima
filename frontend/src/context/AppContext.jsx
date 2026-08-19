@@ -11,8 +11,8 @@ const DEFAULT_VOTES = {
 };
 
 export const AppProvider = ({ children }) => {
-  // Config state
-  const [apiUrl, setApiUrl] = useState(() => localStorage.getItem('votoReal_apiUrl') || DEFAULT_API_URL);
+  // Config state (Siempre se toma directamente del archivo .env)
+  const [apiUrl, setApiUrl] = useState(DEFAULT_API_URL);
   const [geminiApiKey, setGeminiApiKey] = useState(() => localStorage.getItem('votoReal_geminiApiKey') || '');
 
   // User & View state
@@ -142,19 +142,12 @@ export const AppProvider = ({ children }) => {
     setAlertDialog(prev => ({ ...prev, isOpen: false }));
   }, [alertDialog]);
 
-  // Load server config on startup
+  // Load server config on startup (solo para geminiApiKey si aplica, NUNCA sobreescribir la URL de la API)
   useEffect(() => {
     (async () => {
       const cfg = await fetchServerConfig();
-      if (cfg) {
-        if (cfg.apiUrl) {
-          setApiUrl(cfg.apiUrl);
-          localStorage.setItem('votoReal_apiUrl', cfg.apiUrl);
-        }
-        if (cfg.geminiApiKey) {
-          setGeminiApiKey(cfg.geminiApiKey);
-          localStorage.setItem('votoReal_geminiApiKey', cfg.geminiApiKey);
-        }
+      if (cfg && cfg.geminiApiKey) {
+        setGeminiApiKey(cfg.geminiApiKey);
       }
     })();
   }, []);

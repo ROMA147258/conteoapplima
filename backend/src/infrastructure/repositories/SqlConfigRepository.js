@@ -7,7 +7,6 @@ class SqlConfigRepository extends IConfigRepository {
   getConfig() {
     const configPath = path.resolve(__dirname, '../../../config.json');
     let cfg = {
-      apiUrl: `http://localhost:${env.PORT}/api/voto-real`,
       geminiApiKey: env.GEMINI_API_KEY
     };
 
