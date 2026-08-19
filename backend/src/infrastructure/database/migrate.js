@@ -14,7 +14,8 @@ async function runMigrations() {
     host: env.DB_SERVER,
     port: env.DB_PORT,
     database: env.DB_NAME,
-    connectionTimeoutMillis: 10000
+    connectionTimeoutMillis: 10000,
+    ssl: { rejectUnauthorized: false }
   });
 
   try {
