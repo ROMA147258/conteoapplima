@@ -2,7 +2,7 @@ const { Pool } = require('pg');
 const env = require('../../config/env');
 
 const pgConfig = env.DATABASE_URL
-  ? { connectionString: env.DATABASE_URL }
+  ? { connectionString: env.DATABASE_URL, ssl: { rejectUnauthorized: false } }
   : {
       user: env.DB_USER,
       password: env.DB_PASSWORD,
@@ -11,7 +11,8 @@ const pgConfig = env.DATABASE_URL
       database: env.DB_NAME,
       max: 20,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 5000
+      connectionTimeoutMillis: 5000,
+      ssl: { rejectUnauthorized: false }
     };
 
 let pool = null;
