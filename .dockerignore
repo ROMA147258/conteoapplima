@@ -1,0 +1,14 @@
+_backup_original/
+_referencias/
+node_modules/
+*/node_modules/
+.git/
+.gitignore
+dist/
+*/dist/
+.vite/
+*/.vite/
+tests/
+*/tests/
+*.log
+.env

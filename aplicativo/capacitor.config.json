@@ -1,8 +1,0 @@
-{
-  "appId": "com.votoreal.app",
-  "appName": "VotoReal",
-  "webDir": "www",
-  "server": {
-    "androidScheme": "https"
-  }
-}
