@@ -44,214 +44,261 @@ class PostgresRepository {
       .map(w => w.trim())
       .filter(w => w.length > 0);
 
-    // 1. usuarios (Personeros oficiales)
-    const buscarEnUsuarios = async () => {
-      const params = [];
-      const whereClauses = [];
-
-      if (targetDni) {
-        params.push(targetDni);
-        whereClauses.push(`dni ILIKE $${params.length}`);
-      }
-
-      if (nameWords.length > 0) {
-        nameWords.forEach((w) => {
-          params.push(`%${w}%`);
-          whereClauses.push(`nombre ILIKE $${params.length}`);
-        });
-      }
-
-      if (whereClauses.length === 0) return null;
-
-      const sql = `SELECT * FROM usuarios WHERE ${whereClauses.join(' AND ')} LIMIT 1`;
-      const res = await query(sql, params);
-      if (res.rows && res.rows.length > 0) {
-        const u = res.rows[0];
-        u.origenHoja = 'Usuarios';
-        u.tabla_origen = 'usuarios';
-        u.rol = u.rol || 'Personero';
-        u.tipo_interfaz = 'personero_conteo';
-        return u;
-      }
-      return null;
-    };
-
     let usuarioBloqueado = null;
 
-    // 2. rpersoneros (Personeros formulario)
+    // 1. rpersoneros (Personeros formulario - Fuente principal)
     const buscarEnRpersoneros = async () => {
-      const params = [];
-      const whereClauses = [];
-
+      let res = null;
       if (targetDni) {
-        params.push(targetDni);
-        whereClauses.push(`dni ILIKE $${params.length}`);
+        try {
+          res = await query(`
+            SELECT 
+              dni,
+              nombres_y_apellidos AS nombre,
+              COALESCE(NULLIF(rol_a_desempenar, ''), 'Personero') AS rol,
+              COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion,
+              COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio,
+              COALESCE(NULLIF(mesa_asignada, ''), mesa_de_sufragio) AS mesa,
+              credenciales,
+              preguntas
+            FROM rpersoneros
+            WHERE TRIM(dni) ILIKE $1
+            LIMIT 1
+          `, [targetDni]);
+        } catch (e) {}
       }
 
-      if (nameWords.length > 0) {
-        nameWords.forEach((w) => {
+      if ((!res || !res.rows || res.rows.length === 0) && nameWords.length > 0) {
+        const params = [];
+        const whereClauses = nameWords.map((w) => {
           params.push(`%${w}%`);
-          whereClauses.push(`nombres_y_apellidos ILIKE $${params.length}`);
+          return `nombres_y_apellidos ILIKE $${params.length}`;
         });
+        try {
+          res = await query(`
+            SELECT 
+              dni,
+              nombres_y_apellidos AS nombre,
+              COALESCE(NULLIF(rol_a_desempenar, ''), 'Personero') AS rol,
+              COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion,
+              COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio,
+              COALESCE(NULLIF(mesa_asignada, ''), mesa_de_sufragio) AS mesa,
+              credenciales,
+              preguntas
+            FROM rpersoneros
+            WHERE ${whereClauses.join(' AND ')}
+            LIMIT 1
+          `, params);
+        } catch (e) {}
       }
 
-      if (whereClauses.length === 0) return null;
-
-      const sql = `
-        SELECT 
-          dni,
-          nombres_y_apellidos AS nombre,
-          COALESCE(NULLIF(rol_a_desempenar, ''), 'Personero') AS rol,
-          COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion,
-          COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio,
-          COALESCE(NULLIF(mesa_asignada, ''), mesa_de_sufragio) AS mesa,
-          credenciales
-        FROM rpersoneros
-        WHERE ${whereClauses.join(' AND ')}
-        LIMIT 1
-      `;
-      try {
-        const res = await query(sql, params);
-        if (res.rows && res.rows.length > 0) {
-          const u = res.rows[0];
-          const cred = (u.credenciales || '').toString().trim().toLowerCase();
-          const isConfirmed = cred.includes('confirmad') || cred === 'si' || cred === '1' || cred === 'aprobado' || !u.credenciales;
-
-          if (isConfirmed) {
-            u.origenHoja = 'Rpersoneros';
-            u.tabla_origen = 'rpersoneros';
-            u.rol = 'Personero';
-            u.tipo_interfaz = 'personero_conteo';
-            return u;
-          } else {
-            usuarioBloqueado = {
-              isBlocked: true,
-              status: 'blocked',
-              rol: 'Personero',
-              message: 'Acceso Denegado: Tus credenciales se encuentran en estado Bloqueado en el sistema.'
-            };
-            return null;
-          }
-        }
-      } catch (e) {}
-      return null;
-    };
-
-    // 3. usuarios1 (Coordinadores oficiales)
-    const buscarEnUsuarios1 = async () => {
-      const params = [];
-      const whereClauses = [];
-
-      if (targetDni) {
-        params.push(targetDni);
-        whereClauses.push(`dni ILIKE $${params.length}`);
-      }
-
-      if (nameWords.length > 0) {
-        nameWords.forEach((w) => {
-          params.push(`%${w}%`);
-          whereClauses.push(`nombre ILIKE $${params.length}`);
-        });
-      }
-
-      if (whereClauses.length === 0) return null;
-
-      const sql = `SELECT * FROM usuarios1 WHERE ${whereClauses.join(' AND ')} LIMIT 1`;
-      const res = await query(sql, params);
-      if (res.rows && res.rows.length > 0) {
+      if (res && res.rows && res.rows.length > 0) {
         const u = res.rows[0];
-        u.origenHoja = 'Usuarios1';
-        u.tabla_origen = 'usuarios1';
-        u.rol = 'Coordinador';
-        u.tipo_interfaz = 'coordinador_lista';
-        return u;
-      }
-      return null;
-    };
+        const cred = (u.credenciales || '').toString().trim().toLowerCase();
+        const preg = (u.preguntas || '').toString().trim().toLowerCase();
 
-    // 4. rcoordinadores (Coordinadores formulario)
-    const buscarEnRcoordinadores = async () => {
-      const params = [];
-      const whereClauses = [];
+        const isConfirmed = Boolean(cred && (cred.includes('confirmad') || cred === 'si' || cred === '1'));
+        const isDesaprobado = Boolean(cred.includes('desaprobad') || cred.includes('bloquead') || preg.includes('desaprobad') || preg.includes('reprobad'));
+        const isAprobado = Boolean(preg && (preg.includes('aprobad') || preg === 'si' || preg === '1')) && !isDesaprobado;
 
-      if (targetDni) {
-        params.push(targetDni);
-        whereClauses.push(`dni ILIKE $${params.length}`);
-      }
-
-      if (nameWords.length > 0) {
-        nameWords.forEach((w) => {
-          params.push(`%${w}%`);
-          whereClauses.push(`nombres_y_apellidos ILIKE $${params.length}`);
-        });
-      }
-
-      if (whereClauses.length === 0) return null;
-
-      const sql = `
-        SELECT 
-          dni,
-          nombres_y_apellidos AS nombre,
-          'Coordinador' AS rol,
-          COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion,
-          COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio,
-          '' AS mesa,
-          credenciales
-        FROM rcoordinadores
-        WHERE ${whereClauses.join(' AND ')}
-        LIMIT 1
-      `;
-      try {
-        const res = await query(sql, params);
-        if (res.rows && res.rows.length > 0) {
-          const u = res.rows[0];
-          const cred = (u.credenciales || '').toString().trim().toLowerCase();
-          const isConfirmed = cred.includes('confirmad') || cred === 'si' || cred === '1' || cred === 'aprobado' || !u.credenciales;
-
-          if (isConfirmed) {
-            u.origenHoja = 'Rcoordinadores';
-            u.tabla_origen = 'rcoordinadores';
-            u.rol = 'Coordinador';
-            u.tipo_interfaz = 'coordinador_lista';
-            return u;
-          } else {
-            usuarioBloqueado = {
-              isBlocked: true,
-              status: 'blocked',
-              rol: 'Coordinador',
-              message: 'Acceso Denegado: Tus credenciales se encuentran en estado Bloqueado en el sistema.'
-            };
-            return null;
+        if (isConfirmed && isAprobado) {
+          u.origenHoja = 'Rpersoneros';
+          u.tabla_origen = 'rpersoneros';
+          u.rol = 'Personero';
+          u.tipo_interfaz = 'personero_conteo';
+          return u;
+        } else {
+          let errorMsg = 'Acceso Denegado: Tus credenciales deben estar en estado Confirmado y tu evaluación en estado Aprobado para poder ingresar.';
+          if (cred.includes('desaprobad') || cred.includes('bloquead')) {
+            errorMsg = `Acceso Denegado: Tus credenciales se encuentran en estado '${u.credenciales}' en el sistema.`;
+          } else if (preg.includes('desaprobad') || preg.includes('reprobad')) {
+            errorMsg = `Acceso Denegado: Tu evaluación se encuentra en estado '${u.preguntas}'. Debes estar Aprobado para ingresar.`;
+          } else if (!isConfirmed) {
+            errorMsg = `Acceso Denegado: Tus credenciales se encuentran en estado '${u.credenciales || 'Pendiente'}'. Deben estar en estado Confirmado.`;
+          } else if (!isAprobado) {
+            errorMsg = `Acceso Denegado: Tu evaluación se encuentra en estado '${u.preguntas || 'Pendiente'}'. Debe estar en estado Aprobado.`;
           }
+
+          usuarioBloqueado = {
+            isBlocked: true,
+            status: 'blocked',
+            rol: 'Personero',
+            message: errorMsg
+          };
+          return null;
         }
-      } catch (e) {}
+      }
       return null;
     };
 
-    let usuarioEncontrado = await buscarEnUsuarios();
-    if (!usuarioEncontrado) usuarioEncontrado = await buscarEnRpersoneros();
-    if (!usuarioEncontrado) usuarioEncontrado = await buscarEnUsuarios1();
-    if (!usuarioEncontrado) usuarioEncontrado = await buscarEnRcoordinadores();
+    // 2. rcoordinadores (Coordinadores formulario)
+    const buscarEnRcoordinadores = async () => {
+      let res = null;
+      if (targetDni) {
+        try {
+          res = await query(`
+            SELECT 
+              dni,
+              nombres_y_apellidos AS nombre,
+              'Coordinador' AS rol,
+              COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion,
+              COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio,
+              '' AS mesa,
+              credenciales,
+              preguntas
+            FROM rcoordinadores
+            WHERE TRIM(dni) ILIKE $1
+            LIMIT 1
+          `, [targetDni]);
+        } catch (e) {}
+      }
 
-    if (usuarioEncontrado && !usuarioEncontrado.isBlocked) {
-      return {
-        success: true,
-        status: 'success',
-        usuario: usuarioEncontrado,
-        user: usuarioEncontrado,
-        data: usuarioEncontrado
-      };
+      if ((!res || !res.rows || res.rows.length === 0) && nameWords.length > 0) {
+        const params = [];
+        const whereClauses = nameWords.map((w) => {
+          params.push(`%${w}%`);
+          return `nombres_y_apellidos ILIKE $${params.length}`;
+        });
+        try {
+          res = await query(`
+            SELECT 
+              dni,
+              nombres_y_apellidos AS nombre,
+              'Coordinador' AS rol,
+              COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion,
+              COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio,
+              '' AS mesa,
+              credenciales,
+              preguntas
+            FROM rcoordinadores
+            WHERE ${whereClauses.join(' AND ')}
+            LIMIT 1
+          `, params);
+        } catch (e) {}
+      }
+
+      if (res && res.rows && res.rows.length > 0) {
+        const u = res.rows[0];
+        const cred = (u.credenciales || '').toString().trim().toLowerCase();
+        const preg = (u.preguntas || '').toString().trim().toLowerCase();
+
+        const isConfirmed = Boolean(cred && (cred.includes('confirmad') || cred === 'si' || cred === '1'));
+        const isDesaprobado = Boolean(cred.includes('desaprobad') || cred.includes('bloquead') || preg.includes('desaprobad') || preg.includes('reprobad'));
+        const isAprobado = Boolean(preg && (preg.includes('aprobad') || preg === 'si' || preg === '1')) && !isDesaprobado;
+
+        if (isConfirmed && isAprobado) {
+          u.origenHoja = 'Rcoordinadores';
+          u.tabla_origen = 'rcoordinadores';
+          u.rol = 'Coordinador';
+          u.tipo_interfaz = 'coordinador_lista';
+          return u;
+        } else {
+          let errorMsg = 'Acceso Denegado: Tus credenciales de coordinador deben estar en estado Confirmado para poder ingresar.';
+          if (cred.includes('desaprobad') || cred.includes('bloquead')) {
+            errorMsg = `Acceso Denegado: Tus credenciales se encuentran en estado '${u.credenciales}' en el sistema.`;
+          } else if (preg.includes('desaprobad') || preg.includes('reprobad')) {
+            errorMsg = `Acceso Denegado: Tu evaluación de coordinador se encuentra en estado '${u.preguntas}'. Debes estar Aprobado.`;
+          } else if (!isConfirmed) {
+            errorMsg = `Acceso Denegado: Tus credenciales se encuentran en estado '${u.credenciales || 'Pendiente'}'. Deben estar en estado Confirmado.`;
+          } else if (!isAprobado) {
+            errorMsg = `Acceso Denegado: Tu evaluación se encuentra en estado '${u.preguntas || 'Pendiente'}'. Debe estar en estado Aprobado.`;
+          }
+
+          usuarioBloqueado = {
+            isBlocked: true,
+            status: 'blocked',
+            rol: 'Coordinador',
+            message: errorMsg
+          };
+          return null;
+        }
+      }
+      return null;
+    };
+
+    const enriquecerEstadoUsuario = async (u) => {
+      if (!u || !u.dni) return u;
+      const dniTrim = (u.dni || '').toString().trim();
+      const mesaTrim = (u.mesa || '').toString().trim();
+
+      // 1. Asistencia (foto y confirmación)
+      try {
+        const asisRes = await query(`
+          SELECT mesa, local, confirmacion, foto_url, ubicacion_gps, fecha_hora
+          FROM asistencia
+          WHERE TRIM(dni) = $1
+          ORDER BY id DESC
+          LIMIT 1
+        `, [dniTrim]);
+        if (asisRes.rows && asisRes.rows.length > 0) {
+          u.asistencia_confirmada = true;
+          u.asistencia_data = asisRes.rows[0];
+          if (asisRes.rows[0].mesa) u.mesa_asistencia = asisRes.rows[0].mesa;
+          if (asisRes.rows[0].local) u.colegio_asistencia = asisRes.rows[0].local;
+        } else {
+          u.asistencia_confirmada = false;
+          u.asistencia_data = null;
+        }
+      } catch (e) {
+        u.asistencia_confirmada = false;
+      }
+
+      // 2. Asistencia Llegada (GPS)
+      try {
+        const llegadaRes = await query(`
+          SELECT mesa, colegio, latitud, longitud, distancia_metros, fecha_registro
+          FROM asistenciallegada
+          WHERE TRIM(dni) = $1
+          ORDER BY id DESC
+          LIMIT 1
+        `, [dniTrim]);
+        if (llegadaRes.rows && llegadaRes.rows.length > 0) {
+          u.llegada_confirmada = true;
+          u.llegada_data = llegadaRes.rows[0];
+        } else {
+          u.llegada_confirmada = false;
+          u.llegada_data = null;
+        }
+      } catch (e) {
+        u.llegada_confirmada = false;
+      }
+
+      // 3. Votos Manuales
+      try {
+        const vCheck = await query(`
+          SELECT numero_mesa, origen, p_total_votos
+          FROM votos_detalle
+          WHERE (TRIM(dni) = $1 OR (numero_mesa = $2 AND $2 != '')) AND origen = 'MANUAL'
+          LIMIT 1
+        `, [dniTrim, mesaTrim]);
+        u.voto_manual_enviado = Boolean(vCheck && vCheck.rows && vCheck.rows.length > 0);
+        u.voto_manual_data = vCheck.rows[0] || null;
+      } catch (e) {
+        u.voto_manual_enviado = false;
+      }
+
+      return u;
+    };
+
+    let usuarioEncontrado = await buscarEnRpersoneros();
+    if (usuarioEncontrado) {
+      usuarioEncontrado = await enriquecerEstadoUsuario(usuarioEncontrado);
+      return { success: true, status: 'success', usuario: usuarioEncontrado, user: usuarioEncontrado, data: usuarioEncontrado };
     }
-
     if (usuarioBloqueado) {
-      return {
-        success: false,
-        status: 'blocked',
-        message: usuarioBloqueado.message || 'Acceso Denegado: Tus credenciales se encuentran en estado Bloqueado en el sistema.'
-      };
+      return { success: false, status: 'blocked', message: usuarioBloqueado.message };
     }
 
-    return { success: false, status: 'error', message: 'Usuario no encontrado. Verifica tu DNI o nombre.' };
+    usuarioEncontrado = await buscarEnRcoordinadores();
+    if (usuarioEncontrado) {
+      usuarioEncontrado = await enriquecerEstadoUsuario(usuarioEncontrado);
+      return { success: true, status: 'success', usuario: usuarioEncontrado, user: usuarioEncontrado, data: usuarioEncontrado };
+    }
+    if (usuarioBloqueado) {
+      return { success: false, status: 'blocked', message: usuarioBloqueado.message };
+    }
+
+    return { success: false, status: 'error', message: 'Usuario no encontrado en rpersoneros / rcoordinadores. Verifica tu DNI o nombre.' };
   }
 
   // 2. REGISTRAR VOTOS
@@ -261,24 +308,39 @@ class PostgresRepository {
     const prov = data.votos ? (data.votos.provincial || {}) : {};
     const dist = data.votos ? (data.votos.distrital || {}) : {};
 
-    const p_fp_v = prov.FP ? (parseInt(prov.FP.votos) || 0) : 0;
-    const p_jp_v = prov.JP ? (parseInt(prov.JP.votos) || 0) : 0;
-    const p_sp_v = prov["SOMOS PERU"] ? (parseInt(prov["SOMOS PERU"].votos) || 0) : 0;
-    const p_frepap_v = prov.FREPAP ? (parseInt(prov.FREPAP.votos) || 0) : 0;
-    const p_verde_v = prov.VERDE ? (parseInt(prov.VERDE.votos) || 0) : 0;
-    const p_morado_v = prov.MORADO ? (parseInt(prov.MORADO.votos) || 0) : 0;
-    const p_nulos = parseInt(data.votos_nulos) || 0;
-    const p_vacios = parseInt(data.votos_vacios) || 0;
+    const extractVote = (item) => {
+      if (item === undefined || item === null) return 0;
+      if (typeof item === 'object') {
+        return parseInt(item.votos ?? item.val ?? item.value ?? 0, 10) || 0;
+      }
+      return parseInt(item, 10) || 0;
+    };
+
+    const extractCand = (item, fallback = '') => {
+      if (item && typeof item === 'object' && item.candidato) {
+        return item.candidato;
+      }
+      return fallback;
+    };
+
+    const p_fp_v = extractVote(prov.FP);
+    const p_jp_v = extractVote(prov.JP);
+    const p_sp_v = extractVote(prov["SOMOS PERU"] || prov.SP);
+    const p_frepap_v = extractVote(prov.FREPAP);
+    const p_verde_v = extractVote(prov.VERDE);
+    const p_morado_v = extractVote(prov.MORADO);
+    const p_nulos = parseInt(data.votos_nulos ?? prov.NULOS ?? 0, 10) || 0;
+    const p_vacios = parseInt(data.votos_vacios ?? prov.VACIOS ?? 0, 10) || 0;
     const p_tot = p_fp_v + p_jp_v + p_sp_v + p_frepap_v + p_verde_v + p_morado_v + p_nulos + p_vacios;
 
-    const d_fp_v = dist.FP ? (parseInt(dist.FP.votos) || 0) : 0;
-    const d_jp_v = dist.JP ? (parseInt(dist.JP.votos) || 0) : 0;
-    const d_sp_v = dist["SOMOS PERU"] ? (parseInt(dist["SOMOS PERU"].votos) || 0) : 0;
-    const d_frepap_v = dist.FREPAP ? (parseInt(dist.FREPAP.votos) || 0) : 0;
-    const d_verde_v = dist.VERDE ? (parseInt(dist.VERDE.votos) || 0) : 0;
-    const d_morado_v = dist.MORADO ? (parseInt(dist.MORADO.votos) || 0) : 0;
-    const d_nulos = parseInt(data.votos_dist_nulos) || 0;
-    const d_vacios = parseInt(data.votos_dist_vacios) || 0;
+    const d_fp_v = extractVote(dist.FP);
+    const d_jp_v = extractVote(dist.JP);
+    const d_sp_v = extractVote(dist["SOMOS PERU"] || dist.SP);
+    const d_frepap_v = extractVote(dist.FREPAP);
+    const d_verde_v = extractVote(dist.VERDE);
+    const d_morado_v = extractVote(dist.MORADO);
+    const d_nulos = parseInt(data.votos_dist_nulos ?? dist.NULOS ?? 0, 10) || 0;
+    const d_vacios = parseInt(data.votos_dist_vacios ?? dist.VACIOS ?? 0, 10) || 0;
     const d_tot = d_fp_v + d_jp_v + d_sp_v + d_frepap_v + d_verde_v + d_morado_v + d_nulos + d_vacios;
 
     const sql = `
@@ -327,11 +389,11 @@ class PostgresRepository {
     const params = [
       data.brigadista || '', data.dni || '', data.departamento || 'Lima', data.provincia || 'Lima',
       data.ubicacion || '', data.colegio || '', mesaStr, origenStr,
-      prov.FP?.candidato || '', p_fp_v, prov.JP?.candidato || '', p_jp_v, prov["SOMOS PERU"]?.candidato || '', p_sp_v,
-      prov.FREPAP?.candidato || '', p_frepap_v, prov.VERDE?.candidato || '', p_verde_v, prov.MORADO?.candidato || '', p_morado_v,
+      extractCand(prov.FP), p_fp_v, extractCand(prov.JP), p_jp_v, extractCand(prov["SOMOS PERU"] || prov.SP), p_sp_v,
+      extractCand(prov.FREPAP), p_frepap_v, extractCand(prov.VERDE), p_verde_v, extractCand(prov.MORADO), p_morado_v,
       p_nulos, p_vacios, p_tot,
-      dist.FP?.candidato || '', d_fp_v, dist.JP?.candidato || '', d_jp_v, dist["SOMOS PERU"]?.candidato || '', d_sp_v,
-      dist.FREPAP?.candidato || '', d_frepap_v, dist.VERDE?.candidato || '', d_verde_v, dist.MORADO?.candidato || '', d_morado_v,
+      extractCand(dist.FP), d_fp_v, extractCand(dist.JP), d_jp_v, extractCand(dist["SOMOS PERU"] || dist.SP), d_sp_v,
+      extractCand(dist.FREPAP), d_frepap_v, extractCand(dist.VERDE), d_verde_v, extractCand(dist.MORADO), d_morado_v,
       d_nulos, d_vacios, d_tot
     ];
 
@@ -352,8 +414,8 @@ class PostgresRepository {
       data.local || data.colegio || '',
       data.mesa || '',
       data.confirmacion || 'SI',
-      data.foto_url || '',
-      data.ubicacion_gps || ''
+      data.foto_url || data.fotoBase64 || '',
+      data.ubicacion_gps || data.ubicacionGps || ''
     ];
     await query(sql, params);
     return { success: true, message: 'Asistencia registrada exitosamente en PostgreSQL' };
@@ -385,29 +447,54 @@ class PostgresRepository {
 
   // 5. CONFIRMAR COORDINADOR
   async confirmarCoordinador(data) {
-    const sql = `
+    const personeroDni = (data.personero_dni || data.personeroDni || '').toString().trim();
+    const local = (data.local || data.colegio || '').toString().trim();
+    const personeroNombre = (data.personero_nombre || data.personeroNombre || '').toString().trim();
+    const distrito = (data.distrito || '').toString().trim();
+    const coordNombre = (data.coordinador_nombre || data.coordinadorNombre || '').toString().trim();
+    const coordDni = (data.coordinador_dni || data.coordinadorDni || '').toString().trim();
+    const confirmacion = (data.confirmacion || 'SI').toString().trim();
+    const fotoUrl = (data.foto_url || data.fotoBase64 || '').toString().trim();
+
+    if (!personeroDni) {
+      return { success: false, message: 'DNI de personero requerido' };
+    }
+
+    // Verificar si ya existe confirmación para este personero en este local (evitar duplicados)
+    const checkSql = `
+      SELECT id FROM coordinadores 
+      WHERE TRIM(personero_dni) = $1 AND TRIM(local) = $2
+      LIMIT 1
+    `;
+    const existing = await query(checkSql, [personeroDni, local]);
+
+    if (existing && existing.rows && existing.rows.length > 0) {
+      const updateSql = `
+        UPDATE coordinadores
+        SET personero_nombre = $1,
+            distrito = $2,
+            coordinador_nombre = $3,
+            coordinador_dni = $4,
+            confirmacion = $5,
+            foto_url = CASE WHEN $6 != '' THEN $6 ELSE foto_url END,
+            fecha_hora = CURRENT_TIMESTAMP
+        WHERE id = $7
+      `;
+      await query(updateSql, [personeroNombre, distrito, coordNombre, coordDni, confirmacion, fotoUrl, existing.rows[0].id]);
+      return { success: true, message: 'Confirmación de coordinador actualizada exitosamente' };
+    }
+
+    const insertSql = `
       INSERT INTO coordinadores (personero_nombre, personero_dni, distrito, local, coordinador_nombre, coordinador_dni, confirmacion, foto_url, fecha_hora)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
     `;
-    const params = [
-      data.personero_nombre || '',
-      data.personero_dni || '',
-      data.distrito || '',
-      data.local || data.colegio || '',
-      data.coordinador_nombre || '',
-      data.coordinador_dni || '',
-      data.confirmacion || 'SI',
-      data.foto_url || ''
-    ];
-    await query(sql, params);
+    await query(insertSql, [personeroNombre, personeroDni, distrito, local, coordNombre, coordDni, confirmacion, fotoUrl]);
     return { success: true, message: 'Confirmación de coordinador registrada exitosamente' };
   }
 
   // 6. OBTENER USUARIOS
   async obtenerUsuarios() {
     const sql = `
-      SELECT dni, nombre, rol, ubicacion, colegio, mesa, 'Usuarios' AS "origenHoja" FROM usuarios
-      UNION ALL
       SELECT 
         dni, 
         nombres_y_apellidos AS nombre, 
@@ -417,8 +504,17 @@ class PostgresRepository {
         COALESCE(NULLIF(mesa_asignada, ''), mesa_de_sufragio) AS mesa, 
         'Rpersoneros' AS "origenHoja"
       FROM rpersoneros
-      UNION ALL
-      SELECT dni, nombre, rol, ubicacion, colegio, mesa, 'Usuarios1' AS "origenHoja" FROM usuarios1
+      WHERE (
+        credenciales ILIKE '%confirmad%' 
+        OR credenciales = 'SI' 
+        OR credenciales = '1'
+        OR credenciales ILIKE '%aprobado%'
+      )
+      AND (
+        preguntas ILIKE '%aprobad%'
+        OR preguntas = 'SI'
+        OR preguntas = '1'
+      )
       UNION ALL
       SELECT 
         dni, 
@@ -429,6 +525,17 @@ class PostgresRepository {
         '' AS mesa, 
         'Rcoordinadores' AS "origenHoja"
       FROM rcoordinadores
+      WHERE (
+        credenciales ILIKE '%confirmad%' 
+        OR credenciales = 'SI' 
+        OR credenciales = '1'
+        OR credenciales ILIKE '%aprobado%'
+      )
+      AND (
+        preguntas ILIKE '%aprobad%'
+        OR preguntas = 'SI'
+        OR preguntas = '1'
+      )
       ORDER BY nombre ASC
     `;
     const res = await query(sql);
@@ -451,8 +558,24 @@ class PostgresRepository {
   async obtenerAsistenciaPorDni(dni) {
     const dniQuery = (dni || '').toString().trim();
     if (!dniQuery) return { success: false, message: 'Se requiere DNI' };
-    const res = await query('SELECT * FROM asistencia WHERE dni ILIKE $1 ORDER BY fecha_hora DESC LIMIT 1', [dniQuery]);
-    return { success: true, asistencia: res.rows[0] || null };
+
+    const asisRes = await query('SELECT * FROM asistencia WHERE TRIM(dni) = $1 ORDER BY id DESC LIMIT 1', [dniQuery]);
+    const llegadaRes = await query('SELECT * FROM asistenciallegada WHERE TRIM(dni) = $1 ORDER BY id DESC LIMIT 1', [dniQuery]);
+    const votoRes = await query('SELECT * FROM votos_detalle WHERE TRIM(dni) = $1 AND origen = \'MANUAL\' ORDER BY id DESC LIMIT 1', [dniQuery]);
+
+    const asistencia_confirmada = Boolean(asisRes.rows && asisRes.rows.length > 0);
+    const llegada_confirmada = Boolean(llegadaRes.rows && llegadaRes.rows.length > 0);
+    const voto_manual_enviado = Boolean(votoRes.rows && votoRes.rows.length > 0);
+
+    return {
+      success: true,
+      asistencia: asisRes.rows[0] || null,
+      asistencia_confirmada,
+      llegada: llegadaRes.rows[0] || null,
+      llegada_confirmada,
+      voto_manual: votoRes.rows[0] || null,
+      voto_manual_enviado
+    };
   }
 
   // 10. CONFIRMACIONES POR COLEGIO
@@ -472,51 +595,45 @@ class PostgresRepository {
 
   // 11. PERSONEROS POR COLEGIO
   async obtenerPersonerosPorColegio(data) {
-    const colQuery = (data.colegio || '').toString().trim();
+    const colQuery = (data.colegio || data.local || '').toString().trim();
     const distQuery = (data.distrito || data.ubicacion || '').toString().trim();
-    const origenCoord = (data.origenHoja || data.tabla_origen || '').toString().trim();
 
-    if (!colQuery) {
+    if (!colQuery && !distQuery) {
       return { success: true, personeros: [] };
     }
 
-    let sql = '';
-    const params = [colQuery, `%${colQuery}%`];
+    const params = [];
+    let sql = `
+      SELECT 
+        dni, 
+        nombres_y_apellidos AS nombre, 
+        'Personero' AS rol, 
+        COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion, 
+        COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio, 
+        COALESCE(NULLIF(mesa_asignada, ''), mesa_de_sufragio) AS mesa, 
+        'Rpersoneros' AS "origenHoja", 
+        'rpersoneros' AS tabla_origen
+      FROM rpersoneros
+      WHERE 1=1
+    `;
 
-    if (origenCoord === 'Usuarios1' || origenCoord === 'usuarios1') {
-      sql = `
-        SELECT dni, nombre, rol, ubicacion, colegio, mesa, 'Usuarios' AS "origenHoja", 'usuarios' AS tabla_origen
-        FROM usuarios
-        WHERE rol = 'Personero'
-          AND (colegio ILIKE $1 OR colegio ILIKE $2)
-      `;
-      if (distQuery) {
-        params.push(distQuery, `%${distQuery}%`);
-        sql += ` AND (ubicacion ILIKE $3 OR ubicacion ILIKE $4)`;
-      }
-      sql += ` ORDER BY mesa ASC, nombre ASC`;
-    } else {
-      sql = `
-        SELECT 
-          dni, 
-          nombres_y_apellidos AS nombre, 
-          'Personero' AS rol, 
-          COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion, 
-          COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio, 
-          COALESCE(NULLIF(mesa_asignada, ''), mesa_de_sufragio) AS mesa, 
-          'Rpersoneros' AS "origenHoja", 
-          'rpersoneros' AS tabla_origen
-        FROM rpersoneros
-        WHERE (COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) ILIKE $1 
-           OR COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) ILIKE $2)
-      `;
-      if (distQuery) {
-        params.push(distQuery, `%${distQuery}%`);
-        sql += ` AND (COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) ILIKE $3 
-                   OR COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) ILIKE $4)`;
-      }
-      sql += ` ORDER BY mesa ASC, nombre ASC`;
+    if (colQuery) {
+      params.push(colQuery, `%${colQuery}%`);
+      const p1 = params.length - 1;
+      const p2 = params.length;
+      sql += ` AND (COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) ILIKE $${p1} 
+                 OR COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) ILIKE $${p2})`;
     }
+
+    if (distQuery) {
+      params.push(distQuery, `%${distQuery}%`);
+      const p1 = params.length - 1;
+      const p2 = params.length;
+      sql += ` AND (COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) ILIKE $${p1} 
+                 OR COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) ILIKE $${p2})`;
+    }
+
+    sql += ` ORDER BY mesa ASC, nombre ASC`;
 
     const res = await query(sql, params);
     return { success: true, personeros: res.rows };

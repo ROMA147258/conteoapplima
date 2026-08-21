@@ -11,6 +11,39 @@ class SqlVoteRepository extends IVoteRepository {
     const prov = data.votos ? (data.votos.provincial || {}) : {};
     const dist = data.votos ? (data.votos.distrital || {}) : {};
 
+    const extractVote = (item) => {
+      if (item === undefined || item === null) return 0;
+      if (typeof item === 'object') {
+        return parseInt(item.votos ?? item.val ?? item.value ?? 0, 10) || 0;
+      }
+      return parseInt(item, 10) || 0;
+    };
+
+    const extractCand = (item, fallback = '') => {
+      if (item && typeof item === 'object' && item.candidato) {
+        return item.candidato;
+      }
+      return fallback;
+    };
+
+    const p_fp_v = extractVote(prov.FP);
+    const p_jp_v = extractVote(prov.JP);
+    const p_sp_v = extractVote(prov["SOMOS PERU"] || prov.SP);
+    const p_frepap_v = extractVote(prov.FREPAP);
+    const p_verde_v = extractVote(prov.VERDE);
+    const p_morado_v = extractVote(prov.MORADO);
+    const p_nulos = parseInt(data.votos_nulos ?? prov.NULOS ?? 0, 10) || 0;
+    const p_vacios = parseInt(data.votos_vacios ?? prov.VACIOS ?? 0, 10) || 0;
+
+    const d_fp_v = extractVote(dist.FP);
+    const d_jp_v = extractVote(dist.JP);
+    const d_sp_v = extractVote(dist["SOMOS PERU"] || dist.SP);
+    const d_frepap_v = extractVote(dist.FREPAP);
+    const d_verde_v = extractVote(dist.VERDE);
+    const d_morado_v = extractVote(dist.MORADO);
+    const d_nulos = parseInt(data.votos_dist_nulos ?? dist.NULOS ?? 0, 10) || 0;
+    const d_vacios = parseInt(data.votos_dist_vacios ?? dist.VACIOS ?? 0, 10) || 0;
+
     const req = pool.request()
       .input('personero', mssql.VarChar, data.brigadista || '')
       .input('dni', mssql.VarChar, data.dni || '')
@@ -22,36 +55,36 @@ class SqlVoteRepository extends IVoteRepository {
       .input('origen', mssql.VarChar, origenStr)
 
       // Provincial
-      .input('p_fp_cand', mssql.VarChar, prov.FP ? prov.FP.candidato : '')
-      .input('p_fp_votos', mssql.Int, prov.FP ? (parseInt(prov.FP.votos) || 0) : 0)
-      .input('p_jp_cand', mssql.VarChar, prov.JP ? prov.JP.candidato : '')
-      .input('p_jp_votos', mssql.Int, prov.JP ? (parseInt(prov.JP.votos) || 0) : 0)
-      .input('p_sp_cand', mssql.VarChar, prov["SOMOS PERU"] ? prov["SOMOS PERU"].candidato : '')
-      .input('p_sp_votos', mssql.Int, prov["SOMOS PERU"] ? (parseInt(prov["SOMOS PERU"].votos) || 0) : 0)
-      .input('p_frepap_cand', mssql.VarChar, prov.FREPAP ? prov.FREPAP.candidato : '')
-      .input('p_frepap_votos', mssql.Int, prov.FREPAP ? (parseInt(prov.FREPAP.votos) || 0) : 0)
-      .input('p_verde_cand', mssql.VarChar, prov.VERDE ? prov.VERDE.candidato : '')
-      .input('p_verde_votos', mssql.Int, prov.VERDE ? (parseInt(prov.VERDE.votos) || 0) : 0)
-      .input('p_morado_cand', mssql.VarChar, prov.MORADO ? prov.MORADO.candidato : '')
-      .input('p_morado_votos', mssql.Int, prov.MORADO ? (parseInt(prov.MORADO.votos) || 0) : 0)
-      .input('p_nulos', mssql.Int, parseInt(data.votos_nulos) || 0)
-      .input('p_vacios', mssql.Int, parseInt(data.votos_vacios) || 0)
+      .input('p_fp_cand', mssql.VarChar, extractCand(prov.FP))
+      .input('p_fp_votos', mssql.Int, p_fp_v)
+      .input('p_jp_cand', mssql.VarChar, extractCand(prov.JP))
+      .input('p_jp_votos', mssql.Int, p_jp_v)
+      .input('p_sp_cand', mssql.VarChar, extractCand(prov["SOMOS PERU"] || prov.SP))
+      .input('p_sp_votos', mssql.Int, p_sp_v)
+      .input('p_frepap_cand', mssql.VarChar, extractCand(prov.FREPAP))
+      .input('p_frepap_votos', mssql.Int, p_frepap_v)
+      .input('p_verde_cand', mssql.VarChar, extractCand(prov.VERDE))
+      .input('p_verde_votos', mssql.Int, p_verde_v)
+      .input('p_morado_cand', mssql.VarChar, extractCand(prov.MORADO))
+      .input('p_morado_votos', mssql.Int, p_morado_v)
+      .input('p_nulos', mssql.Int, p_nulos)
+      .input('p_vacios', mssql.Int, p_vacios)
 
       // Distrital
-      .input('d_fp_cand', mssql.VarChar, dist.FP ? dist.FP.candidato : '')
-      .input('d_fp_votos', mssql.Int, dist.FP ? (parseInt(dist.FP.votos) || 0) : 0)
-      .input('d_jp_cand', mssql.VarChar, dist.JP ? dist.JP.candidato : '')
-      .input('d_jp_votos', mssql.Int, dist.JP ? (parseInt(dist.JP.votos) || 0) : 0)
-      .input('d_sp_cand', mssql.VarChar, dist["SOMOS PERU"] ? dist["SOMOS PERU"].candidato : '')
-      .input('d_sp_votos', mssql.Int, dist["SOMOS PERU"] ? (parseInt(dist["SOMOS PERU"].votos) || 0) : 0)
-      .input('d_frepap_cand', mssql.VarChar, dist.FREPAP ? dist.FREPAP.candidato : '')
-      .input('d_frepap_votos', mssql.Int, dist.FREPAP ? (parseInt(dist.FREPAP.votos) || 0) : 0)
-      .input('d_verde_cand', mssql.VarChar, dist.VERDE ? dist.VERDE.candidato : '')
-      .input('d_verde_votos', mssql.Int, dist.VERDE ? (parseInt(dist.VERDE.votos) || 0) : 0)
-      .input('d_morado_cand', mssql.VarChar, dist.MORADO ? dist.MORADO.candidato : '')
-      .input('d_morado_votos', mssql.Int, dist.MORADO ? (parseInt(dist.MORADO.votos) || 0) : 0)
-      .input('d_nulos', mssql.Int, parseInt(data.votos_dist_nulos) || 0)
-      .input('d_vacios', mssql.Int, parseInt(data.votos_dist_vacios) || 0);
+      .input('d_fp_cand', mssql.VarChar, extractCand(dist.FP))
+      .input('d_fp_votos', mssql.Int, d_fp_v)
+      .input('d_jp_cand', mssql.VarChar, extractCand(dist.JP))
+      .input('d_jp_votos', mssql.Int, d_jp_v)
+      .input('d_sp_cand', mssql.VarChar, extractCand(dist["SOMOS PERU"] || dist.SP))
+      .input('d_sp_votos', mssql.Int, d_sp_v)
+      .input('d_frepap_cand', mssql.VarChar, extractCand(dist.FREPAP))
+      .input('d_frepap_votos', mssql.Int, d_frepap_v)
+      .input('d_verde_cand', mssql.VarChar, extractCand(dist.VERDE))
+      .input('d_verde_votos', mssql.Int, d_verde_v)
+      .input('d_morado_cand', mssql.VarChar, extractCand(dist.MORADO))
+      .input('d_morado_votos', mssql.Int, d_morado_v)
+      .input('d_nulos', mssql.Int, d_nulos)
+      .input('d_vacios', mssql.Int, d_vacios);
 
     await req.query(`
       MERGE dbo.Votos_Detalle AS target

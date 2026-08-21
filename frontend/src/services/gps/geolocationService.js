@@ -63,4 +63,41 @@ export function obtenerCoordenadasColegio(colegioNombre, distrito) {
   return DISTRITO_DEFAULT_GPS[distrito] || { lat: -12.0463, lon: -77.0427 };
 }
 
+export function obtenerCoordenadasMesaColegio(mesaNum, colegioNombre, distrito, mesasEstructura = []) {
+  const cleanMesa = (mesaNum || '').toString().trim().replace(/\D/g, '');
+  const paddedMesa = cleanMesa.padStart(6, '0');
+
+  // 1. Buscar en mesasEstructura por número de mesa
+  if (Array.isArray(mesasEstructura)) {
+    const foundMesa = mesasEstructura.find(m => {
+      const num = (m.mesa || m.numero_mesa || '').toString().trim().replace(/\D/g, '');
+      return (num === cleanMesa || num === paddedMesa) && (m.latitud || m.lat);
+    });
+    if (foundMesa && (foundMesa.latitud || foundMesa.lat)) {
+      const lat = parseFloat(foundMesa.latitud || foundMesa.lat);
+      const lon = parseFloat(foundMesa.longitud || foundMesa.lon || foundMesa.lng);
+      if (!isNaN(lat) && !isNaN(lon) && lat !== 0) {
+        return { lat, lon, source: 'mesas_tabla' };
+      }
+    }
+
+    // 2. Buscar en mesasEstructura por nombre de colegio
+    if (colegioNombre) {
+      const foundColegio = mesasEstructura.find(m => 
+        m.colegio && m.colegio.toLowerCase().trim() === colegioNombre.toLowerCase().trim() && (m.latitud || m.lat)
+      );
+      if (foundColegio) {
+        const lat = parseFloat(foundColegio.latitud || foundColegio.lat);
+        const lon = parseFloat(foundColegio.longitud || foundColegio.lon || foundColegio.lng);
+        if (!isNaN(lat) && !isNaN(lon) && lat !== 0) {
+          return { lat, lon, source: 'mesas_colegio' };
+        }
+      }
+    }
+  }
+
+  // 3. Fallback a colegios GPS o distrito
+  return obtenerCoordenadasColegio(colegioNombre, distrito);
+}
+
 export { calcularDistanciaMetros };

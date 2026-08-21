@@ -45,28 +45,195 @@ class SqlServerRepository {
       .map(w => w.trim())
       .filter(w => w.length > 0);
 
-    // 1. dbo.Usuarios (Personeros oficiales)
-    const buscarEnUsuarios = async () => {
-      const req = pool.request();
-      const whereClauses = [];
+    let usuarioBloqueado = null;
 
+    // 1. dbo.Rpersoneros (Personeros formulario - Fuente Principal)
+    const buscarEnRpersoneros = async () => {
+      let res = null;
       if (targetDni) {
-        req.input('dni', mssql.VarChar, targetDni);
-        whereClauses.push('(dni COLLATE Latin1_General_CI_AI = @dni)');
+        try {
+          const req = pool.request();
+          req.input('dni', mssql.VarChar, targetDni);
+          res = await req.query(`
+            SELECT TOP 1 
+              DNI AS dni,
+              Nombres_y_Apellidos AS nombre,
+              ISNULL(NULLIF(Rol_a_Desempenar, ''), 'Personero') AS rol,
+              ISNULL(NULLIF(Distrito_Asignado, ''), Distrito_donde_Vota) AS ubicacion,
+              ISNULL(NULLIF(Local_de_Votacion_Asignado, ''), Local_de_Votacion) AS colegio,
+              ISNULL(NULLIF(Mesa_Asignada, ''), Mesa_de_Sufragio) AS mesa,
+              Credenciales AS credenciales,
+              Preguntas AS preguntas
+            FROM dbo.Rpersoneros
+            WHERE LTRIM(RTRIM(DNI)) COLLATE Latin1_General_CI_AI = @dni
+          `);
+        } catch (e) {}
       }
 
-      if (nameWords.length > 0) {
-        nameWords.forEach((w, idx) => {
-          req.input(`w_${idx}`, mssql.VarChar, `%${w}%`);
-          whereClauses.push(`(nombre COLLATE Latin1_General_CI_AI LIKE @w_${idx})`);
-        });
+      if ((!res || !res.recordset || res.recordset.length === 0) && nameWords.length > 0) {
+        try {
+          const req = pool.request();
+          const whereClauses = nameWords.map((w, idx) => {
+            req.input(`w_${idx}`, mssql.VarChar, `%${w}%`);
+            return `(Nombres_y_Apellidos COLLATE Latin1_General_CI_AI LIKE @w_${idx})`;
+          });
+          res = await req.query(`
+            SELECT TOP 1 
+              DNI AS dni,
+              Nombres_y_Apellidos AS nombre,
+              ISNULL(NULLIF(Rol_a_Desempenar, ''), 'Personero') AS rol,
+              ISNULL(NULLIF(Distrito_Asignado, ''), Distrito_donde_Vota) AS ubicacion,
+              ISNULL(NULLIF(Local_de_Votacion_Asignado, ''), Local_de_Votacion) AS colegio,
+              ISNULL(NULLIF(Mesa_Asignada, ''), Mesa_de_Sufragio) AS mesa,
+              Credenciales AS credenciales,
+              Preguntas AS preguntas
+            FROM dbo.Rpersoneros
+            WHERE ${whereClauses.join(' AND ')}
+          `);
+        } catch (e) {}
       }
 
-      if (whereClauses.length === 0) return null;
+      if (res && res.recordset && res.recordset.length > 0) {
+        const u = res.recordset[0];
+        const cred = (u.credenciales || '').toString().trim().toLowerCase();
+        const preg = (u.preguntas || '').toString().trim().toLowerCase();
 
-      const query = `SELECT TOP 1 * FROM dbo.Usuarios WHERE ${whereClauses.join(' AND ')}`;
-      const res = await req.query(query);
-      if (res.recordset && res.recordset.length > 0) {
+        const isConfirmed = Boolean(cred && (cred.includes('confirmad') || cred === 'si' || cred === '1' || cred === 'aprobado'));
+        const isAprobado = Boolean(preg && (preg.includes('aprobad') || preg === 'si' || preg === '1'));
+
+        if (isConfirmed && isAprobado) {
+          u.origenHoja = 'Rpersoneros';
+          u.tabla_origen = 'dbo.Rpersoneros';
+          u.rol = 'Personero';
+          u.tipo_interfaz = 'personero_conteo';
+          return u;
+        } else {
+          let errorMsg = 'Acceso Denegado: Tus credenciales deben estar en estado Confirmado y tu evaluación en estado Aprobado para ingresar.';
+          if (!isAprobado && !isConfirmed) {
+            errorMsg = 'Acceso Denegado: Debes tener la evaluación Aprobada y las credenciales Confirmadas para poder ingresar.';
+          } else if (!isAprobado) {
+            errorMsg = 'Acceso Denegado: Tu evaluación/preguntas deben estar en estado Aprobado para poder ingresar.';
+          } else if (!isConfirmed) {
+            errorMsg = 'Acceso Denegado: Tus credenciales deben estar en estado Confirmado para poder ingresar.';
+          }
+
+          usuarioBloqueado = {
+            isBlocked: true,
+            status: 'blocked',
+            rol: 'Personero',
+            message: errorMsg
+          };
+          return null;
+        }
+      }
+      return null;
+    };
+
+    // 2. dbo.Rcoordinadores (Coordinadores formulario)
+    const buscarEnRcoordinadores = async () => {
+      let res = null;
+      if (targetDni) {
+        try {
+          const req = pool.request();
+          req.input('dni', mssql.VarChar, targetDni);
+          res = await req.query(`
+            SELECT TOP 1 
+              DNI AS dni,
+              Nombres_y_Apellidos AS nombre,
+              'Coordinador' AS rol,
+              ISNULL(NULLIF(Distrito_Asignado, ''), Distrito_donde_Vota) AS ubicacion,
+              ISNULL(NULLIF(Local_de_Votacion_Asignado, ''), Local_de_Votacion) AS colegio,
+              '' AS mesa,
+              Credenciales AS credenciales,
+              Preguntas AS preguntas
+            FROM dbo.Rcoordinadores
+            WHERE LTRIM(RTRIM(DNI)) COLLATE Latin1_General_CI_AI = @dni
+          `);
+        } catch (e) {}
+      }
+
+      if ((!res || !res.recordset || res.recordset.length === 0) && nameWords.length > 0) {
+        try {
+          const req = pool.request();
+          const whereClauses = nameWords.map((w, idx) => {
+            req.input(`w_${idx}`, mssql.VarChar, `%${w}%`);
+            return `(Nombres_y_Apellidos COLLATE Latin1_General_CI_AI LIKE @w_${idx})`;
+          });
+          res = await req.query(`
+            SELECT TOP 1 
+              DNI AS dni,
+              Nombres_y_Apellidos AS nombre,
+              'Coordinador' AS rol,
+              ISNULL(NULLIF(Distrito_Asignado, ''), Distrito_donde_Vota) AS ubicacion,
+              ISNULL(NULLIF(Local_de_Votacion_Asignado, ''), Local_de_Votacion) AS colegio,
+              '' AS mesa,
+              Credenciales AS credenciales,
+              Preguntas AS preguntas
+            FROM dbo.Rcoordinadores
+            WHERE ${whereClauses.join(' AND ')}
+          `);
+        } catch (e) {}
+      }
+
+      if (res && res.recordset && res.recordset.length > 0) {
+        const u = res.recordset[0];
+        const cred = (u.credenciales || '').toString().trim().toLowerCase();
+        const preg = (u.preguntas || '').toString().trim().toLowerCase();
+
+        const isConfirmed = Boolean(cred && (cred.includes('confirmad') || cred === 'si' || cred === '1' || cred === 'aprobado'));
+        const isAprobado = Boolean(preg && (preg.includes('aprobad') || preg === 'si' || preg === '1'));
+
+        if (isConfirmed && isAprobado) {
+          u.origenHoja = 'Rcoordinadores';
+          u.tabla_origen = 'dbo.Rcoordinadores';
+          u.rol = 'Coordinador';
+          u.tipo_interfaz = 'coordinador_lista';
+          return u;
+        } else {
+          let errorMsg = 'Acceso Denegado: Tus credenciales de coordinador deben estar Confirmadas y la evaluación Aprobada para ingresar.';
+          if (!isAprobado && !isConfirmed) {
+            errorMsg = 'Acceso Denegado: Debes tener la evaluación Aprobada y las credenciales Confirmadas para ingresar.';
+          } else if (!isAprobado) {
+            errorMsg = 'Acceso Denegado: Tu evaluación/preguntas deben estar en estado Aprobado para ingresar.';
+          } else if (!isConfirmed) {
+            errorMsg = 'Acceso Denegado: Tus credenciales deben estar en estado Confirmado para ingresar.';
+          }
+
+          usuarioBloqueado = {
+            isBlocked: true,
+            status: 'blocked',
+            rol: 'Coordinador',
+            message: errorMsg
+          };
+          return null;
+        }
+      }
+      return null;
+    };
+
+    // 3. dbo.Usuarios (Personeros oficiales)
+    const buscarEnUsuarios = async () => {
+      let res = null;
+      if (targetDni) {
+        try {
+          const req = pool.request();
+          req.input('dni', mssql.VarChar, targetDni);
+          res = await req.query(`SELECT TOP 1 * FROM dbo.Usuarios WHERE LTRIM(RTRIM(dni)) COLLATE Latin1_General_CI_AI = @dni`);
+        } catch (e) {}
+      }
+
+      if ((!res || !res.recordset || res.recordset.length === 0) && nameWords.length > 0) {
+        try {
+          const req = pool.request();
+          const whereClauses = nameWords.map((w, idx) => {
+            req.input(`w_${idx}`, mssql.VarChar, `%${w}%`);
+            return `(nombre COLLATE Latin1_General_CI_AI LIKE @w_${idx})`;
+          });
+          res = await req.query(`SELECT TOP 1 * FROM dbo.Usuarios WHERE ${whereClauses.join(' AND ')}`);
+        } catch (e) {}
+      }
+
+      if (res && res.recordset && res.recordset.length > 0) {
         const u = res.recordset[0];
         u.origenHoja = 'Usuarios';
         u.tabla_origen = 'dbo.Usuarios';
@@ -77,86 +244,49 @@ class SqlServerRepository {
       return null;
     };
 
-    let usuarioBloqueado = null;
-
-    // 2. dbo.Rpersoneros (Personeros formulario)
-    const buscarEnRpersoneros = async () => {
-      const req = pool.request();
-      const whereClauses = [];
-
-      if (targetDni) {
-        req.input('dni', mssql.VarChar, targetDni);
-        whereClauses.push('(DNI COLLATE Latin1_General_CI_AI = @dni)');
-      }
-
-      if (nameWords.length > 0) {
-        nameWords.forEach((w, idx) => {
-          req.input(`w_${idx}`, mssql.VarChar, `%${w}%`);
-          whereClauses.push(`(Nombres_y_Apellidos COLLATE Latin1_General_CI_AI LIKE @w_${idx})`);
-        });
-      }
-
-      if (whereClauses.length === 0) return null;
-
-      const query = `
-        SELECT TOP 1 
-          DNI AS dni,
-          Nombres_y_Apellidos AS nombre,
-          ISNULL(NULLIF(Rol_a_Desempenar, ''), 'Personero') AS rol,
-          ISNULL(NULLIF(Distrito_Asignado, ''), Distrito_donde_Vota) AS ubicacion,
-          ISNULL(NULLIF(Local_de_Votacion_Asignado, ''), Local_de_Votacion) AS colegio,
-          ISNULL(NULLIF(Mesa_Asignada, ''), Mesa_de_Sufragio) AS mesa,
-          Credenciales AS credenciales
-        FROM dbo.Rpersoneros
-        WHERE ${whereClauses.join(' AND ')}
-      `;
-      const res = await req.query(query);
-      if (res.recordset && res.recordset.length > 0) {
-        const u = res.recordset[0];
-        const cred = (u.credenciales || '').toString().trim().toLowerCase();
-        const isConfirmed = cred.includes('confirmad') || cred === 'si' || cred === '1' || cred === 'aprobado';
-
-        if (isConfirmed) {
-          u.origenHoja = 'Rpersoneros';
-          u.tabla_origen = 'dbo.Rpersoneros';
-          u.rol = 'Personero';
-          u.tipo_interfaz = 'personero_conteo';
-          return u;
-        } else {
-          usuarioBloqueado = {
-            isBlocked: true,
-            status: 'blocked',
-            rol: 'Personero',
-            message: 'Acceso Denegado: Tus credenciales se encuentran en estado Bloqueado en el sistema.'
-          };
-          return null;
-        }
-      }
-      return null;
-    };
-
-    // 3. dbo.Usuarios1 (Coordinadores oficiales)
+    // 4. dbo.Usuarios1 (Coordinadores oficiales)
     const buscarEnUsuarios1 = async () => {
-      const req = pool.request();
-      const whereClauses = [];
-
+      let res = null;
       if (targetDni) {
-        req.input('dni', mssql.VarChar, targetDni);
-        whereClauses.push('(dni COLLATE Latin1_General_CI_AI = @dni)');
+        try {
+          const req = pool.request();
+          req.input('dni', mssql.VarChar, targetDni);
+          res = await req.query(`
+            SELECT TOP 1 
+              dni,
+              nombre,
+              'Coordinador' AS rol,
+              ubicacion,
+              colegio,
+              mesa
+            FROM dbo.Usuarios1
+            WHERE LTRIM(RTRIM(dni)) COLLATE Latin1_General_CI_AI = @dni
+          `);
+        } catch (e) {}
       }
 
-      if (nameWords.length > 0) {
-        nameWords.forEach((w, idx) => {
-          req.input(`w_${idx}`, mssql.VarChar, `%${w}%`);
-          whereClauses.push(`(nombre COLLATE Latin1_General_CI_AI LIKE @w_${idx})`);
-        });
+      if ((!res || !res.recordset || res.recordset.length === 0) && nameWords.length > 0) {
+        try {
+          const req = pool.request();
+          const whereClauses = nameWords.map((w, idx) => {
+            req.input(`w_${idx}`, mssql.VarChar, `%${w}%`);
+            return `(nombre COLLATE Latin1_General_CI_AI LIKE @w_${idx})`;
+          });
+          res = await req.query(`
+            SELECT TOP 1 
+              dni,
+              nombre,
+              'Coordinador' AS rol,
+              ubicacion,
+              colegio,
+              mesa
+            FROM dbo.Usuarios1
+            WHERE ${whereClauses.join(' AND ')}
+          `);
+        } catch (e) {}
       }
 
-      if (whereClauses.length === 0) return null;
-
-      const query = `SELECT TOP 1 * FROM dbo.Usuarios1 WHERE ${whereClauses.join(' AND ')}`;
-      const res = await req.query(query);
-      if (res.recordset && res.recordset.length > 0) {
+      if (res && res.recordset && res.recordset.length > 0) {
         const u = res.recordset[0];
         u.origenHoja = 'Usuarios1';
         u.tabla_origen = 'dbo.Usuarios1';
@@ -167,68 +297,44 @@ class SqlServerRepository {
       return null;
     };
 
-    // 4. dbo.Rcoordinadores (Coordinadores formulario)
-    const buscarEnRcoordinadores = async () => {
-      const req = pool.request();
-      const whereClauses = [];
+    let usuarioEncontrado = await buscarEnRpersoneros();
+    if (usuarioEncontrado) {
+      return {
+        success: true,
+        status: 'success',
+        usuario: usuarioEncontrado,
+        user: usuarioEncontrado,
+        data: usuarioEncontrado
+      };
+    }
+    if (usuarioBloqueado) {
+      return {
+        success: false,
+        status: 'blocked',
+        message: usuarioBloqueado.message
+      };
+    }
 
-      if (targetDni) {
-        req.input('dni', mssql.VarChar, targetDni);
-        whereClauses.push('(DNI COLLATE Latin1_General_CI_AI = @dni)');
-      }
+    usuarioEncontrado = await buscarEnRcoordinadores();
+    if (usuarioEncontrado) {
+      return {
+        success: true,
+        status: 'success',
+        usuario: usuarioEncontrado,
+        user: usuarioEncontrado,
+        data: usuarioEncontrado
+      };
+    }
+    if (usuarioBloqueado) {
+      return {
+        success: false,
+        status: 'blocked',
+        message: usuarioBloqueado.message
+      };
+    }
 
-      if (nameWords.length > 0) {
-        nameWords.forEach((w, idx) => {
-          req.input(`w_${idx}`, mssql.VarChar, `%${w}%`);
-          whereClauses.push(`(Nombres_y_Apellidos COLLATE Latin1_General_CI_AI LIKE @w_${idx})`);
-        });
-      }
-
-      if (whereClauses.length === 0) return null;
-
-      const query = `
-        SELECT TOP 1 
-          DNI AS dni,
-          Nombres_y_Apellidos AS nombre,
-          'Coordinador' AS rol,
-          ISNULL(NULLIF(Distrito_Asignado, ''), Distrito_donde_Vota) AS ubicacion,
-          ISNULL(NULLIF(Local_de_Votacion_Asignado, ''), Local_de_Votacion) AS colegio,
-          '' AS mesa,
-          Credenciales AS credenciales
-        FROM dbo.Rcoordinadores
-        WHERE ${whereClauses.join(' AND ')}
-      `;
-      const res = await req.query(query);
-      if (res.recordset && res.recordset.length > 0) {
-        const u = res.recordset[0];
-        const cred = (u.credenciales || '').toString().trim().toLowerCase();
-        const isConfirmed = cred.includes('confirmad') || cred === 'si' || cred === '1' || cred === 'aprobado';
-
-        if (isConfirmed) {
-          u.origenHoja = 'Rcoordinadores';
-          u.tabla_origen = 'dbo.Rcoordinadores';
-          u.rol = 'Coordinador';
-          u.tipo_interfaz = 'coordinador_lista';
-          return u;
-        } else {
-          usuarioBloqueado = {
-            isBlocked: true,
-            status: 'blocked',
-            rol: 'Coordinador',
-            message: 'Acceso Denegado: Tus credenciales se encuentran en estado Bloqueado en el sistema.'
-          };
-          return null;
-        }
-      }
-      return null;
-    };
-
-    let usuarioEncontrado = await buscarEnUsuarios();
-    if (!usuarioEncontrado) usuarioEncontrado = await buscarEnRpersoneros();
-    if (!usuarioEncontrado) usuarioEncontrado = await buscarEnUsuarios1();
-    if (!usuarioEncontrado) usuarioEncontrado = await buscarEnRcoordinadores();
-
-    if (usuarioEncontrado && !usuarioEncontrado.isBlocked) {
+    usuarioEncontrado = await buscarEnUsuarios();
+    if (usuarioEncontrado) {
       return {
         success: true,
         status: 'success',
@@ -238,11 +344,14 @@ class SqlServerRepository {
       };
     }
 
-    if (usuarioBloqueado) {
+    usuarioEncontrado = await buscarEnUsuarios1();
+    if (usuarioEncontrado) {
       return {
-        success: false,
-        status: 'blocked',
-        message: usuarioBloqueado.message || 'Acceso Denegado: Tus credenciales se encuentran en estado Bloqueado en el sistema.'
+        success: true,
+        status: 'success',
+        usuario: usuarioEncontrado,
+        user: usuarioEncontrado,
+        data: usuarioEncontrado
       };
     }
 
@@ -257,6 +366,39 @@ class SqlServerRepository {
     const prov = data.votos ? (data.votos.provincial || {}) : {};
     const dist = data.votos ? (data.votos.distrital || {}) : {};
 
+    const extractVote = (item) => {
+      if (item === undefined || item === null) return 0;
+      if (typeof item === 'object') {
+        return parseInt(item.votos ?? item.val ?? item.value ?? 0, 10) || 0;
+      }
+      return parseInt(item, 10) || 0;
+    };
+
+    const extractCand = (item, fallback = '') => {
+      if (item && typeof item === 'object' && item.candidato) {
+        return item.candidato;
+      }
+      return fallback;
+    };
+
+    const p_fp_v = extractVote(prov.FP);
+    const p_jp_v = extractVote(prov.JP);
+    const p_sp_v = extractVote(prov["SOMOS PERU"] || prov.SP);
+    const p_frepap_v = extractVote(prov.FREPAP);
+    const p_verde_v = extractVote(prov.VERDE);
+    const p_morado_v = extractVote(prov.MORADO);
+    const p_nulos = parseInt(data.votos_nulos ?? prov.NULOS ?? 0, 10) || 0;
+    const p_vacios = parseInt(data.votos_vacios ?? prov.VACIOS ?? 0, 10) || 0;
+
+    const d_fp_v = extractVote(dist.FP);
+    const d_jp_v = extractVote(dist.JP);
+    const d_sp_v = extractVote(dist["SOMOS PERU"] || dist.SP);
+    const d_frepap_v = extractVote(dist.FREPAP);
+    const d_verde_v = extractVote(dist.VERDE);
+    const d_morado_v = extractVote(dist.MORADO);
+    const d_nulos = parseInt(data.votos_dist_nulos ?? dist.NULOS ?? 0, 10) || 0;
+    const d_vacios = parseInt(data.votos_dist_vacios ?? dist.VACIOS ?? 0, 10) || 0;
+
     const req = pool.request()
       .input('personero', mssql.VarChar, data.brigadista || '')
       .input('dni', mssql.VarChar, data.dni || '')
@@ -268,36 +410,36 @@ class SqlServerRepository {
       .input('origen', mssql.VarChar, origenStr)
 
       // Provincial
-      .input('p_fp_cand', mssql.VarChar, prov.FP ? prov.FP.candidato : '')
-      .input('p_fp_votos', mssql.Int, prov.FP ? (parseInt(prov.FP.votos) || 0) : 0)
-      .input('p_jp_cand', mssql.VarChar, prov.JP ? prov.JP.candidato : '')
-      .input('p_jp_votos', mssql.Int, prov.JP ? (parseInt(prov.JP.votos) || 0) : 0)
-      .input('p_sp_cand', mssql.VarChar, prov["SOMOS PERU"] ? prov["SOMOS PERU"].candidato : '')
-      .input('p_sp_votos', mssql.Int, prov["SOMOS PERU"] ? (parseInt(prov["SOMOS PERU"].votos) || 0) : 0)
-      .input('p_frepap_cand', mssql.VarChar, prov.FREPAP ? prov.FREPAP.candidato : '')
-      .input('p_frepap_votos', mssql.Int, prov.FREPAP ? (parseInt(prov.FREPAP.votos) || 0) : 0)
-      .input('p_verde_cand', mssql.VarChar, prov.VERDE ? prov.VERDE.candidato : '')
-      .input('p_verde_votos', mssql.Int, prov.VERDE ? (parseInt(prov.VERDE.votos) || 0) : 0)
-      .input('p_morado_cand', mssql.VarChar, prov.MORADO ? prov.MORADO.candidato : '')
-      .input('p_morado_votos', mssql.Int, prov.MORADO ? (parseInt(prov.MORADO.votos) || 0) : 0)
-      .input('p_nulos', mssql.Int, parseInt(data.votos_nulos) || 0)
-      .input('p_vacios', mssql.Int, parseInt(data.votos_vacios) || 0)
+      .input('p_fp_cand', mssql.VarChar, extractCand(prov.FP))
+      .input('p_fp_votos', mssql.Int, p_fp_v)
+      .input('p_jp_cand', mssql.VarChar, extractCand(prov.JP))
+      .input('p_jp_votos', mssql.Int, p_jp_v)
+      .input('p_sp_cand', mssql.VarChar, extractCand(prov["SOMOS PERU"] || prov.SP))
+      .input('p_sp_votos', mssql.Int, p_sp_v)
+      .input('p_frepap_cand', mssql.VarChar, extractCand(prov.FREPAP))
+      .input('p_frepap_votos', mssql.Int, p_frepap_v)
+      .input('p_verde_cand', mssql.VarChar, extractCand(prov.VERDE))
+      .input('p_verde_votos', mssql.Int, p_verde_v)
+      .input('p_morado_cand', mssql.VarChar, extractCand(prov.MORADO))
+      .input('p_morado_votos', mssql.Int, p_morado_v)
+      .input('p_nulos', mssql.Int, p_nulos)
+      .input('p_vacios', mssql.Int, p_vacios)
 
       // Distrital
-      .input('d_fp_cand', mssql.VarChar, dist.FP ? dist.FP.candidato : '')
-      .input('d_fp_votos', mssql.Int, dist.FP ? (parseInt(dist.FP.votos) || 0) : 0)
-      .input('d_jp_cand', mssql.VarChar, dist.JP ? dist.JP.candidato : '')
-      .input('d_jp_votos', mssql.Int, dist.JP ? (parseInt(dist.JP.votos) || 0) : 0)
-      .input('d_sp_cand', mssql.VarChar, dist["SOMOS PERU"] ? dist["SOMOS PERU"].candidato : '')
-      .input('d_sp_votos', mssql.Int, dist["SOMOS PERU"] ? (parseInt(dist["SOMOS PERU"].votos) || 0) : 0)
-      .input('d_frepap_cand', mssql.VarChar, dist.FREPAP ? dist.FREPAP.candidato : '')
-      .input('d_frepap_votos', mssql.Int, dist.FREPAP ? (parseInt(dist.FREPAP.votos) || 0) : 0)
-      .input('d_verde_cand', mssql.VarChar, dist.VERDE ? dist.VERDE.candidato : '')
-      .input('d_verde_votos', mssql.Int, dist.VERDE ? (parseInt(dist.VERDE.votos) || 0) : 0)
-      .input('d_morado_cand', mssql.VarChar, dist.MORADO ? dist.MORADO.candidato : '')
-      .input('d_morado_votos', mssql.Int, dist.MORADO ? (parseInt(dist.MORADO.votos) || 0) : 0)
-      .input('d_nulos', mssql.Int, parseInt(data.votos_dist_nulos) || 0)
-      .input('d_vacios', mssql.Int, parseInt(data.votos_dist_vacios) || 0);
+      .input('d_fp_cand', mssql.VarChar, extractCand(dist.FP))
+      .input('d_fp_votos', mssql.Int, d_fp_v)
+      .input('d_jp_cand', mssql.VarChar, extractCand(dist.JP))
+      .input('d_jp_votos', mssql.Int, d_jp_v)
+      .input('d_sp_cand', mssql.VarChar, extractCand(dist["SOMOS PERU"] || dist.SP))
+      .input('d_sp_votos', mssql.Int, d_sp_v)
+      .input('d_frepap_cand', mssql.VarChar, extractCand(dist.FREPAP))
+      .input('d_frepap_votos', mssql.Int, d_frepap_v)
+      .input('d_verde_cand', mssql.VarChar, extractCand(dist.VERDE))
+      .input('d_verde_votos', mssql.Int, d_verde_v)
+      .input('d_morado_cand', mssql.VarChar, extractCand(dist.MORADO))
+      .input('d_morado_votos', mssql.Int, d_morado_v)
+      .input('d_nulos', mssql.Int, d_nulos)
+      .input('d_vacios', mssql.Int, d_vacios);
 
     await req.query(`
       MERGE dbo.Votos_Detalle AS target
@@ -356,8 +498,8 @@ class SqlServerRepository {
     req.input('local', mssql.VarChar, data.local || data.colegio || '');
     req.input('mesa', mssql.VarChar, data.mesa || '');
     req.input('confirmacion', mssql.VarChar, data.confirmacion || 'SI');
-    req.input('foto_url', mssql.VarChar, data.foto_url || '');
-    req.input('ubicacion_gps', mssql.VarChar, data.ubicacion_gps || '');
+    req.input('foto_url', mssql.VarChar, data.foto_url || data.fotoBase64 || '');
+    req.input('ubicacion_gps', mssql.VarChar, data.ubicacion_gps || data.ubicacionGps || '');
 
     const query = `
       MERGE dbo.Asistencia AS target
@@ -394,7 +536,7 @@ class SqlServerRepository {
     req.input('longitud', mssql.Float, parseFloat(data.longitud) || 0);
     req.input('distancia_metros', mssql.Float, parseFloat(data.distancia_metros) || 0);
     req.input('dentro_del_rango', mssql.VarChar, data.dentro_del_rango ? 'SI' : 'NO');
-    req.input('foto_url', mssql.VarChar, data.foto_url || '');
+    req.input('foto_url', mssql.VarChar, data.foto_url || data.fotoBase64 || '');
 
     const query = `
       IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = 'AsistenciaLlegada')
@@ -428,14 +570,14 @@ class SqlServerRepository {
   async confirmarCoordinador(data) {
     const pool = await this.getPool();
     const req = pool.request();
-    req.input('p_nom', mssql.VarChar, data.personero_nombre || '');
-    req.input('p_dni', mssql.VarChar, data.personero_dni || '');
+    req.input('p_nom', mssql.VarChar, data.personero_nombre || data.personeroNombre || '');
+    req.input('p_dni', mssql.VarChar, data.personero_dni || data.personeroDni || '');
     req.input('distrito', mssql.VarChar, data.distrito || '');
     req.input('local', mssql.VarChar, data.local || data.colegio || '');
-    req.input('c_nom', mssql.VarChar, data.coordinador_nombre || '');
-    req.input('c_dni', mssql.VarChar, data.coordinador_dni || '');
+    req.input('c_nom', mssql.VarChar, data.coordinador_nombre || data.coordinadorNombre || '');
+    req.input('c_dni', mssql.VarChar, data.coordinador_dni || data.coordinadorDni || '');
     req.input('confirmacion', mssql.VarChar, data.confirmacion || 'SI');
-    req.input('foto_url', mssql.VarChar, data.foto_url || '');
+    req.input('foto_url', mssql.VarChar, data.foto_url || data.fotoBase64 || '');
 
     const query = `
       MERGE dbo.Coordinadores AS target
@@ -534,11 +676,11 @@ class SqlServerRepository {
   // 11. PERSONEROS POR COLEGIO
   async obtenerPersonerosPorColegio(data) {
     const pool = await this.getPool();
-    const colQuery = (data.colegio || '').toString().trim();
+    const colQuery = (data.colegio || data.local || '').toString().trim();
     const distQuery = (data.distrito || data.ubicacion || '').toString().trim();
     const origenCoord = (data.origenHoja || data.tabla_origen || '').toString().trim();
 
-    if (!colQuery) {
+    if (!colQuery && !distQuery) {
       return { success: true, personeros: [] };
     }
 
@@ -561,7 +703,8 @@ class SqlServerRepository {
           'Rpersoneros' AS origenHoja, 
           'dbo.Rpersoneros' AS tabla_origen
         FROM dbo.Rpersoneros
-        WHERE (ISNULL(NULLIF(Local_de_Votacion_Asignado, ''), Local_de_Votacion) COLLATE Latin1_General_CI_AI = @colegio OR ISNULL(NULLIF(Local_de_Votacion_Asignado, ''), Local_de_Votacion) COLLATE Latin1_General_CI_AI LIKE @colegio_like)
+        WHERE 1=1
+          ${colQuery ? "AND (ISNULL(NULLIF(Local_de_Votacion_Asignado, ''), Local_de_Votacion) COLLATE Latin1_General_CI_AI = @colegio OR ISNULL(NULLIF(Local_de_Votacion_Asignado, ''), Local_de_Votacion) COLLATE Latin1_General_CI_AI LIKE @colegio_like)" : ""}
           ${distQuery ? "AND (ISNULL(NULLIF(Distrito_Asignado, ''), Distrito_donde_Vota) COLLATE Latin1_General_CI_AI = @distrito OR ISNULL(NULLIF(Distrito_Asignado, ''), Distrito_donde_Vota) COLLATE Latin1_General_CI_AI LIKE @distrito_like)" : ""}
         ORDER BY mesa ASC, nombre ASC
       `;
@@ -570,7 +713,7 @@ class SqlServerRepository {
         SELECT dni, nombre, rol, ubicacion, colegio, mesa, 'Usuarios' AS origenHoja, 'dbo.Usuarios' AS tabla_origen
         FROM dbo.Usuarios
         WHERE rol = 'Personero'
-          AND (colegio COLLATE Latin1_General_CI_AI = @colegio OR colegio COLLATE Latin1_General_CI_AI LIKE @colegio_like)
+          ${colQuery ? "AND (colegio COLLATE Latin1_General_CI_AI = @colegio OR colegio COLLATE Latin1_General_CI_AI LIKE @colegio_like)" : ""}
           ${distQuery ? "AND (ubicacion COLLATE Latin1_General_CI_AI = @distrito OR ubicacion COLLATE Latin1_General_CI_AI LIKE @distrito_like)" : ""}
         ORDER BY mesa ASC, nombre ASC
       `;
@@ -586,7 +729,8 @@ class SqlServerRepository {
           'Rpersoneros' AS origenHoja, 
           'dbo.Rpersoneros' AS tabla_origen
         FROM dbo.Rpersoneros
-        WHERE (ISNULL(NULLIF(Local_de_Votacion_Asignado, ''), Local_de_Votacion) COLLATE Latin1_General_CI_AI = @colegio OR ISNULL(NULLIF(Local_de_Votacion_Asignado, ''), Local_de_Votacion) COLLATE Latin1_General_CI_AI LIKE @colegio_like)
+        WHERE 1=1
+          ${colQuery ? "AND (ISNULL(NULLIF(Local_de_Votacion_Asignado, ''), Local_de_Votacion) COLLATE Latin1_General_CI_AI = @colegio OR ISNULL(NULLIF(Local_de_Votacion_Asignado, ''), Local_de_Votacion) COLLATE Latin1_General_CI_AI LIKE @colegio_like)" : ""}
           ${distQuery ? "AND (ISNULL(NULLIF(Distrito_Asignado, ''), Distrito_donde_Vota) COLLATE Latin1_General_CI_AI = @distrito OR ISNULL(NULLIF(Distrito_Asignado, ''), Distrito_donde_Vota) COLLATE Latin1_General_CI_AI LIKE @distrito_like)" : ""}
         ORDER BY mesa ASC, nombre ASC
       `;

@@ -36,28 +36,195 @@ class SqlUserRepository extends IUserRepository {
       .map(w => w.trim())
       .filter(w => w.length > 0);
 
-    // 1. dbo.Usuarios (Personeros oficiales)
-    const buscarEnUsuarios = async () => {
-      const req = pool.request();
-      const whereClauses = [];
+    let blockedUser = null;
 
+    // 1. dbo.Rpersoneros (Personeros formulario - Fuente Principal)
+    const buscarEnRpersoneros = async () => {
+      let res = null;
       if (targetDni) {
-        req.input('dni', mssql.VarChar, targetDni);
-        whereClauses.push('(dni COLLATE Latin1_General_CI_AI = @dni)');
+        try {
+          const req = pool.request();
+          req.input('dni', mssql.VarChar, targetDni);
+          res = await req.query(`
+            SELECT TOP 1 
+              DNI AS dni,
+              Nombres_y_Apellidos AS nombre,
+              ISNULL(NULLIF(Rol_a_Desempenar, ''), 'Personero') AS rol,
+              ISNULL(NULLIF(Distrito_Asignado, ''), Distrito_donde_Vota) AS ubicacion,
+              ISNULL(NULLIF(Local_de_Votacion_Asignado, ''), Local_de_Votacion) AS colegio,
+              ISNULL(NULLIF(Mesa_Asignada, ''), Mesa_de_Sufragio) AS mesa,
+              Credenciales AS credenciales,
+              Preguntas AS preguntas
+            FROM dbo.Rpersoneros
+            WHERE LTRIM(RTRIM(DNI)) COLLATE Latin1_General_CI_AI = @dni
+          `);
+        } catch (e) {}
       }
 
-      if (nameWords.length > 0) {
-        nameWords.forEach((w, idx) => {
-          req.input(`w_${idx}`, mssql.VarChar, `%${w}%`);
-          whereClauses.push(`(nombre COLLATE Latin1_General_CI_AI LIKE @w_${idx})`);
-        });
+      if ((!res || !res.recordset || res.recordset.length === 0) && nameWords.length > 0) {
+        try {
+          const req = pool.request();
+          const whereClauses = nameWords.map((w, idx) => {
+            req.input(`w_${idx}`, mssql.VarChar, `%${w}%`);
+            return `(Nombres_y_Apellidos COLLATE Latin1_General_CI_AI LIKE @w_${idx})`;
+          });
+          res = await req.query(`
+            SELECT TOP 1 
+              DNI AS dni,
+              Nombres_y_Apellidos AS nombre,
+              ISNULL(NULLIF(Rol_a_Desempenar, ''), 'Personero') AS rol,
+              ISNULL(NULLIF(Distrito_Asignado, ''), Distrito_donde_Vota) AS ubicacion,
+              ISNULL(NULLIF(Local_de_Votacion_Asignado, ''), Local_de_Votacion) AS colegio,
+              ISNULL(NULLIF(Mesa_Asignada, ''), Mesa_de_Sufragio) AS mesa,
+              Credenciales AS credenciales,
+              Preguntas AS preguntas
+            FROM dbo.Rpersoneros
+            WHERE ${whereClauses.join(' AND ')}
+          `);
+        } catch (e) {}
       }
 
-      if (whereClauses.length === 0) return null;
+      if (res && res.recordset && res.recordset.length > 0) {
+        const u = res.recordset[0];
+        const cred = (u.credenciales || '').toString().trim().toLowerCase();
+        const preg = (u.preguntas || '').toString().trim().toLowerCase();
 
-      const query = `SELECT TOP 1 * FROM dbo.Usuarios WHERE ${whereClauses.join(' AND ')}`;
-      const res = await req.query(query);
-      if (res.recordset && res.recordset.length > 0) {
+        const isConfirmed = Boolean(cred && (cred.includes('confirmad') || cred === 'si' || cred === '1' || cred === 'aprobado'));
+        const isAprobado = Boolean(preg && (preg.includes('aprobad') || preg === 'si' || preg === '1'));
+
+        if (isConfirmed && isAprobado) {
+          u.origenHoja = 'Rpersoneros';
+          u.tabla_origen = 'dbo.Rpersoneros';
+          u.rol = 'Personero';
+          u.tipo_interfaz = 'personero_conteo';
+          return u;
+        } else {
+          let errorMsg = 'Acceso Denegado: Tus credenciales deben estar en estado Confirmado y tu evaluación en estado Aprobado para ingresar.';
+          if (!isAprobado && !isConfirmed) {
+            errorMsg = 'Acceso Denegado: Debes tener la evaluación Aprobada y las credenciales Confirmadas para poder ingresar.';
+          } else if (!isAprobado) {
+            errorMsg = 'Acceso Denegado: Tu evaluación/preguntas deben estar en estado Aprobado para poder ingresar.';
+          } else if (!isConfirmed) {
+            errorMsg = 'Acceso Denegado: Tus credenciales deben estar en estado Confirmado para poder ingresar.';
+          }
+
+          blockedUser = {
+            isBlocked: true,
+            status: 'blocked',
+            rol: 'Personero',
+            message: errorMsg
+          };
+          return null;
+        }
+      }
+      return null;
+    };
+
+    // 2. dbo.Rcoordinadores (Coordinadores formulario)
+    const buscarEnRcoordinadores = async () => {
+      let res = null;
+      if (targetDni) {
+        try {
+          const req = pool.request();
+          req.input('dni', mssql.VarChar, targetDni);
+          res = await req.query(`
+            SELECT TOP 1 
+              DNI AS dni,
+              Nombres_y_Apellidos AS nombre,
+              'Coordinador' AS rol,
+              ISNULL(NULLIF(Distrito_Asignado, ''), Distrito_donde_Vota) AS ubicacion,
+              ISNULL(NULLIF(Local_de_Votacion_Asignado, ''), Local_de_Votacion) AS colegio,
+              '' AS mesa,
+              Credenciales AS credenciales,
+              Preguntas AS preguntas
+            FROM dbo.Rcoordinadores
+            WHERE LTRIM(RTRIM(DNI)) COLLATE Latin1_General_CI_AI = @dni
+          `);
+        } catch (e) {}
+      }
+
+      if ((!res || !res.recordset || res.recordset.length === 0) && nameWords.length > 0) {
+        try {
+          const req = pool.request();
+          const whereClauses = nameWords.map((w, idx) => {
+            req.input(`w_${idx}`, mssql.VarChar, `%${w}%`);
+            return `(Nombres_y_Apellidos COLLATE Latin1_General_CI_AI LIKE @w_${idx})`;
+          });
+          res = await req.query(`
+            SELECT TOP 1 
+              DNI AS dni,
+              Nombres_y_Apellidos AS nombre,
+              'Coordinador' AS rol,
+              ISNULL(NULLIF(Distrito_Asignado, ''), Distrito_donde_Vota) AS ubicacion,
+              ISNULL(NULLIF(Local_de_Votacion_Asignado, ''), Local_de_Votacion) AS colegio,
+              '' AS mesa,
+              Credenciales AS credenciales,
+              Preguntas AS preguntas
+            FROM dbo.Rcoordinadores
+            WHERE ${whereClauses.join(' AND ')}
+          `);
+        } catch (e) {}
+      }
+
+      if (res && res.recordset && res.recordset.length > 0) {
+        const u = res.recordset[0];
+        const cred = (u.credenciales || '').toString().trim().toLowerCase();
+        const preg = (u.preguntas || '').toString().trim().toLowerCase();
+
+        const isConfirmed = Boolean(cred && (cred.includes('confirmad') || cred === 'si' || cred === '1' || cred === 'aprobado'));
+        const isAprobado = Boolean(preg && (preg.includes('aprobad') || preg === 'si' || preg === '1'));
+
+        if (isConfirmed && isAprobado) {
+          u.origenHoja = 'Rcoordinadores';
+          u.tabla_origen = 'dbo.Rcoordinadores';
+          u.rol = 'Coordinador';
+          u.tipo_interfaz = 'coordinador_lista';
+          return u;
+        } else {
+          let errorMsg = 'Acceso Denegado: Tus credenciales de coordinador deben estar Confirmadas y la evaluación Aprobada para ingresar.';
+          if (!isAprobado && !isConfirmed) {
+            errorMsg = 'Acceso Denegado: Debes tener la evaluación Aprobada y las credenciales Confirmadas para ingresar.';
+          } else if (!isAprobado) {
+            errorMsg = 'Acceso Denegado: Tu evaluación/preguntas deben estar en estado Aprobado para ingresar.';
+          } else if (!isConfirmed) {
+            errorMsg = 'Acceso Denegado: Tus credenciales deben estar en estado Confirmado para ingresar.';
+          }
+
+          blockedUser = {
+            isBlocked: true,
+            status: 'blocked',
+            rol: 'Coordinador',
+            message: errorMsg
+          };
+          return null;
+        }
+      }
+      return null;
+    };
+
+    // 3. dbo.Usuarios (Personeros oficiales)
+    const buscarEnUsuarios = async () => {
+      let res = null;
+      if (targetDni) {
+        try {
+          const req = pool.request();
+          req.input('dni', mssql.VarChar, targetDni);
+          res = await req.query(`SELECT TOP 1 * FROM dbo.Usuarios WHERE LTRIM(RTRIM(dni)) COLLATE Latin1_General_CI_AI = @dni`);
+        } catch (e) {}
+      }
+
+      if ((!res || !res.recordset || res.recordset.length === 0) && nameWords.length > 0) {
+        try {
+          const req = pool.request();
+          const whereClauses = nameWords.map((w, idx) => {
+            req.input(`w_${idx}`, mssql.VarChar, `%${w}%`);
+            return `(nombre COLLATE Latin1_General_CI_AI LIKE @w_${idx})`;
+          });
+          res = await req.query(`SELECT TOP 1 * FROM dbo.Usuarios WHERE ${whereClauses.join(' AND ')}`);
+        } catch (e) {}
+      }
+
+      if (res && res.recordset && res.recordset.length > 0) {
         const u = res.recordset[0];
         u.origenHoja = 'Usuarios';
         u.tabla_origen = 'dbo.Usuarios';
@@ -68,96 +235,49 @@ class SqlUserRepository extends IUserRepository {
       return null;
     };
 
-    let blockedUser = null;
-
-    // 2. dbo.Rpersoneros (Personeros formulario)
-    const buscarEnRpersoneros = async () => {
-      const req = pool.request();
-      const whereClauses = [];
-
-      if (targetDni) {
-        req.input('dni', mssql.VarChar, targetDni);
-        whereClauses.push('(DNI COLLATE Latin1_General_CI_AI = @dni)');
-      }
-
-      if (nameWords.length > 0) {
-        nameWords.forEach((w, idx) => {
-          req.input(`w_${idx}`, mssql.VarChar, `%${w}%`);
-          whereClauses.push(`(Nombres_y_Apellidos COLLATE Latin1_General_CI_AI LIKE @w_${idx})`);
-        });
-      }
-
-      if (whereClauses.length === 0) return null;
-
-      const query = `
-        SELECT TOP 1 
-          DNI AS dni,
-          Nombres_y_Apellidos AS nombre,
-          ISNULL(NULLIF(Rol_a_Desempenar, ''), 'Personero') AS rol,
-          ISNULL(NULLIF(Distrito_Asignado, ''), Distrito_donde_Vota) AS ubicacion,
-          ISNULL(NULLIF(Local_de_Votacion_Asignado, ''), Local_de_Votacion) AS colegio,
-          ISNULL(NULLIF(Mesa_Asignada, ''), Mesa_de_Sufragio) AS mesa,
-          Credenciales AS credenciales
-        FROM dbo.Rpersoneros
-        WHERE ${whereClauses.join(' AND ')}
-      `;
-      const res = await req.query(query);
-      if (res.recordset && res.recordset.length > 0) {
-        const u = res.recordset[0];
-        const cred = (u.credenciales || '').toString().trim().toLowerCase();
-        const isConfirmed = cred.includes('confirmad') || cred === 'si' || cred === '1' || cred === 'aprobado';
-
-        if (isConfirmed) {
-          u.origenHoja = 'Rpersoneros';
-          u.tabla_origen = 'dbo.Rpersoneros';
-          u.rol = 'Personero';
-          u.tipo_interfaz = 'personero_conteo';
-          return u;
-        } else {
-          blockedUser = {
-            isBlocked: true,
-            status: 'blocked',
-            rol: 'Personero',
-            message: 'Acceso Denegado: Tus credenciales se encuentran en estado Bloqueado en el sistema.'
-          };
-          return null;
-        }
-      }
-      return null;
-    };
-
-    // 3. dbo.Usuarios1 (Coordinadores oficiales)
+    // 4. dbo.Usuarios1 (Coordinadores oficiales)
     const buscarEnUsuarios1 = async () => {
-      const req = pool.request();
-      const whereClauses = [];
-
+      let res = null;
       if (targetDni) {
-        req.input('dni', mssql.VarChar, targetDni);
-        whereClauses.push('(dni COLLATE Latin1_General_CI_AI = @dni)');
+        try {
+          const req = pool.request();
+          req.input('dni', mssql.VarChar, targetDni);
+          res = await req.query(`
+            SELECT TOP 1 
+              dni,
+              nombre,
+              'Coordinador' AS rol,
+              ubicacion,
+              colegio,
+              mesa
+            FROM dbo.Usuarios1
+            WHERE LTRIM(RTRIM(dni)) COLLATE Latin1_General_CI_AI = @dni
+          `);
+        } catch (e) {}
       }
 
-      if (nameWords.length > 0) {
-        nameWords.forEach((w, idx) => {
-          req.input(`w_${idx}`, mssql.VarChar, `%${w}%`);
-          whereClauses.push(`(nombre COLLATE Latin1_General_CI_AI LIKE @w_${idx})`);
-        });
+      if ((!res || !res.recordset || res.recordset.length === 0) && nameWords.length > 0) {
+        try {
+          const req = pool.request();
+          const whereClauses = nameWords.map((w, idx) => {
+            req.input(`w_${idx}`, mssql.VarChar, `%${w}%`);
+            return `(nombre COLLATE Latin1_General_CI_AI LIKE @w_${idx})`;
+          });
+          res = await req.query(`
+            SELECT TOP 1 
+              dni,
+              nombre,
+              'Coordinador' AS rol,
+              ubicacion,
+              colegio,
+              mesa
+            FROM dbo.Usuarios1
+            WHERE ${whereClauses.join(' AND ')}
+          `);
+        } catch (e) {}
       }
 
-      if (whereClauses.length === 0) return null;
-
-      const query = `
-        SELECT TOP 1 
-          dni,
-          nombre,
-          'Coordinador' AS rol,
-          ubicacion,
-          colegio,
-          mesa
-        FROM dbo.Usuarios1
-        WHERE ${whereClauses.join(' AND ')}
-      `;
-      const res = await req.query(query);
-      if (res.recordset && res.recordset.length > 0) {
+      if (res && res.recordset && res.recordset.length > 0) {
         const u = res.recordset[0];
         u.origenHoja = 'Usuarios1';
         u.tabla_origen = 'dbo.Usuarios1';
@@ -168,69 +288,20 @@ class SqlUserRepository extends IUserRepository {
       return null;
     };
 
-    // 4. dbo.Rcoordinadores (Coordinadores formulario)
-    const buscarEnRcoordinadores = async () => {
-      const req = pool.request();
-      const whereClauses = [];
-
-      if (targetDni) {
-        req.input('dni', mssql.VarChar, targetDni);
-        whereClauses.push('(DNI COLLATE Latin1_General_CI_AI = @dni)');
-      }
-
-      if (nameWords.length > 0) {
-        nameWords.forEach((w, idx) => {
-          req.input(`w_${idx}`, mssql.VarChar, `%${w}%`);
-          whereClauses.push(`(Nombres_y_Apellidos COLLATE Latin1_General_CI_AI LIKE @w_${idx})`);
-        });
-      }
-
-      if (whereClauses.length === 0) return null;
-
-      const query = `
-        SELECT TOP 1 
-          DNI AS dni,
-          Nombres_y_Apellidos AS nombre,
-          'Coordinador' AS rol,
-          ISNULL(NULLIF(Distrito_Asignado, ''), Distrito_donde_Vota) AS ubicacion,
-          ISNULL(NULLIF(Local_de_Votacion_Asignado, ''), Local_de_Votacion) AS colegio,
-          '' AS mesa,
-          Credenciales AS credenciales
-        FROM dbo.Rcoordinadores
-        WHERE ${whereClauses.join(' AND ')}
-      `;
-      const res = await req.query(query);
-      if (res.recordset && res.recordset.length > 0) {
-        const u = res.recordset[0];
-        const cred = (u.credenciales || '').toString().trim().toLowerCase();
-        const isConfirmed = cred.includes('confirmad') || cred === 'si' || cred === '1' || cred === 'aprobado';
-
-        if (isConfirmed) {
-          u.origenHoja = 'Rcoordinadores';
-          u.tabla_origen = 'dbo.Rcoordinadores';
-          u.rol = 'Coordinador';
-          u.tipo_interfaz = 'coordinador_lista';
-          return u;
-        } else {
-          blockedUser = {
-            isBlocked: true,
-            status: 'blocked',
-            rol: 'Coordinador',
-            message: 'Acceso Denegado: Tus credenciales se encuentran en estado Bloqueado en el sistema.'
-          };
-          return null;
-        }
-      }
-      return null;
-    };
-
-    let usuario = await buscarEnUsuarios();
-    if (!usuario) usuario = await buscarEnRpersoneros();
-    if (!usuario) usuario = await buscarEnUsuarios1();
-    if (!usuario) usuario = await buscarEnRcoordinadores();
-
+    let usuario = await buscarEnRpersoneros();
     if (usuario) return usuario;
     if (blockedUser) return blockedUser;
+
+    usuario = await buscarEnRcoordinadores();
+    if (usuario) return usuario;
+    if (blockedUser) return blockedUser;
+
+    usuario = await buscarEnUsuarios();
+    if (usuario) return usuario;
+
+    usuario = await buscarEnUsuarios1();
+    if (usuario) return usuario;
+
     return null;
   }
 

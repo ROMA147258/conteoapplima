@@ -79,22 +79,78 @@ export const COLEGIOS_GPS_MAP = {
   'IE MANUEL POLO JIMENEZ': { lat: -12.1400, lon: -76.9900, distrito: 'Surco' }
 };
 
-export function buscarColegioPorMesa(mesaNum, mesasEstructura = []) {
+export function buscarColegioPorMesa(mesaNum, mesasEstructura = [], cachedUsers = [], currentUser = null) {
   if (!mesaNum) return null;
   const mesaStr = mesaNum.toString().trim();
   const cleanMesa = mesaStr.replace(/\D/g, '');
-  const paddedMesa = cleanMesa.padStart(6, '0');
+  if (!cleanMesa) return null;
 
-  // 1. Check in mesasEstructura
-  if (Array.isArray(mesasEstructura)) {
-    const found = mesasEstructura.find(m => {
-      const num = (m.mesa || m.numero_mesa || '').toString().trim().replace(/\D/g, '');
-      return num === cleanMesa || num === paddedMesa;
-    });
-    if (found) return found;
+  const paddedMesa = cleanMesa.padStart(6, '0');
+  const unpaddedMesa = cleanMesa.replace(/^0+/, '') || cleanMesa;
+
+  // 1. Verificar si coincide con la mesa asignada del usuario activo
+  if (currentUser) {
+    const userMesa = (currentUser.mesa || currentUser.mesa_de_sufragio || currentUser.mesa_asignada || '').toString().trim().replace(/\D/g, '');
+    const userPadded = userMesa ? userMesa.padStart(6, '0') : '';
+    const userUnpadded = userMesa ? userMesa.replace(/^0+/, '') : '';
+
+    if (userMesa && (userMesa === cleanMesa || userPadded === paddedMesa || userUnpadded === unpaddedMesa)) {
+      const userCol = currentUser.colegio || currentUser.local || currentUser.local_de_votacion;
+      const userDist = currentUser.ubicacion || currentUser.distrito || currentUser.distrito_donde_vota || currentUser.distrito_asignado || 'Lima';
+      if (userCol) {
+        return {
+          colegio: userCol,
+          distrito: userDist
+        };
+      }
+    }
   }
 
-  // 2. Known standard mesas
+  // 2. Buscar en la tabla mesas (mesasEstructura desde PostgreSQL)
+  if (Array.isArray(mesasEstructura) && mesasEstructura.length > 0) {
+    const found = mesasEstructura.find(m => {
+      const raw = (m.numero_mesa || m.mesa || '').toString().trim();
+      const num = raw.replace(/\D/g, '');
+      const pNum = num.padStart(6, '0');
+      const uNum = num.replace(/^0+/, '') || num;
+      return (
+        num === cleanMesa ||
+        pNum === paddedMesa ||
+        uNum === unpaddedMesa ||
+        raw.toLowerCase() === mesaStr.toLowerCase()
+      );
+    });
+    if (found && (found.colegio || found.local)) {
+      return {
+        colegio: found.colegio || found.local,
+        distrito: found.distrito || found.ubicacion || 'Lima'
+      };
+    }
+  }
+
+  // 3. Buscar en el padrón de usuarios / rpersoneros (cachedUsers)
+  if (Array.isArray(cachedUsers) && cachedUsers.length > 0) {
+    const foundUser = cachedUsers.find(u => {
+      const raw = (u.mesa || u.mesa_de_sufragio || u.mesa_asignada || u.Mesa || '').toString().trim();
+      const num = raw.replace(/\D/g, '');
+      const pNum = num.padStart(6, '0');
+      const uNum = num.replace(/^0+/, '') || num;
+      return (
+        num === cleanMesa ||
+        pNum === paddedMesa ||
+        uNum === unpaddedMesa ||
+        raw.toLowerCase() === mesaStr.toLowerCase()
+      );
+    });
+    if (foundUser && (foundUser.colegio || foundUser.local_de_votacion || foundUser.local_de_votacion_asignado || foundUser.Colegio)) {
+      return {
+        colegio: foundUser.colegio || foundUser.local_de_votacion || foundUser.local_de_votacion_asignado || foundUser.Colegio,
+        distrito: foundUser.ubicacion || foundUser.distrito_donde_vota || foundUser.distrito_asignado || foundUser.Distrito || 'Lima'
+      };
+    }
+  }
+
+  // 4. Mapeo estándar de mesas conocidas
   const MESA_MAP = {
     '063769': { colegio: 'IE 0024 PEDRO ENRIQUE GONZALES SOTO', distrito: 'Ate' },
     '63769': { colegio: 'IE 0024 PEDRO ENRIQUE GONZALES SOTO', distrito: 'Ate' },
@@ -115,8 +171,11 @@ export function buscarColegioPorMesa(mesaNum, mesasEstructura = []) {
     '020001': { colegio: 'IE JUANA ALARCO DE D script', distrito: 'Miraflores' },
     '20001': { colegio: 'IE JUANA ALARCO DE D script', distrito: 'Miraflores' },
     '030001': { colegio: 'IE MANUEL POLO JIMENEZ', distrito: 'Surco' },
-    '30001': { colegio: 'IE MANUEL POLO JIMENEZ', distrito: 'Surco' }
+    '30001': { colegio: 'IE MANUEL POLO JIMENEZ', distrito: 'Surco' },
+    '578858': { colegio: 'IE 2025 INMACULADA CONCEPCION', distrito: 'Los Olivos' },
+    '057885': { colegio: 'IE 2025 INMACULADA CONCEPCION', distrito: 'Los Olivos' },
+    '123456': { colegio: 'Colegio San Jose', distrito: 'Surco' }
   };
 
-  return MESA_MAP[cleanMesa] || MESA_MAP[paddedMesa] || null;
+  return MESA_MAP[cleanMesa] || MESA_MAP[paddedMesa] || MESA_MAP[unpaddedMesa] || null;
 }

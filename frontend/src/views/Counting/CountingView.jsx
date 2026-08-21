@@ -18,13 +18,14 @@ export const CountingView = () => {
     activeViewFilter, setActiveViewFilter,
     isOnline,
     setIsConfigModalOpen, setIsScannerModalOpen,
-    mesasEstructura
+    mesasEstructura, cachedUsers
   } = useApp();
 
-  const { currentVotes, ocrVotes, handleVoteChange, transmitVotes, isTransmitting } = useVotes();
+  const { currentVotes, ocrVotes, handleVoteChange, transmitVotes, isTransmitting, isManualLocked } = useVotes();
   const {
     isAttendanceConfirmed, isLlegadaConfirmed,
-    validateMesaBeforeAttendance, processAttendancePhoto, confirmLlegadaGPS
+    validateMesaBeforeAttendance, verifyAttendanceGpsRange,
+    processAttendancePhoto, confirmLlegadaGPS
   } = useAttendance();
 
   const ubicacion = currentUser?.ubicacion || 'Lima';
@@ -56,7 +57,18 @@ export const CountingView = () => {
 
   const attendanceFileRef = useRef(null);
 
-  // Sincronización en tiempo real: el colegio SOLO aparece cuando se escribe el número de mesa
+  // Si no hay asistencia confirmada en la BD, asegurar que los campos inicien vacíos
+  useEffect(() => {
+    if (!isAttendanceConfirmed) {
+      const localConfirmed = localStorage.getItem(`votoReal_attConfirmed_${currentUser?.dni}`) === 'true';
+      if (!localConfirmed) {
+        setMesaInput('');
+        setColegioInput('');
+      }
+    }
+  }, [isAttendanceConfirmed, currentUser?.dni]);
+
+  // Sincronización en tiempo real: el colegio SOLO se detecta cuando el usuario escribe el número de mesa
   useEffect(() => {
     const cleanMesa = (mesaInput || '').trim();
     if (!cleanMesa) {
@@ -64,7 +76,7 @@ export const CountingView = () => {
       return;
     }
 
-    const match = buscarColegioPorMesa(cleanMesa, mesasEstructura);
+    const match = buscarColegioPorMesa(cleanMesa, mesasEstructura, cachedUsers, currentUser);
 
     if (match && match.colegio) {
       setColegioInput(match.colegio);
@@ -76,21 +88,29 @@ export const CountingView = () => {
     } else {
       setColegioInput('');
     }
-  }, [mesaInput, mesasEstructura, currentUser]);
+  }, [mesaInput, mesasEstructura, cachedUsers, currentUser]);
 
-  const handleAttendanceCheck = (e) => {
-    const isChecked = e.target.checked;
-    if (!isChecked) {
-      e.target.checked = true;
-      return;
-    }
-
-    const isValid = validateMesaBeforeAttendance(mesaInput);
-    if (!isValid) {
+  const handleAttendanceCheck = async (e) => {
+    if (e && e.target && e.target.type === 'checkbox') {
+      if (isAttendanceConfirmed) {
+        e.target.checked = true;
+        return;
+      }
       e.target.checked = false;
+    }
+
+    if (isAttendanceConfirmed) return;
+
+    const targetMesa = (mesaInput || '').trim();
+    const targetColegio = (colegioInput || '').trim();
+
+    // Ejecuta todas las validaciones de mesa asignada, detección de colegio y radio GPS de 50m
+    const isWithinRange = await verifyAttendanceGpsRange(targetMesa, targetColegio, ubicacion, mesasEstructura);
+    if (!isWithinRange) {
       return;
     }
 
+    // Si la persona está dentro del radio de 50m, abrir la cámara para la fotografía de asistencia
     if (attendanceFileRef.current) {
       attendanceFileRef.current.value = '';
       attendanceFileRef.current.click();
@@ -208,6 +228,7 @@ export const CountingView = () => {
             onVoteChange={handleVoteChange}
             onTransmit={() => handleTransmit('MANUAL')}
             isTransmitting={isTransmitting}
+            isManualLocked={isManualLocked}
           />
         )}
 

@@ -14,21 +14,22 @@ export const useCoordinator = () => {
     if (!currentUser) return;
     setIsLoading(true);
     try {
-      const colQuery = currentUser.colegio || '';
-      const distQuery = currentUser.ubicacion || '';
+      const colQuery = currentUser.colegio || currentUser.local || '';
+      const distQuery = currentUser.ubicacion || currentUser.distrito || '';
       const origenQuery = currentUser.origenHoja || currentUser.tabla_origen || '';
 
       const [resPersoneros, resAsist, resConf] = await Promise.all([
         apiGet({
           action: 'obtener_personeros_por_colegio',
           colegio: colQuery,
+          local: colQuery,
           distrito: distQuery,
           ubicacion: distQuery,
           origenHoja: origenQuery,
           tabla_origen: origenQuery
         }, apiUrl),
         apiGet({ action: 'obtener_asistencia' }, apiUrl),
-        apiGet({ action: 'obtener_confirmaciones_por_colegio', colegio: colQuery }, apiUrl)
+        apiGet({ action: 'obtener_confirmaciones_por_colegio', colegio: colQuery, local: colQuery }, apiUrl)
       ]);
 
       if (resPersoneros?.personeros) setPersoneros(resPersoneros.personeros);
@@ -49,11 +50,18 @@ export const useCoordinator = () => {
   const confirmPersoneroDirect = async (personero) => {
     if (!personero) return false;
 
+    const pDni = (personero.dni || personero.DNI || '').toString().trim();
+    const isAlreadyConfirmed = confirmacionesCoord.some(c => (c.personero_dni || '').toString().trim() === pDni);
+    if (isAlreadyConfirmed) {
+      showToast(`${personero.nombre} ya tiene la asistencia confirmada.`, 'info');
+      return true;
+    }
+
     try {
       const payload = {
         action: 'confirmar_coordinador',
         personeroNombre: personero.nombre,
-        personeroDni: (personero.dni || personero.DNI || '').toString(),
+        personeroDni: pDni,
         distrito: currentUser?.ubicacion || '',
         local: currentUser?.colegio || '',
         coordinadorNombre: currentUser?.nombre || '',
@@ -64,7 +72,7 @@ export const useCoordinator = () => {
 
       // Actualización optimista en interfaz
       setConfirmacionesCoord(prev => [
-        ...prev.filter(c => (c.personero_dni || '').toString() !== payload.personeroDni),
+        ...prev.filter(c => (c.personero_dni || '').toString().trim() !== payload.personeroDni),
         {
           personero_dni: payload.personeroDni,
           personero_nombre: payload.personeroNombre,
@@ -78,7 +86,7 @@ export const useCoordinator = () => {
       fetchCoordinatorData();
       return true;
     } catch (err) {
-      showToast('Error guardando confirmación en SQL Server.', 'error');
+      showToast('Error guardando confirmación en el servidor.', 'error');
       fetchCoordinatorData();
       return false;
     }

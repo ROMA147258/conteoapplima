@@ -134,17 +134,19 @@ export const CoordinatorView = () => {
               return (
                 <div
                   key={idx}
-                  onClick={() => confirmPersoneroDirect(p)}
+                  onClick={() => {
+                    if (!isCoordConfirmed) confirmPersoneroDirect(p);
+                  }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     gap: '12px',
-                    background: isCoordConfirmed ? 'rgba(16, 185, 129, 0.1)' : 'rgba(15, 23, 42, 0.6)',
+                    background: isCoordConfirmed ? 'rgba(16, 185, 129, 0.12)' : 'rgba(15, 23, 42, 0.6)',
                     border: `1px solid ${isCoordConfirmed ? 'rgba(16, 185, 129, 0.4)' : 'rgba(255, 255, 255, 0.08)'}`,
                     borderRadius: '12px',
                     padding: '12px 14px',
-                    cursor: 'pointer',
+                    cursor: isCoordConfirmed ? 'default' : 'pointer',
                     userSelect: 'none',
                     transition: 'all 0.2s ease'
                   }}
@@ -163,9 +165,10 @@ export const CoordinatorView = () => {
                   {/* Checkbox de Confirmación Directa */}
                   <button
                     type="button"
+                    disabled={isCoordConfirmed}
                     onClick={(e) => {
                       e.stopPropagation();
-                      confirmPersoneroDirect(p);
+                      if (!isCoordConfirmed) confirmPersoneroDirect(p);
                     }}
                     style={{
                       background: isCoordConfirmed
@@ -175,7 +178,7 @@ export const CoordinatorView = () => {
                       color: isCoordConfirmed ? '#ffffff' : '#94a3b8',
                       borderRadius: '10px',
                       padding: '8px 14px',
-                      cursor: 'pointer',
+                      cursor: isCoordConfirmed ? 'default' : 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '6px',
@@ -183,6 +186,7 @@ export const CoordinatorView = () => {
                       fontSize: '0.84rem',
                       boxShadow: isCoordConfirmed ? '0 0 14px rgba(16, 185, 129, 0.45)' : 'none',
                       transition: 'all 0.2s ease',
+                      opacity: isCoordConfirmed ? 0.95 : 1,
                       flexShrink: 0
                     }}
                   >

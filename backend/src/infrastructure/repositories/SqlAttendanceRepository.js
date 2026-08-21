@@ -13,8 +13,8 @@ class SqlAttendanceRepository extends IAttendanceRepository {
       .input('local', mssql.VarChar, data.local || '')
       .input('mesa', mssql.VarChar, data.mesa || '')
       .input('confirmacion', mssql.VarChar, data.confirmacion || 'SI')
-      .input('foto_url', mssql.NVarChar, data.fotoBase64 || '')
-      .input('ubicacion_gps', mssql.VarChar, data.ubicacionGps || '')
+      .input('foto_url', mssql.NVarChar, data.foto_url || data.fotoBase64 || '')
+      .input('ubicacion_gps', mssql.VarChar, data.ubicacion_gps || data.ubicacionGps || '')
       .query(`
         MERGE dbo.Asistencia AS target
         USING (SELECT @dni AS dni) AS source

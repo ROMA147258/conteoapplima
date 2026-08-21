@@ -7,14 +7,14 @@ class SqlCoordinatorRepository extends ICoordinatorRepository {
     if (!pool) throw new Error('SQL Server no disponible');
 
     await pool.request()
-      .input('p_nom', mssql.VarChar, data.personeroNombre || '')
-      .input('p_dni', mssql.VarChar, data.personeroDni || '')
+      .input('p_nom', mssql.VarChar, data.personero_nombre || data.personeroNombre || '')
+      .input('p_dni', mssql.VarChar, data.personero_dni || data.personeroDni || '')
       .input('distrito', mssql.VarChar, data.distrito || '')
-      .input('local', mssql.VarChar, data.local || '')
-      .input('c_nom', mssql.VarChar, data.coordinadorNombre || '')
-      .input('c_dni', mssql.VarChar, data.coordinadorDni || '')
+      .input('local', mssql.VarChar, data.local || data.colegio || '')
+      .input('c_nom', mssql.VarChar, data.coordinador_nombre || data.coordinadorNombre || '')
+      .input('c_dni', mssql.VarChar, data.coordinador_dni || data.coordinadorDni || '')
       .input('confirmacion', mssql.VarChar, data.confirmacion || 'SI')
-      .input('foto_url', mssql.NVarChar, data.fotoBase64 || '')
+      .input('foto_url', mssql.NVarChar, data.foto_url || data.fotoBase64 || '')
       .query(`
         MERGE dbo.Coordinadores AS target
         USING (SELECT @p_dni AS personero_dni) AS source

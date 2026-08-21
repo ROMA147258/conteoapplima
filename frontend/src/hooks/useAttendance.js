@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { apiPost } from '../services/api/apiClient';
-import { getRealGeolocationFast, obtenerCoordenadasColegio, calcularDistanciaMetros } from '../services/gps/geolocationService';
+import { getRealGeolocationFast, obtenerCoordenadasColegio, obtenerCoordenadasMesaColegio, calcularDistanciaMetros } from '../services/gps/geolocationService';
 import { compressImage } from '../utils/imageCompressor';
 import { isLlegadaButtonUnlocked } from '../utils/helpers';
 import { buscarBrigadista } from '../constants/usuarios';
@@ -9,7 +9,8 @@ import { buscarBrigadista } from '../constants/usuarios';
 export const useAttendance = () => {
   const {
     currentUser, apiUrl,
-    showAlertDialog, showToast, setAttendanceSyncLoader
+    showAlertDialog, showToast, setAttendanceSyncLoader,
+    mesasEstructura
   } = useApp();
 
   const isSuperAdmin = currentUser && (
@@ -19,6 +20,9 @@ export const useAttendance = () => {
   );
 
   const [isAttendanceConfirmed, setIsAttendanceConfirmed] = useState(() => {
+    if (currentUser?.asistencia_confirmada !== undefined) {
+      return Boolean(currentUser.asistencia_confirmada);
+    }
     if (currentUser?.dni) {
       return localStorage.getItem(`votoReal_attConfirmed_${currentUser.dni}`) === 'true';
     }
@@ -26,41 +30,93 @@ export const useAttendance = () => {
   });
 
   const [isLlegadaConfirmed, setIsLlegadaConfirmed] = useState(() => {
+    if (currentUser?.llegada_confirmada !== undefined) {
+      return Boolean(currentUser.llegada_confirmada);
+    }
     if (currentUser?.dni) {
       return localStorage.getItem(`votoReal_llegadaConfirmed_${currentUser.dni}`) === 'true';
     }
     return false;
   });
 
+  // Sincronización en tiempo real con la Base de Datos (asistencia y asistenciallegada)
+  useEffect(() => {
+    if (!currentUser?.dni || isSuperAdmin) return;
+
+    let isMounted = true;
+    const syncAttendanceFromDb = async () => {
+      try {
+        const res = await apiPost({ action: 'obtener_asistencia_por_dni', dni: currentUser.dni }, apiUrl);
+        if (res && res.success && isMounted) {
+          // 1. Asistencia oficial (Foto)
+          const dbAsis = Boolean(res.asistencia_confirmada);
+          setIsAttendanceConfirmed(dbAsis);
+          if (dbAsis) {
+            localStorage.setItem(`votoReal_attConfirmed_${currentUser.dni}`, 'true');
+            if (res.asistencia?.mesa) {
+              localStorage.setItem(`votoReal_attMesa_${currentUser.dni}`, res.asistencia.mesa);
+            }
+            if (res.asistencia?.local) {
+              localStorage.setItem(`votoReal_attColegio_${currentUser.dni}`, res.asistencia.local);
+            }
+          } else {
+            // Si fue borrado en la base de datos, limpiar estado local
+            localStorage.removeItem(`votoReal_attConfirmed_${currentUser.dni}`);
+            localStorage.removeItem(`votoReal_attMesa_${currentUser.dni}`);
+            localStorage.removeItem(`votoReal_attColegio_${currentUser.dni}`);
+          }
+
+          // 2. Asistencia de Llegada (GPS)
+          const dbLlegada = Boolean(res.llegada_confirmada);
+          setIsLlegadaConfirmed(dbLlegada);
+          if (dbLlegada) {
+            localStorage.setItem(`votoReal_llegadaConfirmed_${currentUser.dni}`, 'true');
+          } else {
+            // Si fue borrado en la base de datos, limpiar estado local
+            localStorage.removeItem(`votoReal_llegadaConfirmed_${currentUser.dni}`);
+          }
+        }
+      } catch (err) {
+        console.warn('[useAttendance] Error sincronizando estado de asistencia con BD:', err);
+      }
+    };
+
+    syncAttendanceFromDb();
+    return () => { isMounted = false; };
+  }, [currentUser?.dni, apiUrl, isSuperAdmin]);
+
   const validateMesaBeforeAttendance = (mesaVal) => {
     const cleanMesa = (mesaVal || '').trim();
 
-    // 1. Empty check -> img/5.png
+    // 1. Obtener la mesa asignada del usuario
+    let assignedMesa = currentUser?.mesa || '';
+    if (!assignedMesa && currentUser?.dni) {
+      const u = buscarBrigadista(currentUser.dni, currentUser.nombre);
+      if (u && u.mesa) assignedMesa = u.mesa;
+    }
+
+    // 2. Validación de campo vacío -> mostrar mesa asignada para guiar al usuario
     if (!cleanMesa) {
+      const msg = assignedMesa 
+        ? `Tu mesa asignada es la <strong>N° ${assignedMesa}</strong>.<br><br>Por favor, ingrésala en la casilla para poder confirmar tu asistencia.`
+        : `Por favor, ingresa tu número de mesa en la casilla antes de confirmar.`;
+
       showAlertDialog({
         title: 'Mesa Requerida',
-        message: 'Por favor, ingresa tu número de mesa en la casilla antes de confirmar.',
+        message: msg,
         buttonText: 'Aceptar',
         type: 'warning',
         onClose: () => {
           const mesaEl = document.getElementById('input-mesa');
-          if (mesaEl) mesaEl.focus();
+          if (mesaEl) {
+            mesaEl.focus();
+          }
         }
       });
       return false;
     }
 
-    // 2. Assigned Mesa check -> img/1.png
-    let assignedMesa = currentUser?.mesa || '';
-    if (!assignedMesa && currentUser?.dni) {
-      const savedMesa = localStorage.getItem(`votoReal_attMesa_${currentUser.dni}`);
-      if (savedMesa) assignedMesa = savedMesa;
-      else {
-        const u = buscarBrigadista(currentUser.dni, currentUser.nombre);
-        if (u && u.mesa) assignedMesa = u.mesa;
-      }
-    }
-
+    // 3. Validación de coincidencia con mesa asignada
     if (assignedMesa && !isSuperAdmin) {
       const normInput = cleanMesa.replace(/\D/g, '').padStart(6, '0');
       const normAssigned = assignedMesa.replace(/\D/g, '').padStart(6, '0');
@@ -84,6 +140,74 @@ export const useAttendance = () => {
     }
 
     return true;
+  };
+
+  const verifyAttendanceGpsRange = async (mesaVal, colegioVal, ubicacionVal, structureList = mesasEstructura) => {
+    // 1. Validar mesa asignada / requerida
+    const isValid = validateMesaBeforeAttendance(mesaVal);
+    if (!isValid) return false;
+
+    if (!colegioVal) {
+      showAlertDialog({
+        title: 'Colegio Requerido',
+        message: 'Por favor, ingresa un número de mesa válido para detectar el local de votación.',
+        buttonText: 'Aceptar',
+        type: 'warning'
+      });
+      return false;
+    }
+
+    if (isSuperAdmin) {
+      return true;
+    }
+
+    setAttendanceSyncLoader({
+      isOpen: true,
+      percentage: 25,
+      text: 'Detectando ubicación GPS para validar radio de 50m...',
+      step: 1
+    });
+
+    try {
+      const gpsResult = await getRealGeolocationFast(6500);
+      const targetCoords = obtenerCoordenadasMesaColegio(mesaVal, colegioVal, ubicacionVal, structureList);
+
+      setAttendanceSyncLoader({ isOpen: false, percentage: 0, text: '', step: 1 });
+
+      if (!gpsResult || !gpsResult.lat) {
+        showAlertDialog({
+          title: '📍 GPS Requerido',
+          message: 'No se pudo obtener tu ubicación GPS con precisión.<br><br>Por favor, <strong>activa la ubicación GPS</strong> en tu dispositivo y concede los permisos en el navegador para confirmar tu asistencia.',
+          buttonText: 'Entendido',
+          type: 'warning'
+        });
+        return false;
+      }
+
+      const distMetros = calcularDistanciaMetros(gpsResult.lat, gpsResult.lng, targetCoords.lat, targetCoords.lon);
+      const RADIO_MAX_METROS = 50;
+
+      if (distMetros > RADIO_MAX_METROS) {
+        showAlertDialog({
+          title: '⚠️ Fuera del Rango Permitido',
+          message: `Te encuentras a <strong>${Math.round(distMetros)} metros</strong> del local de votación (<strong>${colegioVal}</strong>).<br><br>Para confirmar asistencia debes estar dentro del radio permitido de <strong>50 metros</strong> de las coordenadas del colegio.`,
+          buttonText: 'Entendido',
+          type: 'error'
+        });
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      setAttendanceSyncLoader({ isOpen: false, percentage: 0, text: '', step: 1 });
+      showAlertDialog({
+        title: 'Error de Ubicación',
+        message: 'Ocurrió un inconveniente al validar las coordenadas GPS. Inténtalo nuevamente.',
+        buttonText: 'Aceptar',
+        type: 'error'
+      });
+      return false;
+    }
   };
 
   const processAttendancePhoto = async (file, mesaVal, colegioVal, ubicacionVal) => {
@@ -111,7 +235,7 @@ export const useAttendance = () => {
       if (gpsResult && gpsResult.lat) {
         gpsString = `Lat: ${gpsResult.lat}, Lng: ${gpsResult.lng} (±${gpsResult.acc || 10}m)`;
       } else {
-        const coords = obtenerCoordenadasColegio(colegioVal, ubicacionVal);
+        const coords = obtenerCoordenadasMesaColegio(mesaVal, colegioVal, ubicacionVal, mesasEstructura);
         gpsString = `Lat: ${coords.lat}, Lng: ${coords.lon}`;
       }
 
@@ -131,8 +255,10 @@ export const useAttendance = () => {
         local: colegioVal,
         mesa: (mesaVal || '').trim(),
         confirmacion: 'SI',
+        foto_url: base64Data,
         fotoBase64: base64Data,
         fotoNombre: fileName,
+        ubicacion_gps: gpsString,
         ubicacionGps: gpsString
       };
 
@@ -232,6 +358,7 @@ export const useAttendance = () => {
     isAttendanceConfirmed,
     isLlegadaConfirmed,
     validateMesaBeforeAttendance,
+    verifyAttendanceGpsRange,
     processAttendancePhoto,
     confirmLlegadaGPS
   };
