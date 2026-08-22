@@ -131,7 +131,31 @@ export const AppProvider = ({ children }) => {
       message,
       buttonText,
       type,
+      isConfirm: false,
       onClose
+    });
+  }, []);
+
+  const showConfirmDialog = useCallback(({
+    title,
+    message,
+    confirmText = 'Permitir Ubicación',
+    cancelText = 'Cancelar',
+    type = 'info',
+    onConfirm = null,
+    onCancel = null
+  }) => {
+    setAlertDialog({
+      isOpen: true,
+      title,
+      message,
+      buttonText: confirmText,
+      confirmText,
+      cancelText,
+      type,
+      isConfirm: true,
+      onConfirm,
+      onClose: onCancel
     });
   }, []);
 
@@ -139,7 +163,7 @@ export const AppProvider = ({ children }) => {
     if (alertDialog.onClose && typeof alertDialog.onClose === 'function') {
       alertDialog.onClose();
     }
-    setAlertDialog(prev => ({ ...prev, isOpen: false }));
+    setAlertDialog(prev => ({ ...prev, isOpen: false, isConfirm: false, onConfirm: null }));
   }, [alertDialog]);
 
   // Load server config on startup (solo para geminiApiKey si aplica, NUNCA sobreescribir la URL de la API)
@@ -279,7 +303,7 @@ export const AppProvider = ({ children }) => {
       isScannerModalOpen, setIsScannerModalOpen,
       isOcrDetailModalOpen, setIsOcrDetailModalOpen,
       ocrRawDetail, setOcrRawDetail,
-      alertDialog, showAlertDialog, closeAlertDialog,
+      alertDialog, showAlertDialog, showConfirmDialog, closeAlertDialog,
       welcomePopup, setWelcomePopup,
       attendanceSyncLoader, setAttendanceSyncLoader,
       toasts, showToast,

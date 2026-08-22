@@ -102,15 +102,14 @@ export const CountingView = () => {
     if (isAttendanceConfirmed) return;
 
     const targetMesa = (mesaInput || '').trim();
-    const targetColegio = (colegioInput || '').trim();
 
-    // Ejecuta todas las validaciones de mesa asignada, detección de colegio y radio GPS de 50m
-    const isWithinRange = await verifyAttendanceGpsRange(targetMesa, targetColegio, ubicacion, mesasEstructura);
-    if (!isWithinRange) {
+    // 1. Validar que la mesa esté ingresada y sea la asignada
+    const isValid = validateMesaBeforeAttendance(targetMesa);
+    if (!isValid) {
       return;
     }
 
-    // Si la persona está dentro del radio de 50m, abrir la cámara para la fotografía de asistencia
+    // 2. Abrir la cámara / selector para la fotografía de confirmación de casilla
     if (attendanceFileRef.current) {
       attendanceFileRef.current.value = '';
       attendanceFileRef.current.click();

@@ -98,25 +98,74 @@ export const AlertDialog = () => {
           />
         </div>
 
-        <button
-          type="button"
-          onClick={closeAlertDialog}
-          style={{
-            width: '100%',
-            padding: '13px',
-            background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '12px',
-            fontWeight: 700,
-            fontSize: '1rem',
-            cursor: 'pointer',
-            boxShadow: '0 4px 15px rgba(139, 92, 246, 0.4)',
-            marginTop: '6px'
-          }}
-        >
-          {alertDialog.buttonText || 'Entendido'}
-        </button>
+        {alertDialog.isConfirm ? (
+          <div style={{ display: 'flex', width: '100%', gap: '12px', marginTop: '6px' }}>
+            <button
+              type="button"
+              onClick={() => {
+                const cb = alertDialog.onClose;
+                closeAlertDialog();
+                if (cb && typeof cb === 'function') cb();
+              }}
+              style={{
+                flex: 1,
+                padding: '13px',
+                background: 'rgba(255, 255, 255, 0.08)',
+                color: '#cbd5e1',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                borderRadius: '12px',
+                fontWeight: 600,
+                fontSize: '0.95rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              {alertDialog.cancelText || 'Cancelar'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const cb = alertDialog.onConfirm;
+                closeAlertDialog();
+                if (cb && typeof cb === 'function') cb();
+              }}
+              style={{
+                flex: 1.2,
+                padding: '13px',
+                background: 'linear-gradient(135deg, #0ea5e9, #0284c7)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '12px',
+                fontWeight: 700,
+                fontSize: '0.95rem',
+                cursor: 'pointer',
+                boxShadow: '0 4px 15px rgba(14, 165, 233, 0.4)'
+              }}
+            >
+              {alertDialog.confirmText || alertDialog.buttonText || 'Permitir Ubicación'}
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={closeAlertDialog}
+            style={{
+              width: '100%',
+              padding: '13px',
+              background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '12px',
+              fontWeight: 700,
+              fontSize: '1rem',
+              cursor: 'pointer',
+              boxShadow: '0 4px 15px rgba(139, 92, 246, 0.4)',
+              marginTop: '6px'
+            }}
+          >
+            {alertDialog.buttonText || 'Entendido'}
+          </button>
+        )}
       </div>
     </div>,
     document.body

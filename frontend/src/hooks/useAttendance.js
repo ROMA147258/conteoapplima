@@ -9,7 +9,7 @@ import { buscarBrigadista } from '../constants/usuarios';
 export const useAttendance = () => {
   const {
     currentUser, apiUrl,
-    showAlertDialog, showToast, setAttendanceSyncLoader,
+    showAlertDialog, showConfirmDialog, showToast, setAttendanceSyncLoader,
     mesasEstructura
   } = useApp();
 
@@ -215,8 +215,8 @@ export const useAttendance = () => {
 
     setAttendanceSyncLoader({
       isOpen: true,
-      percentage: 20,
-      text: 'Comprimiendo foto de confirmación...',
+      percentage: 30,
+      text: 'Comprimiendo foto de la casilla...',
       step: 1
     });
 
@@ -225,25 +225,9 @@ export const useAttendance = () => {
 
       setAttendanceSyncLoader({
         isOpen: true,
-        percentage: 55,
-        text: 'Obteniendo ubicación GPS exacta...',
+        percentage: 75,
+        text: 'Sincronizando foto con el servidor...',
         step: 2
-      });
-
-      const gpsResult = await getRealGeolocationFast(6500);
-      let gpsString = '';
-      if (gpsResult && gpsResult.lat) {
-        gpsString = `Lat: ${gpsResult.lat}, Lng: ${gpsResult.lng} (±${gpsResult.acc || 10}m)`;
-      } else {
-        const coords = obtenerCoordenadasMesaColegio(mesaVal, colegioVal, ubicacionVal, mesasEstructura);
-        gpsString = `Lat: ${coords.lat}, Lng: ${coords.lon}`;
-      }
-
-      setAttendanceSyncLoader({
-        isOpen: true,
-        percentage: 85,
-        text: 'Sincronizando asistencia con el servidor...',
-        step: 3
       });
 
       const fileName = `asistencia_brig_${currentUser?.dni}_${Date.now()}.jpg`;
@@ -257,9 +241,7 @@ export const useAttendance = () => {
         confirmacion: 'SI',
         foto_url: base64Data,
         fotoBase64: base64Data,
-        fotoNombre: fileName,
-        ubicacion_gps: gpsString,
-        ubicacionGps: gpsString
+        fotoNombre: fileName
       };
 
       try {
@@ -269,8 +251,8 @@ export const useAttendance = () => {
       setAttendanceSyncLoader({
         isOpen: true,
         percentage: 100,
-        text: '¡Asistencia y ubicación confirmadas con éxito!',
-        step: 4
+        text: '¡Foto de la casilla confirmada con éxito!',
+        step: 3
       });
 
       await new Promise(r => setTimeout(r, 400));
@@ -283,46 +265,72 @@ export const useAttendance = () => {
         localStorage.setItem(`votoReal_attColegio_${currentUser.dni}`, colegioVal);
       }
 
-      showToast('Asistencia y foto registradas con éxito.', 'success');
+      showToast('Foto de confirmación de casilla registrada con éxito.', 'success');
       return true;
     } catch (err) {
       setAttendanceSyncLoader({ isOpen: false, percentage: 0, text: '', step: 1 });
-      showToast('Error al procesar la confirmación de asistencia.', 'error');
+      showToast('Error al procesar la confirmación de la casilla.', 'error');
       return false;
     }
   };
 
-  const confirmLlegadaGPS = async (colegioVal, ubicacionVal, mesaVal) => {
-    if (!isLlegadaButtonUnlocked(currentUser)) {
-      showToast('🔒 La confirmación de llegada está habilitada a partir de las 4:50 PM.', 'warning');
-      return;
-    }
-
+  const ejecutarVerificacionGPS = async (targetColegio, ubicacionVal, targetMesa) => {
     setAttendanceSyncLoader({
       isOpen: true,
-      percentage: 30,
-      text: 'Verificando ubicación GPS dentro del radio de 50m...',
+      percentage: 25,
+      text: 'Detectando ubicación GPS para validar radio de 50m del colegio...',
       step: 1
     });
 
     try {
       const gpsResult = await getRealGeolocationFast(6500);
-      const schoolCoords = obtenerCoordenadasColegio(colegioVal, ubicacionVal);
+      const targetCoords = obtenerCoordenadasMesaColegio(targetMesa, targetColegio, ubicacionVal, mesasEstructura);
 
-      let distMetros = 15;
-      if (gpsResult && gpsResult.lat) {
-        distMetros = calcularDistanciaMetros(gpsResult.lat, gpsResult.lng, schoolCoords.lat, schoolCoords.lon);
+      if (!isSuperAdmin && (!gpsResult || !gpsResult.lat)) {
+        setAttendanceSyncLoader({ isOpen: false, percentage: 0, text: '', step: 1 });
+        showAlertDialog({
+          title: '📍 GPS Requerido',
+          message: 'No se pudo obtener tu ubicación GPS en tiempo real.<br><br>Por favor, <strong>activa el GPS</strong> en tu dispositivo y concede los permisos de ubicación en el navegador para confirmar tu llegada.',
+          buttonText: 'Entendido',
+          type: 'warning'
+        });
+        return false;
       }
+
+      let distMetros = 0;
+      if (gpsResult && gpsResult.lat) {
+        distMetros = calcularDistanciaMetros(gpsResult.lat, gpsResult.lng, targetCoords.lat, targetCoords.lon);
+      }
+
+      const RADIO_MAX_METROS = 50;
+
+      if (!isSuperAdmin && distMetros > RADIO_MAX_METROS) {
+        setAttendanceSyncLoader({ isOpen: false, percentage: 0, text: '', step: 1 });
+        showAlertDialog({
+          title: '⚠️ Fuera del Rango Permitido',
+          message: `Te encuentras a <strong>${Math.round(distMetros)} metros</strong> del local de votación (<strong>${targetColegio || 'Colegio Asignado'}</strong>).<br><br>Para confirmar llegada debes estar dentro del radio permitido de <strong>50 metros</strong> del colegio.`,
+          buttonText: 'Entendido',
+          type: 'error'
+        });
+        return false;
+      }
+
+      setAttendanceSyncLoader({
+        isOpen: true,
+        percentage: 70,
+        text: 'Enviando confirmación de llegada...',
+        step: 2
+      });
 
       const payload = {
         action: 'confirmar_asistencia_llegada',
         nombre: currentUser?.nombre,
         dni: currentUser?.dni,
         distrito: ubicacionVal,
-        colegio: colegioVal,
-        mesa: (mesaVal || '').trim(),
-        lat: gpsResult?.lat || schoolCoords.lat,
-        lon: gpsResult?.lng || schoolCoords.lon,
+        colegio: targetColegio || 'Local Asignado',
+        mesa: targetMesa,
+        lat: gpsResult?.lat || targetCoords.lat,
+        lon: gpsResult?.lng || targetCoords.lon,
         distancia_metros: Math.round(distMetros)
       };
 
@@ -334,7 +342,7 @@ export const useAttendance = () => {
         isOpen: true,
         percentage: 100,
         text: '¡Llegada al local confirmada con éxito!',
-        step: 2
+        step: 3
       });
 
       await new Promise(r => setTimeout(r, 400));
@@ -345,13 +353,60 @@ export const useAttendance = () => {
         localStorage.setItem(`votoReal_llegadaConfirmed_${currentUser.dni}`, 'true');
       }
 
-      showToast('2da Confirmación de llegada registrada correctamente.', 'success');
+      showToast('Confirmación de llegada por GPS registrada correctamente.', 'success');
       return true;
     } catch (err) {
       setAttendanceSyncLoader({ isOpen: false, percentage: 0, text: '', step: 1 });
       showToast('Error al verificar llegada por GPS.', 'error');
       return false;
     }
+  };
+
+  const confirmLlegadaGPS = async (colegioVal, ubicacionVal, mesaVal) => {
+    if (isLlegadaConfirmed) {
+      showToast('✅ Tu llegada al colegio ya fue confirmada.', 'info');
+      return true;
+    }
+
+    if (!isLlegadaButtonUnlocked(currentUser)) {
+      showToast('🔒 La confirmación de llegada está habilitada a partir de las 4:50 PM.', 'warning');
+      return false;
+    }
+
+    let targetColegio = (colegioVal || '').trim();
+    let targetMesa = (mesaVal || '').trim();
+
+    // Si aún no ha ingresado la mesa, intentar obtener de datos asignados
+    if (!targetMesa && currentUser?.dni) {
+      let assignedMesa = currentUser?.mesa || '';
+      if (!assignedMesa) {
+        const u = buscarBrigadista(currentUser.dni, currentUser.nombre);
+        if (u && u.mesa) assignedMesa = u.mesa;
+      }
+      if (assignedMesa) targetMesa = assignedMesa;
+    }
+
+    if (!targetColegio && !targetMesa && !isSuperAdmin) {
+      showAlertDialog({
+        title: 'Colegio / Mesa Requerido',
+        message: 'Por favor, ingresa tu número de mesa o identifica tu local de votación para validar tu llegada por GPS.',
+        buttonText: 'Aceptar',
+        type: 'warning'
+      });
+      return false;
+    }
+
+    // Popup modal que solicita permitir reconocer su ubicación
+    showConfirmDialog({
+      title: '📍 Confirmar Llegada al Colegio',
+      message: `Se verificará tu ubicación GPS en tiempo real para comprobar que te encuentras dentro del radio de <strong>50 metros</strong> del local de votación (<strong>${targetColegio || 'Colegio Asignado'}</strong>).<br><br>¿Deseas permitir el acceso a tu ubicación?`,
+      confirmText: 'Permitir Reconocer Ubicación',
+      cancelText: 'Cancelar',
+      type: 'info',
+      onConfirm: () => {
+        ejecutarVerificacionGPS(targetColegio, ubicacionVal, targetMesa);
+      }
+    });
   };
 
   return {
