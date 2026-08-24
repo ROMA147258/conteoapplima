@@ -93,10 +93,18 @@ export function esCoordinador(user) {
   if (!user) return false;
   const nombre = (user.nombre || user.Nombres_y_Apellidos || "").toString().toLowerCase().trim();
   const dni = (user.dni || user.DNI || "").toString().toLowerCase().trim();
-  const origenHoja = (user.origenHoja || "").toString().toLowerCase().trim();
-  const rol = (user.rol || "").toString().toLowerCase().trim();
+  const origenHoja = (user.origenHoja || user.tabla_origen || "").toString().toLowerCase().trim();
+  const rol = (user.rol || user.Rol_a_Desempenar || "").toString().toLowerCase().trim();
+  const tipoInterfaz = (user.tipo_interfaz || "").toString().toLowerCase().trim();
 
-  if (origenHoja === "usuarios1" || origenHoja === "rcoordinadores" || rol === "coordinador" || rol.includes("coordinador")) {
+  if (
+    origenHoja.includes("coordinador") ||
+    origenHoja.includes("rcoordinadoresz") ||
+    origenHoja.includes("rcoordinadores") ||
+    origenHoja === "usuarios1" ||
+    rol.includes("coordinador") ||
+    tipoInterfaz === "coordinador_lista"
+  ) {
     return true;
   }
   
@@ -110,3 +118,4 @@ export function esCoordinador(user) {
 
   return false;
 }
+

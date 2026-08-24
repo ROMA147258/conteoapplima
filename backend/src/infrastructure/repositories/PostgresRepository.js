@@ -47,6 +47,120 @@ class PostgresRepository {
     let usuarioBloqueado = null;
 
     // 1. rpersoneros (Personeros formulario - Fuente principal)
+    // Función auxiliar para normalizar y validar credenciales/preguntas
+    const validarAcceso = (u, defaultRol = 'Personero', defaultTabla = 'rpersoneros') => {
+      const cleanVal = (v) => (v || '').toString().replace(/["']/g, '').trim().toLowerCase();
+      const cred = cleanVal(u.credenciales);
+      const preg = cleanVal(u.preguntas);
+      const rolStr = cleanVal(u.rol || u.rol_a_desempenar);
+      const tablaStr = defaultTabla.toLowerCase();
+
+      const isConfirmed = Boolean(cred && (cred.includes('confirmad') || cred === 'si' || cred === '1' || cred.includes('aprobad')));
+      const isDesaprobado = Boolean(cred.includes('desaprobad') || cred.includes('bloquead') || preg.includes('desaprobad') || preg.includes('reprobad'));
+      const isAprobado = Boolean(preg && (preg.includes('aprobad') || preg === 'si' || preg === '1')) && !isDesaprobado;
+
+      const isCoordZonal = tablaStr === 'rcoordinadoresz' || rolStr.includes('zonal');
+      const isCoordLocal = tablaStr === 'rcoordinadores' || rolStr.includes('local') || (!isCoordZonal && (rolStr.includes('coordinador') || defaultRol.toLowerCase().includes('coordinador')));
+
+      if (isConfirmed && isAprobado) {
+        if (isCoordZonal) {
+          u.origenHoja = 'rcoordinadoresz';
+          u.tabla_origen = 'rcoordinadoresz';
+          u.rol = u.rol_a_desempenar || 'Coordinador Zonal';
+          u.tipo_interfaz = 'coordinador_zonal';
+        } else if (isCoordLocal) {
+          u.origenHoja = 'rcoordinadores';
+          u.tabla_origen = 'rcoordinadores';
+          u.rol = u.rol_a_desempenar || 'Coordinador de Local';
+          u.tipo_interfaz = 'coordinador_local';
+        } else {
+          u.origenHoja = 'rpersoneros';
+          u.tabla_origen = 'rpersoneros';
+          u.rol = 'Personero';
+          u.tipo_interfaz = 'personero_conteo';
+        }
+        return { valid: true, user: u };
+      } else {
+        let errorMsg = `Acceso Denegado: Tus credenciales deben estar en estado Confirmado y tu evaluación en estado Aprobado para poder ingresar.`;
+        if (cred.includes('desaprobad') || cred.includes('bloquead')) {
+          errorMsg = `Acceso Denegado: Tus credenciales se encuentran en estado '${u.credenciales}' en el sistema.`;
+        } else if (preg.includes('desaprobad') || preg.includes('reprobad')) {
+          errorMsg = `Acceso Denegado: Tu evaluación se encuentra en estado '${u.preguntas}'. Debes estar Aprobado para ingresar.`;
+        } else if (!isConfirmed) {
+          errorMsg = `Acceso Denegado: Tus credenciales se encuentran en estado '${u.credenciales || 'Pendiente'}'. Deben estar en estado Confirmado.`;
+        } else if (!isAprobado) {
+          errorMsg = `Acceso Denegado: Tu evaluación se encuentra en estado '${u.preguntas || 'Pendiente'}'. Debe estar en estado Aprobado.`;
+        }
+
+        usuarioBloqueado = {
+          isBlocked: true,
+          status: 'blocked',
+          rol: isCoordZonal ? 'Coordinador Zonal' : isCoordLocal ? 'Coordinador de Local' : 'Personero',
+          message: errorMsg
+        };
+        return { valid: false, message: errorMsg };
+      }
+    };
+
+    // 1. rcoordinadoresz / rcoordinadores (Coordinadores formulario - Buscar PRIMERO)
+    const buscarEnRcoordinadores = async () => {
+      const tablasCoord = ['rcoordinadoresz', 'rcoordinadores'];
+
+      for (const tabla of tablasCoord) {
+        let res = null;
+        if (targetDni) {
+          try {
+            res = await query(`
+              SELECT 
+                dni,
+                nombres_y_apellidos AS nombre,
+                COALESCE(NULLIF(rol_a_desempenar, ''), 'Coordinador') AS rol,
+                COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion,
+                COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio,
+                '' AS mesa,
+                credenciales,
+                preguntas
+              FROM ${tabla}
+              WHERE TRIM(dni) ILIKE $1
+              LIMIT 1
+            `, [targetDni]);
+          } catch (e) {}
+        }
+
+        if ((!res || !res.rows || res.rows.length === 0) && nameWords.length > 0) {
+          const params = [];
+          const whereClauses = nameWords.map((w) => {
+            params.push(`%${w}%`);
+            return `nombres_y_apellidos ILIKE $${params.length}`;
+          });
+          try {
+            res = await query(`
+              SELECT 
+                dni,
+                nombres_y_apellidos AS nombre,
+                COALESCE(NULLIF(rol_a_desempenar, ''), 'Coordinador') AS rol,
+                COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion,
+                COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio,
+                '' AS mesa,
+                credenciales,
+                preguntas
+              FROM ${tabla}
+              WHERE ${whereClauses.join(' AND ')}
+              LIMIT 1
+            `, params);
+          } catch (e) {}
+        }
+
+        if (res && res.rows && res.rows.length > 0) {
+          const validResult = validarAcceso(res.rows[0], 'Coordinador', tabla);
+          if (validResult.valid) return validResult.user;
+          return null;
+        }
+      }
+      return null;
+    };
+
+    // 2. rpersoneros (Personeros formulario)
     const buscarEnRpersoneros = async () => {
       let res = null;
       if (targetDni) {
@@ -93,125 +207,12 @@ class PostgresRepository {
       }
 
       if (res && res.rows && res.rows.length > 0) {
-        const u = res.rows[0];
-        const cred = (u.credenciales || '').toString().trim().toLowerCase();
-        const preg = (u.preguntas || '').toString().trim().toLowerCase();
-
-        const isConfirmed = Boolean(cred && (cred.includes('confirmad') || cred === 'si' || cred === '1'));
-        const isDesaprobado = Boolean(cred.includes('desaprobad') || cred.includes('bloquead') || preg.includes('desaprobad') || preg.includes('reprobad'));
-        const isAprobado = Boolean(preg && (preg.includes('aprobad') || preg === 'si' || preg === '1')) && !isDesaprobado;
-
-        if (isConfirmed && isAprobado) {
-          u.origenHoja = 'Rpersoneros';
-          u.tabla_origen = 'rpersoneros';
-          u.rol = 'Personero';
-          u.tipo_interfaz = 'personero_conteo';
-          return u;
-        } else {
-          let errorMsg = 'Acceso Denegado: Tus credenciales deben estar en estado Confirmado y tu evaluación en estado Aprobado para poder ingresar.';
-          if (cred.includes('desaprobad') || cred.includes('bloquead')) {
-            errorMsg = `Acceso Denegado: Tus credenciales se encuentran en estado '${u.credenciales}' en el sistema.`;
-          } else if (preg.includes('desaprobad') || preg.includes('reprobad')) {
-            errorMsg = `Acceso Denegado: Tu evaluación se encuentra en estado '${u.preguntas}'. Debes estar Aprobado para ingresar.`;
-          } else if (!isConfirmed) {
-            errorMsg = `Acceso Denegado: Tus credenciales se encuentran en estado '${u.credenciales || 'Pendiente'}'. Deben estar en estado Confirmado.`;
-          } else if (!isAprobado) {
-            errorMsg = `Acceso Denegado: Tu evaluación se encuentra en estado '${u.preguntas || 'Pendiente'}'. Debe estar en estado Aprobado.`;
-          }
-
-          usuarioBloqueado = {
-            isBlocked: true,
-            status: 'blocked',
-            rol: 'Personero',
-            message: errorMsg
-          };
-          return null;
-        }
-      }
-      return null;
-    };
-
-    // 2. rcoordinadores (Coordinadores formulario)
-    const buscarEnRcoordinadores = async () => {
-      let res = null;
-      if (targetDni) {
-        try {
-          res = await query(`
-            SELECT 
-              dni,
-              nombres_y_apellidos AS nombre,
-              'Coordinador' AS rol,
-              COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion,
-              COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio,
-              '' AS mesa,
-              credenciales,
-              preguntas
-            FROM rcoordinadores
-            WHERE TRIM(dni) ILIKE $1
-            LIMIT 1
-          `, [targetDni]);
-        } catch (e) {}
-      }
-
-      if ((!res || !res.rows || res.rows.length === 0) && nameWords.length > 0) {
-        const params = [];
-        const whereClauses = nameWords.map((w) => {
-          params.push(`%${w}%`);
-          return `nombres_y_apellidos ILIKE $${params.length}`;
-        });
-        try {
-          res = await query(`
-            SELECT 
-              dni,
-              nombres_y_apellidos AS nombre,
-              'Coordinador' AS rol,
-              COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion,
-              COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio,
-              '' AS mesa,
-              credenciales,
-              preguntas
-            FROM rcoordinadores
-            WHERE ${whereClauses.join(' AND ')}
-            LIMIT 1
-          `, params);
-        } catch (e) {}
-      }
-
-      if (res && res.rows && res.rows.length > 0) {
-        const u = res.rows[0];
-        const cred = (u.credenciales || '').toString().trim().toLowerCase();
-        const preg = (u.preguntas || '').toString().trim().toLowerCase();
-
-        const isConfirmed = Boolean(cred && (cred.includes('confirmad') || cred === 'si' || cred === '1'));
-        const isDesaprobado = Boolean(cred.includes('desaprobad') || cred.includes('bloquead') || preg.includes('desaprobad') || preg.includes('reprobad'));
-        const isAprobado = Boolean(preg && (preg.includes('aprobad') || preg === 'si' || preg === '1')) && !isDesaprobado;
-
-        if (isConfirmed && isAprobado) {
-          u.origenHoja = 'Rcoordinadores';
-          u.tabla_origen = 'rcoordinadores';
-          u.rol = 'Coordinador';
-          u.tipo_interfaz = 'coordinador_lista';
-          return u;
-        } else {
-          let errorMsg = 'Acceso Denegado: Tus credenciales de coordinador deben estar en estado Confirmado para poder ingresar.';
-          if (cred.includes('desaprobad') || cred.includes('bloquead')) {
-            errorMsg = `Acceso Denegado: Tus credenciales se encuentran en estado '${u.credenciales}' en el sistema.`;
-          } else if (preg.includes('desaprobad') || preg.includes('reprobad')) {
-            errorMsg = `Acceso Denegado: Tu evaluación de coordinador se encuentra en estado '${u.preguntas}'. Debes estar Aprobado.`;
-          } else if (!isConfirmed) {
-            errorMsg = `Acceso Denegado: Tus credenciales se encuentran en estado '${u.credenciales || 'Pendiente'}'. Deben estar en estado Confirmado.`;
-          } else if (!isAprobado) {
-            errorMsg = `Acceso Denegado: Tu evaluación se encuentra en estado '${u.preguntas || 'Pendiente'}'. Debe estar en estado Aprobado.`;
-          }
-
-          usuarioBloqueado = {
-            isBlocked: true,
-            status: 'blocked',
-            rol: 'Coordinador',
-            message: errorMsg
-          };
-          return null;
-        }
+        const row = res.rows[0];
+        const rolStr = (row.rol || '').toString().toLowerCase();
+        const defaultRol = rolStr.includes('coordinador') ? 'Coordinador' : 'Personero';
+        const validResult = validarAcceso(row, defaultRol, 'rpersoneros');
+        if (validResult.valid) return validResult.user;
+        return null;
       }
       return null;
     };
@@ -280,7 +281,8 @@ class PostgresRepository {
       return u;
     };
 
-    let usuarioEncontrado = await buscarEnRpersoneros();
+    // 1. Coordinadores primero (rcoordinadoresz / rcoordinadores)
+    let usuarioEncontrado = await buscarEnRcoordinadores();
     if (usuarioEncontrado) {
       usuarioEncontrado = await enriquecerEstadoUsuario(usuarioEncontrado);
       return { success: true, status: 'success', usuario: usuarioEncontrado, user: usuarioEncontrado, data: usuarioEncontrado };
@@ -289,7 +291,8 @@ class PostgresRepository {
       return { success: false, status: 'blocked', message: usuarioBloqueado.message };
     }
 
-    usuarioEncontrado = await buscarEnRcoordinadores();
+    // 2. Personeros (rpersoneros)
+    usuarioEncontrado = await buscarEnRpersoneros();
     if (usuarioEncontrado) {
       usuarioEncontrado = await enriquecerEstadoUsuario(usuarioEncontrado);
       return { success: true, status: 'success', usuario: usuarioEncontrado, user: usuarioEncontrado, data: usuarioEncontrado };
@@ -298,7 +301,7 @@ class PostgresRepository {
       return { success: false, status: 'blocked', message: usuarioBloqueado.message };
     }
 
-    return { success: false, status: 'error', message: 'Usuario no encontrado en rpersoneros / rcoordinadores. Verifica tu DNI o nombre.' };
+    return { success: false, status: 'error', message: 'Usuario no encontrado en rcoordinadoresz / rcoordinadores / rpersoneros. Verifica tu DNI o nombre.' };
   }
 
   // 2. REGISTRAR VOTOS
@@ -593,7 +596,7 @@ class PostgresRepository {
     return { success: true, confirmaciones: res.rows };
   }
 
-  // 11. PERSONEROS POR COLEGIO
+  // 11. PERSONEROS POR COLEGIO (Solo los que aprobaron, con información detallada de quiénes llegaron)
   async obtenerPersonerosPorColegio(data) {
     const colQuery = (data.colegio || data.local || '').toString().trim();
     const distQuery = (data.distrito || data.ubicacion || '').toString().trim();
@@ -605,38 +608,164 @@ class PostgresRepository {
     const params = [];
     let sql = `
       SELECT 
-        dni, 
-        nombres_y_apellidos AS nombre, 
+        p.dni, 
+        p.nombres_y_apellidos AS nombre, 
         'Personero' AS rol, 
-        COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion, 
-        COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio, 
-        COALESCE(NULLIF(mesa_asignada, ''), mesa_de_sufragio) AS mesa, 
+        COALESCE(NULLIF(p.distrito_asignado, ''), p.distrito_donde_vota) AS ubicacion, 
+        COALESCE(NULLIF(p.local_de_votacion_asignado, ''), p.local_de_votacion) AS colegio, 
+        COALESCE(NULLIF(p.mesa_asignada, ''), p.mesa_de_sufragio) AS mesa, 
+        p.credenciales,
+        p.preguntas,
         'Rpersoneros' AS "origenHoja", 
-        'rpersoneros' AS tabla_origen
-      FROM rpersoneros
+        'rpersoneros' AS tabla_origen,
+        -- Estado de llegada al colegio (GPS o Foto)
+        CASE 
+          WHEN l.id IS NOT NULL THEN 'LLEGADA_GPS'
+          WHEN a.id IS NOT NULL THEN 'LLEGADA_FOTO'
+          ELSE 'PENDIENTE'
+        END AS estado_llegada,
+        CASE WHEN (l.id IS NOT NULL OR a.id IS NOT NULL) THEN TRUE ELSE FALSE END AS ha_llegado,
+        COALESCE(l.fecha_registro, a.fecha_hora) AS fecha_llegada,
+        l.distancia_metros,
+        -- Estado de confirmación de coordinador
+        CASE WHEN c.id IS NOT NULL THEN TRUE ELSE FALSE END AS confirmado_coordinador,
+        c.fecha_hora AS fecha_confirmacion,
+        c.coordinador_nombre
+      FROM rpersoneros p
+      LEFT JOIN LATERAL (
+        SELECT id, fecha_registro, distancia_metros 
+        FROM asistenciallegada 
+        WHERE TRIM(dni) = TRIM(p.dni) 
+        ORDER BY id DESC LIMIT 1
+      ) l ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT id, fecha_hora 
+        FROM asistencia 
+        WHERE TRIM(dni) = TRIM(p.dni) 
+        ORDER BY id DESC LIMIT 1
+      ) a ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT id, fecha_hora, coordinador_nombre 
+        FROM coordinadores 
+        WHERE TRIM(personero_dni) = TRIM(p.dni) 
+        ORDER BY id DESC LIMIT 1
+      ) c ON TRUE
       WHERE 1=1
     `;
 
+    // Filtro para los que aprobaron
+    sql += ` AND (
+      p.preguntas ILIKE '%aprobad%' 
+      OR p.preguntas = 'SI' 
+      OR p.preguntas = '1'
+      OR p.credenciales ILIKE '%confirmad%' 
+      OR p.credenciales = 'SI' 
+      OR p.credenciales = '1'
+      OR p.credenciales ILIKE '%aprobad%'
+    )`;
+
     if (colQuery) {
-      params.push(colQuery, `%${colQuery}%`);
-      const p1 = params.length - 1;
-      const p2 = params.length;
-      sql += ` AND (COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) ILIKE $${p1} 
-                 OR COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) ILIKE $${p2})`;
+      const colegiosLista = colQuery.split(',').map(c => c.trim()).filter(Boolean);
+      if (colegiosLista.length > 1) {
+        const colConditions = [];
+        for (const colName of colegiosLista) {
+          params.push(colName, `%${colName}%`);
+          const p1 = params.length - 1;
+          const p2 = params.length;
+          colConditions.push(`(COALESCE(NULLIF(p.local_de_votacion_asignado, ''), p.local_de_votacion) ILIKE $${p1} OR COALESCE(NULLIF(p.local_de_votacion_asignado, ''), p.local_de_votacion) ILIKE $${p2})`);
+        }
+        sql += ` AND (${colConditions.join(' OR ')})`;
+      } else {
+        params.push(colQuery, `%${colQuery}%`);
+        const p1 = params.length - 1;
+        const p2 = params.length;
+        sql += ` AND (COALESCE(NULLIF(p.local_de_votacion_asignado, ''), p.local_de_votacion) ILIKE $${p1} 
+                   OR COALESCE(NULLIF(p.local_de_votacion_asignado, ''), p.local_de_votacion) ILIKE $${p2})`;
+      }
     }
 
     if (distQuery) {
       params.push(distQuery, `%${distQuery}%`);
       const p1 = params.length - 1;
       const p2 = params.length;
-      sql += ` AND (COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) ILIKE $${p1} 
-                 OR COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) ILIKE $${p2})`;
+      sql += ` AND (COALESCE(NULLIF(p.distrito_asignado, ''), p.distrito_donde_vota) ILIKE $${p1} 
+                 OR COALESCE(NULLIF(p.distrito_asignado, ''), p.distrito_donde_vota) ILIKE $${p2})`;
     }
 
-    sql += ` ORDER BY mesa ASC, nombre ASC`;
+    sql += ` ORDER BY p.mesa_asignada ASC, p.nombres_y_apellidos ASC`;
 
-    const res = await query(sql, params);
-    return { success: true, personeros: res.rows };
+    try {
+      const res = await query(sql, params);
+
+      // 1. Buscar información oficial de mesas de los colegios
+      let infoColegios = [];
+      try {
+        if (colQuery) {
+          const colList = colQuery.split(',').map(c => c.trim()).filter(Boolean);
+          const colParams = [];
+          const whereClauses = colList.map(c => {
+            colParams.push(`%${c}%`);
+            return `colegio ILIKE $${colParams.length}`;
+          });
+          const colRes = await query(`
+            SELECT colegio, distrito, num_mesas, direccion
+            FROM colegios
+            WHERE ${whereClauses.join(' OR ')}
+          `, colParams);
+          if (colRes && colRes.rows) {
+            infoColegios = colRes.rows;
+          }
+        }
+      } catch (e) {}
+
+      // 2. Buscar coordinadores locales exclusivamente de la tabla rcoordinadores
+      let coordinadoresLocales = [];
+      try {
+        const coordSql = `
+          SELECT 
+            dni,
+            nombres_y_apellidos AS nombre,
+            COALESCE(NULLIF(rol_a_desempenar, ''), 'Coordinador de Local') AS rol,
+            COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS distrito,
+            COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio,
+            celular,
+            correo_electronico,
+            credenciales,
+            preguntas
+          FROM rcoordinadores
+          WHERE (preguntas ILIKE '%aprobad%' OR preguntas = 'SI' OR preguntas = '1')
+        `;
+        const coordRes = await query(coordSql);
+        if (coordRes && coordRes.rows) {
+          coordinadoresLocales = coordRes.rows;
+        }
+      } catch (e) {}
+
+      return { 
+        success: true, 
+        personeros: res.rows,
+        info_colegios: infoColegios,
+        coordinadores_locales: coordinadoresLocales
+      };
+    } catch (err) {
+      console.warn('[PostgresRepository] Fallback simple para personeros de colegio:', err.message);
+      const simpleSql = `
+        SELECT 
+          dni, 
+          nombres_y_apellidos AS nombre, 
+          'Personero' AS rol, 
+          COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion, 
+          COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio, 
+          COALESCE(NULLIF(mesa_asignada, ''), mesa_de_sufragio) AS mesa, 
+          'Rpersoneros' AS "origenHoja", 
+          'rpersoneros' AS tabla_origen
+        FROM rpersoneros
+        WHERE 1=1
+        ORDER BY mesa_asignada ASC, nombres_y_apellidos ASC
+      `;
+      const fallbackRes = await query(simpleSql);
+      return { success: true, personeros: fallbackRes.rows, info_colegios: [], coordinadores_locales: [] };
+    }
   }
 
   // 12. MESAS

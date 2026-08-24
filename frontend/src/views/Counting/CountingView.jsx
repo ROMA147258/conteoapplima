@@ -4,6 +4,7 @@ import { useVotes } from '../../hooks/useVotes';
 import { useAttendance } from '../../hooks/useAttendance';
 import { DISTRITOS_LIMA, obtenerCandidatosPorUbicacion, obtenerAlcaldeActual } from '../../constants/distritos';
 import { buscarColegioPorMesa } from '../../constants/data';
+import { esCoordinador } from '../../constants/usuarios';
 import { UserInfoBar } from './components/UserInfoBar';
 import { SyncStatusBar } from './components/SyncStatusBar';
 import { CountingTabs } from './components/CountingTabs';
@@ -15,11 +16,19 @@ import { MapPin } from 'lucide-react';
 export const CountingView = () => {
   const {
     currentUser, setCurrentUser, logout,
+    currentView, setCurrentView,
     activeViewFilter, setActiveViewFilter,
     isOnline,
     setIsConfigModalOpen, setIsScannerModalOpen,
     mesasEstructura, cachedUsers
   } = useApp();
+
+  // Guard: Coordinadores van a view-coordinator
+  useEffect(() => {
+    if (esCoordinador(currentUser)) {
+      setCurrentView('view-coordinator');
+    }
+  }, [currentUser, setCurrentView]);
 
   const { currentVotes, ocrVotes, handleVoteChange, transmitVotes, isTransmitting, isManualLocked } = useVotes();
   const {

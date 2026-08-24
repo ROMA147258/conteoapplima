@@ -134,6 +134,33 @@ CREATE TABLE IF NOT EXISTS rcoordinadores (
     token_verificacion VARCHAR(100)
 );
 
+-- 9b. Tabla / Vista Rcoordinadoresz (Compatibilidad de sincronización)
+CREATE TABLE IF NOT EXISTS rcoordinadoresz (
+    id SERIAL PRIMARY KEY,
+    fecha_de_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    nombres_y_apellidos VARCHAR(150),
+    dni VARCHAR(50) NOT NULL,
+    celular VARCHAR(50),
+    correo_electronico VARCHAR(150),
+    usa_whatsapp_en_su_celular VARCHAR(20),
+    numero_whatsapp_alterno VARCHAR(50),
+    distrito_donde_vota VARCHAR(100),
+    mesa_de_sufragio VARCHAR(50),
+    local_de_votacion VARCHAR(200),
+    rol_a_desempenar VARCHAR(50),
+    distrito_asignado VARCHAR(100),
+    mesa_asignada VARCHAR(50),
+    local_de_votacion_asignado VARCHAR(200),
+    tiene_experiencia_como_personero VARCHAR(20),
+    cuenta_con_movilidad_propia VARCHAR(20),
+    se_compromete_a_colaborar_el_4_de_octubre_del_2026_en_las_elecciones VARCHAR(100),
+    video VARCHAR(50),
+    pdf VARCHAR(50),
+    preguntas VARCHAR(50),
+    credenciales VARCHAR(50),
+    token_verificacion VARCHAR(100)
+);
+
 -- 10. Tabla Rpersoneros
 CREATE TABLE IF NOT EXISTS rpersoneros (
     id SERIAL PRIMARY KEY,

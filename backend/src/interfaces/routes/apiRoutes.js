@@ -99,6 +99,7 @@ router.all('/voto-real', async (req, res) => {
       case 'confirmar_asistencia_llegada':
         return res.json(await postgresRepo.confirmarAsistenciaLlegada(payload));
       case 'confirmar_coordinador':
+      case 'confirmar_asistencia_coordinador':
         return res.json(await postgresRepo.confirmarCoordinador(payload));
       case 'obtener_usuarios':
       case 'read':
