@@ -9,9 +9,14 @@ export function obtenerMinutosActualesLimaBogota() {
   return limaHours * 60 + utcMinutes;
 }
 
+// Variable para control de desbloqueo temporal
+// TEMPORARY_LOCK_OVERRIDE = true: Desbloquea conteo (5:00 PM) y confirmación de llegada (4:50 PM).
+// Cuando el usuario indique "vuelvelo a bloquear", se cambia a false para restablecer el bloqueo horario original.
+export const TEMPORARY_LOCK_OVERRIDE = true;
+
 // Validación de horario de conteo (5:00 PM a 5:00 AM)
 export function isCountingTimeEnabled(currentUser = null, forceDisableLock = false) {
-  if (forceDisableLock) return true;
+  if (TEMPORARY_LOCK_OVERRIDE || forceDisableLock) return true;
   
   const isSuperAdmin = currentUser && (
     currentUser.dni === 'Admin#2026$Secure!VotoReal' || 
@@ -27,7 +32,7 @@ export function isCountingTimeEnabled(currentUser = null, forceDisableLock = fal
 
 // Validación de horario para el botón "Confirmar Llegada" (a partir de 4:50 PM / 16:50)
 export function isLlegadaButtonUnlocked(currentUser = null, forceDisableLock = false) {
-  if (forceDisableLock) return true;
+  if (TEMPORARY_LOCK_OVERRIDE || forceDisableLock) return true;
 
   const isSuperAdmin = currentUser && (
     currentUser.dni === 'Admin#2026$Secure!VotoReal' || 

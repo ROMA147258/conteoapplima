@@ -1,27 +1,4 @@
-// ── DATOS ELECTORALES – Estructura ONPE (DATA NUEVA OFICIAL) ──
-export const PARTIES = {
-  FP: { label: 'Fuerza Popular', color: '#c41e3a' },
-  JP: { label: 'Juntos por el Perú', color: '#e07b39' },
-  SP: { label: 'Somos Perú', color: '#1a8a7d' },
-  FR: { label: 'FREPAP', color: '#2c5282' },
-  VE: { label: 'Verde', color: '#38a169' },
-  MO: { label: 'Morado', color: '#6b46c1' },
-};
-
-export const PARTY_KEYS = Object.keys(PARTIES);
-export const PARTY_COLORS = PARTY_KEYS.map(k => PARTIES[k].color);
-export const PARTY_LABELS = PARTY_KEYS.map(k => PARTIES[k].label);
-
-export const PARTIES_CONFIG = {
-  "FP": { color: "#ea580c", label: "Fuerza Popular", short: "FP" },
-  "JP": { color: "#059669", label: "Juntos por el Perú", short: "JP" },
-  "SOMOS PERU": { color: "#1e3a8a", label: "Somos Perú", short: "SOMOS PERÚ" },
-  "FREPAP": { color: "#0284c7", label: "Frepap", short: "FREPAP" },
-  "VERDE": { color: "#16a34a", label: "Partido Verde", short: "VERDE" },
-  "MORADO": { color: "#7c3aed", label: "Partido Morado", short: "MORADO" }
-};
-
-export const COLEGIOS_REALES = {
+{
   "BREÑA": [
     "IE 1014 REPUBLICA ORIENTAL DEL URUGUAY",
     "IEP COLEGIO LA SALLE",
@@ -45,11 +22,137 @@ export const COLEGIOS_REALES = {
     "IEP ALBERT EINSTEIN",
     "IEP ALBERT EINSTEIN  I",
     "UNIVERSIDAD NACIONAL FEDERICO VILLARREAL SEDE LOCAL 08",
-    "CAMPO DEPORTIVO PARIACOTO",
-    "IE 1008 VIRGEN DE LOURDES",
-    "IE 03 INMACULADA CONCEPCION",
-    "IE 002 MUNDO DE COLORES",
-    "IEI 075 SANTA MARIA DE GUADALUPE"
+    "CAMPO DEPORTIVO PARIACOTO"
+  ],
+  "SAN VICENTE DE CAÑETE": [
+    "IEP 20187 JOSE HIPOLITO UNANUE PAVON",
+    "IEP 20188",
+    "IEP 20957",
+    "IESPP JESUS DE NAZARETH",
+    "IEP 21531",
+    "IEPAC MARYLAND BILINGUAL HIGH SCHOOL",
+    "IEP 20189 NUESTRA SEÑORA DE LA CONCEPCION",
+    "IE 20190 REPUBLICA DE CHILE",
+    "IEP 20874",
+    "IEP JOSE BUENAVENTURA SEPULVEDA CIENCIAS Y HUMANIDADES",
+    "IEP JOSE BUENAVENTURA SEPULVEDA TÉCNICO",
+    "IEP SANTA RITA DE CASSIA",
+    "IEP 20191 ALFONSO UGARTE"
+  ],
+  "CALANGO": [
+    "IE 20130 JESUS REY"
+  ],
+  "CERRO AZUL": [
+    "IEP GERARDO SALOMON MEJIA SACO",
+    "IEP 20131 JOSE OLAYA BALANDRA"
+  ],
+  "COAYLLO": [
+    "IE 20133 FRANCISCO BOLOGNESI"
+  ],
+  "CHILCA": [
+    "IE 20925",
+    "IEP 20959 REPUBLICA DE SUECIA",
+    "IE 594",
+    "IEP NUESTRA SEÑORA DE LA ASUNCION",
+    "IEP 20135",
+    "IE 6021"
+  ],
+  "IMPERIAL": [
+    "CEBE 04",
+    "IEP 20145",
+    "IEP 20146",
+    "IEP 20798",
+    "IEI 615 DIVINO NIÑO JESUS",
+    "IE 21001 ZOILO CANDELA SANCHEZ",
+    "IEP IMPERIAL CNI",
+    "IEP 20935",
+    "IEP NUESTRA SEÑORA DEL CARMEN",
+    "IEP 20147 ELADIO HURTADO VICENTE"
+  ],
+  "LUNAHUANA": [
+    "IE 20150 MARISCAL BENAVIDES"
+  ],
+  "MALA": [
+    "CEBE 03 DIVINO JESUS",
+    "IE 21015",
+    "IEP DIONISIO MANCO CAMPOS",
+    "IE PARROQUIAL APOSTOL SAN PEDRO DE MALA",
+    "IEP SAN FRANCISCO DE ASIS",
+    "IEP INTEGRADO MIS PRIMEROS PASOS",
+    "IEP 20158 DOS DE MAYO"
+  ],
+  "NUEVO IMPERIAL": [
+    "IE 20163 JORGE CHAVEZ DARTNELL",
+    "IEP AUGUSTO B LEGUIA",
+    "IEP MONTE CARMELO SCHOOL",
+    "IE 20167 MANUEL GONZALES PRADA",
+    "IEP 20795 CESAR VALLEJO MENDOZA",
+    "IEP 20169 SANTA MARIA",
+    "IEP BEATO JUAN PABLO II"
+  ],
+  "PACARAN": [
+    "IEI 509",
+    "IEP SANTIAGO ANTUNEZ DE MAYOLO"
+  ],
+  "QUILMANA": [
+    "IEP MIGUEL GRAU",
+    "IESTP CAÑETE",
+    "IE 20177 SAN MARTIN DE PORRES",
+    "IE 20178 SANTA ROSA DE LIMA",
+    "IEP GABRIELA MISTRAL"
+  ],
+  "SAN ANTONIO": [
+    "IEP 20179 ALEJANDRO CAMACHO CUYA",
+    "IEP SAN ANTONIO DE PADUA",
+    "IE 20955 13 PAULO FREIRE SARACOTO",
+    "IE 20955 14 SAGRADO CORAZON DE JESUS",
+    "IE 20955-15 VIÑAS DE MEDIA LUNA",
+    "IE 20955 17 SAN FRANCISCO DE JICAMARCA",
+    "IE 20955 18 JERUSALEN",
+    "IE 20955-19 VALLE HERMOSO",
+    "IE 20955 2 NACIONES UNIDAS",
+    "IE 20955 23 ANTENOR ORREGO ESPINOZA - EL VALLE",
+    "IE 20955 26 INMACULADA CONCEPCION",
+    "IE SAN ANTONIO DE JICAMARCA",
+    "IEP CRISTO DE LA PAZ",
+    "IEI 550 23 NIÑO JESUS",
+    "IE SEMILLITAS DE VILLASOL",
+    "IE 1277 DIVINO SALVADOR",
+    "IEI 105 JICAMARCA"
+  ],
+  "SAN LUIS": [
+    "IEP 20182 ABRAHAM VALDELOMAR",
+    "IEP 20181 JULIO KUROIWA HORIUCHI",
+    "IEP GREGORIA PORRAS DE GARCIA",
+    "IE SAN LUIS",
+    "IE 0082 LA CANTUTA",
+    "IE 0083 SAN JUAN MACIAS - PRIMARIA",
+    "IE 0083 SAN JUAN MACIAS",
+    "IE 1128 SAN LUIS",
+    "IE 1133 SANTISIMA VIRGEN DE FATIMA",
+    "IE 1204 VILLA JARDIN",
+    "IE 1216 MIGUEL GRAU SEMINARIO",
+    "IE LOS EDUCADORES",
+    "IEP MELVIN JONES",
+    "IE ESPECIAL - PAENFTS",
+    "IEP SANTA MARIA DE LA MERCED",
+    "IEP NAZARENO",
+    "IEP JESUS EL BUEN PASTOR",
+    "CETPRO SAN LUIS",
+    "IEP SACO OLIVEROS - SAN LUIS",
+    "IEP SACO OLIVEROS SECUNDARIA – SAN LUIS"
+  ],
+  "SANTA CRUZ DE FLORES": [
+    "IEP 20194 JESUS DIVINO MAESTRO"
+  ],
+  "ZUÑIGA": [
+    "IE NUESTRA SEÑORA DE LA ASUNCION"
+  ],
+  "ASIA": [
+    "IEP 20125 NUESTRA SEÑORA DEL ROSARIO",
+    "IEI 476",
+    "IE 20123",
+    "IEP 20973"
   ],
   "CARABAYLLO": [
     "IE 3512 MARIA PARADO DE BELLIDO",
@@ -202,6 +305,385 @@ export const COLEGIOS_REALES = {
     "IE 7047 TACNA",
     "IE 7050 NICANOR RIVERA CACERES"
   ],
+  "CANTA": [
+    "IE 21004"
+  ],
+  "ARAHUAY": [
+    "IE 20261 APOSTOL SANTIAGO"
+  ],
+  "HUAMANTANGA": [
+    "IE 20277 NUESTRO SEÑOR DE HUAMANTANGA"
+  ],
+  "HUAROS": [
+    "IE 20286 DIGNO MAESTRO"
+  ],
+  "LACHAQUI": [
+    "IE 20288 NUESTRA SEÑORA DEL CARMEN"
+  ],
+  "SAN BUENAVENTURA": [
+    "IE 20290 SAN BUENAVENTURA"
+  ],
+  "SANTA ROSA DE QUIVES": [
+    "IE 3520 AGROPECUARIO ZAPAN",
+    "IE 20293 SANTA ROSA DE YANGAS",
+    "IE 3510 SAN ANTONIO DE PADUA"
+  ],
+  "HUARAL": [
+    "IE AGROPECUARIO 100",
+    "IE 20399 LA ESPERANZA",
+    "IE 20793 LIBERTADOR DON JOSE DE SAN MARTIN",
+    "IE 20826 SAN JUAN BAUTISTA",
+    "IE 20845 MARIANO MELGAR",
+    "IE 21010 CLARA NICHOS MANSILLA",
+    "IE 21562 OSCAR BERCKEMEYER PAZOS",
+    "IEI 87 EMILIA BARCIA BONIFFATTI",
+    "IE CONTIGO PERU",
+    "COLEGIO PARROQUIAL MARIA REYNA",
+    "IE 20401",
+    "IE 20402 VIRGEN DE FATIMA",
+    "IE 20403 CARLOS MARTINES URIBE",
+    "IE 20406 LA HUAQUILLA",
+    "IE 21009 LUIS FELIPE SUBAUSTE DEL RIO",
+    "IE 20901 JOSE FAUSTINO SANCHEZ CARRION",
+    "IE NUESTRA SEÑORA DEL CARMEN",
+    "IEP SEÑOR DE LA MISERICORDIA EIRL",
+    "IE 20902 TUPAC AMARU",
+    "IE 21559 ANTONIO GRAÑA ELIZALDE",
+    "IE EMBLEMATICA 20499 ANDRES DE LOS REYES",
+    "CEBE 02 JUAN ISHIZAWA ISHIZAWA"
+  ],
+  "ATAVILLOS ALTO": [
+    "IE 20382 7 DE ENERO"
+  ],
+  "ATAVILLOS BAJO": [
+    "IE 20384 GERMAN CARO RIOS"
+  ],
+  "AUCALLAMA": [
+    "IE 20388 JOSE CARLOS MARIATEGUI",
+    "IE 21554 JOSE OLAYA SECUNDARIA",
+    "IE 20444 JOSE ALEJANDRO LOPEZ DURAND",
+    "IE 20386 JORGE BASADRE"
+  ],
+  "CHANCAY": [
+    "IE 20391 JORGE BRAVO DE RUEDA QUEROL",
+    "IE 20393 TUPAC AMARU",
+    "IE 20395 NUESTRA SEÑORA DE FATIMA",
+    "IE 20799 DANIEL ALCIDES CARRION",
+    "IE VIRGEN DE LA CANDELARIA",
+    "IE 20392 JUAN PASCUAL PRINGLES",
+    "IE 21008 LUIS ALBERTO DE LAS CASAS ARRIZ",
+    "IE 34",
+    "IE AUGUSTO SALAZAR BONDY",
+    "IE 20390 HORTENCIA DULANTO DE LAS CASAS",
+    "CUNA JARDIN 85 MARIA INMACULADA CONCEPCION"
+  ],
+  "IHUARI": [
+    "IE 20410 EMMA MENA MELCHOR",
+    "LOCAL SECUNDARIA IHUARI"
+  ],
+  "LAMPIAN": [
+    "IE 20414 LEON OLIMPO GUARDAMINO DE LA CRUZ"
+  ],
+  "PACARAOS": [
+    "IE ALONSO DE MESSIAS"
+  ],
+  "SAN MIGUEL DE ACOS": [
+    "IE 20424 SAN MIGUEL ARCANGEL"
+  ],
+  "VEINTISIETE DE NOVIEMBRE": [
+    "IE 20436 SAN MARTIN DE PORRES"
+  ],
+  "SANTA CRUZ DE ANDAMARCA": [
+    "IE SANTA CRUZ DE ANDAMARCA"
+  ],
+  "SUMBILCA": [
+    "IE 20434 SAN JUAN BAUTISTA"
+  ],
+  "MATUCANA": [
+    "IE JULIO CESAR TELLO",
+    "IE 20567 RICARDO BENTIN"
+  ],
+  "ANTIOQUIA": [
+    "IE 20537 ANDRES AVELINO CACERES"
+  ],
+  "CALLAHUANCA": [
+    "IE 20541 SANTA ROSA DE CALLAHUANCA"
+  ],
+  "CARAMPOMA": [
+    "IE 20542 JAVIER PEREZ DE CUELLAR"
+  ],
+  "SAN PEDRO DE CASTA": [
+    "IE 20544 JOSE CARLOS MARIATEGUI"
+  ],
+  "CUENCA": [
+    "IE 20629 SAGRADA FAMILIA"
+  ],
+  "CHICLA": [
+    "IE 20547 MANUEL A ODRIA"
+  ],
+  "HUANZA": [
+    "IE 20551 CIRO ALEGRIA"
+  ],
+  "HUAROCHIRI": [
+    "IE SANTA CRUZ"
+  ],
+  "LAHUAYTAMBO": [
+    "IE 20556 FRANCISCO INKA"
+  ],
+  "LANGA": [
+    "IE 20559 SAN JUAN"
+  ],
+  "MARIATANA": [
+    "IE 20573 JUAN PABLO II",
+    "IE 20829 DANIEL ALCIDES CARRION",
+    "IE 20570 DANIEL ALOMIA ROBLES"
+  ],
+  "RICARDO PALMA": [
+    "IE 20955 MONITOR HUASCAR",
+    "IE 20575 JOSE ANTONIO ENCINAS FRANCO"
+  ],
+  "SAN ANDRES DE TUPICOCHA": [
+    "IE 20578 CESAR ABRAHAM VALLEJO"
+  ],
+  "SAN BARTOLOME": [
+    "IE 20581 SAN BARTOLOME"
+  ],
+  "SAN DAMIAN": [
+    "IE VICTOR ANDRES BELAUNDE",
+    "IE 20586 SAN FRANCISCO DE ASIS"
+  ],
+  "SANGALLAYA": [
+    "IE 20674"
+  ],
+  "SAN JUAN DE TANTARANCHE": [
+    "IE 20589 ROSA DE SANTA MARIA",
+    "IE 20653 SAN JUAN BAUTISTA PRECURSOR"
+  ],
+  "SAN LORENZO DE QUINTI": [
+    "IE 20590 SANTA MARIA DE HUANCHAC",
+    "IE 20591 MARIA RECUAY"
+  ],
+  "SAN MATEO": [
+    "IE 20595 JOSE GABRIEL CONDORCANQUI"
+  ],
+  "SAN MATEO DE OTAO": [
+    "IE 20599 JORGE BASADRE"
+  ],
+  "SAN PEDRO DE HUANCAYRE": [
+    "IE 20600 APOSTOL SAN PEDRO"
+  ],
+  "SANTA CRUZ DE COCACHACRA": [
+    "IE 20602 JOSE MARIA ARGUEDAS"
+  ],
+  "SANTA EULALIA": [
+    "IE 20825 TUPAC AMARU II",
+    "IE 20605 VIRGEN DEL CARMEN",
+    "IE SIMON BOLIVAR",
+    "IE 20955 - 25 MERCEDES CABANILLAS BUSTAMANTE"
+  ],
+  "SANTIAGO DE ANCHUCAYA": [
+    "IE 20607 APOSTOL SANTIAGO"
+  ],
+  "SANTIAGO DE TUNA": [
+    "IE 20610 GERVACIO CLEMENTE VALENCIA"
+  ],
+  "SANTO DOMINGO DE LOS OLLEROS": [
+    "IE 20677 JOSE FAUSTINO SANCHEZ CARRION",
+    "IE 20915",
+    "IEI 600 HUALLANCHI",
+    "IE 20840 SANTIAGO ERIK ANTUNEZ DE MAYOLO RYNNING",
+    "IE ROSA GLORIA VASQUEZ CUADRADO"
+  ],
+  "SURCO": [
+    "IE 20615 SAN JERONIMO PRIMARIA",
+    "IE 20615 SAN JERONIMO - SECUNDARIA"
+  ],
+  "HUACHUPAMPA": [
+    "IE 20549"
+  ],
+  "SAN PEDRO DE LARAOS": [
+    "IE 20561"
+  ],
+  "SAN JUAN DE IRIS": [
+    "IE 20588 SAN JUAN DE IRIS"
+  ],
+  "CAJATAMBO": [
+    "IE 20001",
+    "IE OSCAR MIRO QUESADA DE LA GUERRA"
+  ],
+  "COPA": [
+    "IE 20008 HORACIO ZEVALLOS GAMEZ",
+    "IE 20009"
+  ],
+  "GORGOR": [
+    "IE INTEGRADA 20017 HONORIO MANRIQUE NICHO",
+    "IE INTEGRADA ANDRES AVELINO CACERES"
+  ],
+  "HUANCAPON": [
+    "IE INTEGRADA 20012",
+    "IE 20011 CIRO ALEGRIA BAZAN"
+  ],
+  "MANAS": [
+    "IE 20037",
+    "IE SEBASTIAN LUNA SALAZAR"
+  ],
+  "HUACHO": [
+    "IE 20827 MERCEDES INDACOCHEA LOZANO",
+    "IE 20325 SAN JOSE DE MANZANARES",
+    "IEP COLUMBIA",
+    "IE PARROQUIAL NUESTRA SEÑORA DE LA ANUNCIACION",
+    "UNIVERSIDAD NACIONAL JOSE FAUSTINO SANCHEZ CARRION",
+    "CEBE 01 SAN JUDAS TADEO",
+    "IE 20986 SAN MARTIN DE PORRAS",
+    "IE 20318 JOSE ANTONIO MACNAMARA",
+    "IE PEDRO E PAULET",
+    "CENTRO DE EDUCACION TECNICO PRODUCTIVA HUACHO"
+  ],
+  "AMBAR": [
+    "IE 20311 NUESTRA SEÑORA DE LA ASUNCION SECUNDARIA",
+    "IE 20311 NUESTRA SEÑORA DE LA ASUNCION PRIMARIA"
+  ],
+  "CALETA DE CARQUIN": [
+    "IEI 329",
+    "IE 20314",
+    "IE JOSE OLAYA BALANDRA"
+  ],
+  "CHECRAS": [
+    "IE 20105 MARAY"
+  ],
+  "HUALMAY": [
+    "IE 20326",
+    "IE 20331 656 PASITOS DE JESUS",
+    "IE PARROQUIAL LICEO ESPAÑOL SAN JUAN BAUTISTA",
+    "IE 20329 JOSE CARLOS MARIATEGUI",
+    "IE 20983 JULIO C TELLO"
+  ],
+  "HUAURA": [
+    "IEI 461 MEDALLITA MILAGROSA",
+    "IE 20830 HEROES DEL CENEPA",
+    "IEI PARROQUIAL 653 SAN JOSE",
+    "IE 20332 REINO DE SUECIA",
+    "IE 20334 GENERALISIMO DON JOSE DE SAN MARTIN",
+    "IE 20366 TUPAC AMARU II",
+    "IE 20335 NUESTRA SEÑORA DEL CARMEN",
+    "IE CORONEL PEDRO PORTILLO SILVA",
+    "IE 20786 VICTOR RAUL HAYA DE LA TORRE",
+    "IE 21536 EL INGENIO",
+    "IEP SAN ANTONIO ABAD PRIMARIA"
+  ],
+  "LEONCIO PRADO": [
+    "IE 20338 SANTA CRUZ",
+    "IE 20337"
+  ],
+  "PACCHO": [
+    "IE 20085",
+    "IE 20118 LACSANGA"
+  ],
+  "SANTA LEONOR": [
+    "IE 20086 CORONEL LEONCIO PRADO",
+    "IE 20091 – SAN MARTÍN DE PORRES"
+  ],
+  "SANTA MARIA": [
+    "IE EMBLEMATICA LUIS FABIO XAMMAR JURADO",
+    "IE 20346 SAN LORENZO",
+    "IE 21013 CORONEL JUAN VALER SANDOVAL",
+    "IE AGROPECUARIO 15",
+    "IE 20341 MADRE TERESA DE CALCUTA",
+    "IE 20343 666",
+    "IE 20374 SAN BARTOLOME",
+    "IE 21007 FELIX B CARDENAS",
+    "IE 20871 JULIO OCTAVIO REYES MOUNIER"
+  ],
+  "SAYAN": [
+    "CETI ANDAHUASI",
+    "IE 21544 HORACIO ZEBALLOS GAMEZ",
+    "IE 20351 JESUS ELIAS IPINZE JORDAN",
+    "IE MANUEL TOVAR Y CHAMORRO",
+    "IE 20849 JOSE FAUSTINO SANCHEZ CARRION PRIMARIA"
+  ],
+  "VEGUETA": [
+    "IE 20357 CESAR VALLEJO MENDOZA",
+    "IE 20356 JESUS OBRERO",
+    "IE 20354 MANUEL EMILIO SCORZA TORRES",
+    "IE FRAY MELCHOR APONTE",
+    "IE 20359 REYNA DE LA PAZ",
+    "IEI 647 INT 21003 SAN ISIDRO"
+  ],
+  "BARRANCA": [
+    "IE 20480 SANTA CATALINA",
+    "IE 21581 DECISION CAMPESINA",
+    "IEI 322",
+    "IE EMBLEMATICA VENTURA CCALAMAQUI",
+    "IE 20478",
+    "IE 20528 VIRGEN DEL CARMEN",
+    "IE 20475",
+    "IE 21011 VIRGEN DE LOURDES",
+    "IE GUILLERMO ENRIQUE BILLINGHURST",
+    "IEP NUESTRA SEÑORA DE GUADALUPE",
+    "UNIVERSIDAD NACIONAL DE BARRANCA",
+    "IE 21012",
+    "IE FE Y ALEGRIA",
+    "CEGNE LAS PALMAS NUEVA ESPERANZA EIRL"
+  ],
+  "PARAMONGA": [
+    "IE 20503 JOSE CARLOS MARIATEGUI",
+    "IE MIGUEL GRAU",
+    "IE 21578",
+    "CEP DIVINO CORAZON DE JESUS",
+    "IE 20987 VICTOR RAUL HAYA DE LA TORRE",
+    "IEI 06",
+    "IE 21577"
+  ],
+  "PATIVILCA": [
+    "IE 20504 SAN JERONIMO",
+    "IE 20501 SANTA ROSA",
+    "IE 20505",
+    "IE 20832",
+    "IE LIBERTADOR SIMON BOLIVAR",
+    "IE 21575"
+  ],
+  "SUPE": [
+    "IE 20517",
+    "IE 20520",
+    "IE 20519 VICTOR ARMANDO PINEDA TAGLE",
+    "IE 20523 CORAZON DE JESUS",
+    "IE 20522"
+  ],
+  "SUPE PUERTO": [
+    "IE JOSE OLAYA BALANDRA",
+    "IE PEDRO RUIZ GALLO",
+    "IEP SAN JUDAS TADEO",
+    "IE 20524",
+    "IE 20525"
+  ],
+  "OYON": [
+    "IEE 20066 SIMON BOLIVAR PRIMARIA",
+    "IE LIBERTADOR JOSE DE SAN MARTIN",
+    "IE EMBLEMATICA 20066 SIMON BOLIVAR SECUNDARIA"
+  ],
+  "NAVAN": [
+    "IE 20058 JOSE CARLOS MARIATEGUI",
+    "IE 20060 SAN MIGUEL"
+  ],
+  "CAUJUL": [
+    "IE 20045 SAN JUAN BAUTISTA",
+    "IE 20095 SEBASTIAN SALAZAR BONDY"
+  ],
+  "ANDAJES": [
+    "IE 20042 JUVENAL TORRES ZUÑIGA"
+  ],
+  "PACHANGARA": [
+    "IE 20075",
+    "IE 21502 - 1 RAUL PORRAS BARRENECHEA",
+    "IE 21502 SEÑOR DE LOS MILAGROS",
+    "IE 20112 MERCEDES CABANILLAS BUSTAMANTE",
+    "IEI AÑOS MARAVILLOSOS"
+  ],
+  "COCHAMARCA": [
+    "IE 20050 SAN JUAN DE YARUCAYA",
+    "IE 20049 COLCAPAMPA",
+    "IE 20047 SANTO TOMÁS DE COCHAMARCA"
+  ],
   "INDEPENDENCIA": [
     "IE 2054 NUESTRA SEÑORA DE FATIMA",
     "IE 3053 VIRGEN DEL CARMEN",
@@ -342,24 +824,6 @@ export const COLEGIOS_REALES = {
     "IEP LUZ DE MARIA",
     "IEP SEÑOR DE GUALAMITA",
     "IEI 56 NUESTRA SEÑORA MARIA AUXILIADORA"
-  ],
-  "SAN LUIS": [
-    "IE 0082 LA CANTUTA",
-    "IE 0083 SAN JUAN MACIAS - PRIMARIA",
-    "IE 0083 SAN JUAN MACIAS",
-    "IE 1128 SAN LUIS",
-    "IE 1133 SANTISIMA VIRGEN DE FATIMA",
-    "IE 1204 VILLA JARDIN",
-    "IE 1216 MIGUEL GRAU SEMINARIO",
-    "IE LOS EDUCADORES",
-    "IEP MELVIN JONES",
-    "IE ESPECIAL - PAENFTS",
-    "IEP SANTA MARIA DE LA MERCED",
-    "IEP NAZARENO",
-    "IEP JESUS EL BUEN PASTOR",
-    "CETPRO SAN LUIS",
-    "IEP SACO OLIVEROS - SAN LUIS",
-    "IEP SACO OLIVEROS SECUNDARIA – SAN LUIS"
   ],
   "JESUS MARIA": [
     "CONCHA ACUSTICA DEL CAMPO DE MARTE",
@@ -965,7 +1429,8 @@ export const COLEGIOS_REALES = {
     "COLEGIO DE INGENIEROS DEL PERU - CONSEJO NACIONAL",
     "COLEGIO MEDICO DEL PERU",
     "SANTUARIO DEL COLEGIO MEDICO DE LIMA",
-    "COLEGIO DE ABOGADOS DE LIMA"
+    "COLEGIO DE ABOGADOS DE LIMA",
+    "IE 20713"
   ],
   "SURQUILLO": [
     "CASA DEL ADULTO MAYOR I",
@@ -1242,6 +1707,7 @@ export const COLEGIOS_REALES = {
     "IEP BARBARA D´ACHILLE SCHOOL",
     "IEP MANUEL ASCENCIO SEGURA",
     "IEP CORAZÓN DE JESÚS",
+    "IEP CORAZON DE JESUS",
     "IEP MATEMATICO SAN DIEGO",
     "IEP GENES DE LOS OLIVOS",
     "IEP ALEXANDER VON HUMBOLDT",
@@ -1819,6 +2285,7 @@ export const COLEGIOS_REALES = {
     "IE CORONEL JUAN VALER SANDOVAL",
     "IEI 347 LUIS ENRIQUE XII",
     "IEP SAN MIGUEL ARCÁNGEL",
+    "IEP SAN AGUSTÍN DE ANTARES",
     "IEP ANGELITOS DE MI TERRUÑO",
     "IEP BERNARDO BOULAY TURNER",
     "COLEGIOS MATER DEI",
@@ -2013,118 +2480,117 @@ export const COLEGIOS_REALES = {
     "IE 6004 SANTIAGO ANTUNEZ DE MAYOLO SECUNDARIA",
     "IEP MILITARIZADO MAX UHLE - CALIFORNIA",
     "IEP INNOVA SCHOOLS - VES VALLEJO"
+  ],
+  "YAUYOS": [
+    "IE SANTO DOMINGO"
+  ],
+  "ALIS": [
+    "IE 20681"
+  ],
+  "ALLAUCA": [
+    "IE 20688",
+    "IE 20683 SANTO DOMINGO"
+  ],
+  "AYAVIRI": [
+    "IE NUESTRA SEÑORA DEL ROSARIO"
+  ],
+  "AZANGARO": [
+    "IE 20126"
+  ],
+  "CACRA": [
+    "IE 20693 SAN PEDRO"
+  ],
+  "CARANIA": [
+    "IE 20694 APOSTOL SANTIAGO"
+  ],
+  "COCHAS": [
+    "IE 20761"
+  ],
+  "COLONIA": [
+    "IE 20720 SANTA MARIA MAGDALENA",
+    "IE 20771 BETHANIA",
+    "IE 20717 SAN PEDRO DE CUSI",
+    "IE 20723 - QUISQUE"
+  ],
+  "CHOCOS": [
+    "IE INTEGRADO 20137 SAN CRISTOBAL DE CHOCOS",
+    "IEI 598-4 PUEBLO NUEVO DE CHOCOS"
+  ],
+  "HUAMPARA": [
+    "IE 20699"
+  ],
+  "HUANCAYA": [
+    "IE 20703",
+    "IE 20701 TUPAC AMARU"
+  ],
+  "HUANGASCAR": [
+    "IE  20140"
+  ],
+  "HUANTAN": [
+    "IE 20763 PEDRO ANTONIO TUPIÑO",
+    "IE SAN FRANCISCO DE ASIS"
+  ],
+  "HUAÑEC": [
+    "IE JULIO JIMENEZ PORRAS"
+  ],
+  "LARAOS": [
+    "IE SANTO DOMINGO",
+    "IE 20765 - LANGAICO"
+  ],
+  "LINCHA": [
+    "IE INTEGRADO 20712 SANTA ANA DE TANA",
+    "IE 20711 JOSE MARIA ARGUEDAS"
+  ],
+  "OMAS": [
+    "IE SAN JERONIMO DE OMAS"
+  ],
+  "QUINCHES": [
+    "IE APOSTOL SANTIAGO QUINCHES"
+  ],
+  "QUINOCAY": [
+    "IEI 598",
+    "IE 20728 ESPERANZA RAMOS VDA DE MENDOZA"
+  ],
+  "SAN JOAQUIN": [
+    "IE 20774 SAN JOAQUIN"
+  ],
+  "SAN PEDRO DE PILAS": [
+    "IE SAN PEDRO DE PILAS"
+  ],
+  "TANTA": [
+    "IE SAN ANTONIO"
+  ],
+  "TAURIPAMPA": [
+    "IE 20734"
+  ],
+  "TUPE": [
+    "IE 20740 AIZA",
+    "IE INTEGRADO SAN BARTOLOME"
+  ],
+  "TOMAS": [
+    "IE SANTISIMA TRINIDAD"
+  ],
+  "VIÑAC": [
+    "IE 20253 BUENOS AIRES",
+    "IE INTEGRADO 20868 JOSE ABELARDO QUIÑONES GONZALES",
+    "IE INTEGRADO 20196 SAN MIGUEL ARCANGEL",
+    "IE SANTIAGO DE VIÑAC"
+  ],
+  "VITIS": [
+    "IE 20745 APOSTOL SANTIAGO"
+  ],
+  "HONGOS": [
+    "IE INTEGRADO AGROPECUARIO 20697 TUPAC AMARU"
+  ],
+  "MADEAN": [
+    "IE 20155 MADEAN",
+    "IE 20234 SANTA ROSA"
+  ],
+  "PUTINZA": [
+    "IE INTEGRADO 20725 SAN LORENZO DE PUTINZA"
+  ],
+  "CATAHUASI": [
+    "IE 20741 SEÑOR DE LOS MILAGROS",
+    "IEI 20780 SAC CANCHAN"
   ]
-};
-
-export const COLEGIOS_GPS_MAP = {
-  'IE 0024 PEDRO ENRIQUE GONZALES SOTO': { lat: -12.0254, lon: -76.9189, distrito: 'Ate' },
-  'IE 0026 AICHI NAGOYA': { lat: -12.0260, lon: -76.9195, distrito: 'Ate' },
-  'IE 0032 RAUL PORRAS BARRENECHEA': { lat: -12.0270, lon: -76.9210, distrito: 'Ate' },
-  'IE 0074 FERNANDO BELAUNDE TERRY': { lat: -12.0280, lon: -76.9220, distrito: 'Ate' },
-  'IE 3069 GENERALISIMO JOSE DE SAN MARTIN': { lat: -11.7745, lon: -77.1550, distrito: 'Ancón' },
-  'IE 2066 ALMIRANTE MIGUEL GRAU': { lat: -11.7750, lon: -77.1560, distrito: 'Ancón' },
-  'IE EMBLEMATICA GUADALUPE': { lat: -12.0463, lon: -77.0427, distrito: 'Lima' },
-  'IE JUANA ALARCO DE D script': { lat: -12.1245, lon: -77.0260, distrito: 'Miraflores' },
-  'IE MANUEL POLO JIMENEZ': { lat: -12.1400, lon: -76.9900, distrito: 'Surco' }
-};
-
-export function buscarColegioPorMesa(mesaNum, mesasEstructura = [], cachedUsers = [], currentUser = null) {
-  if (!mesaNum) return null;
-  const mesaStr = mesaNum.toString().trim();
-  const cleanMesa = mesaStr.replace(/\D/g, '');
-  if (!cleanMesa) return null;
-
-  const paddedMesa = cleanMesa.padStart(6, '0');
-  const unpaddedMesa = cleanMesa.replace(/^0+/, '') || cleanMesa;
-
-  // 1. Verificar si coincide con la mesa asignada del usuario activo
-  if (currentUser) {
-    const userMesa = (currentUser.mesa || currentUser.mesa_de_sufragio || currentUser.mesa_asignada || '').toString().trim().replace(/\D/g, '');
-    const userPadded = userMesa ? userMesa.padStart(6, '0') : '';
-    const userUnpadded = userMesa ? userMesa.replace(/^0+/, '') : '';
-
-    if (userMesa && (userMesa === cleanMesa || userPadded === paddedMesa || userUnpadded === unpaddedMesa)) {
-      const userCol = currentUser.colegio || currentUser.local || currentUser.local_de_votacion;
-      const userDist = currentUser.ubicacion || currentUser.distrito || currentUser.distrito_donde_vota || currentUser.distrito_asignado || 'Lima';
-      if (userCol) {
-        return {
-          colegio: userCol,
-          distrito: userDist
-        };
-      }
-    }
-  }
-
-  // 2. Buscar en la tabla mesas (mesasEstructura desde PostgreSQL)
-  if (Array.isArray(mesasEstructura) && mesasEstructura.length > 0) {
-    const found = mesasEstructura.find(m => {
-      const raw = (m.numero_mesa || m.mesa || '').toString().trim();
-      const num = raw.replace(/\D/g, '');
-      const pNum = num.padStart(6, '0');
-      const uNum = num.replace(/^0+/, '') || num;
-      return (
-        num === cleanMesa ||
-        pNum === paddedMesa ||
-        uNum === unpaddedMesa ||
-        raw.toLowerCase() === mesaStr.toLowerCase()
-      );
-    });
-    if (found && (found.colegio || found.local)) {
-      return {
-        colegio: found.colegio || found.local,
-        distrito: found.distrito || found.ubicacion || 'Lima'
-      };
-    }
-  }
-
-  // 3. Buscar en el padrón de usuarios / rpersoneros (cachedUsers)
-  if (Array.isArray(cachedUsers) && cachedUsers.length > 0) {
-    const foundUser = cachedUsers.find(u => {
-      const raw = (u.mesa || u.mesa_de_sufragio || u.mesa_asignada || u.Mesa || '').toString().trim();
-      const num = raw.replace(/\D/g, '');
-      const pNum = num.padStart(6, '0');
-      const uNum = num.replace(/^0+/, '') || num;
-      return (
-        num === cleanMesa ||
-        pNum === paddedMesa ||
-        uNum === unpaddedMesa ||
-        raw.toLowerCase() === mesaStr.toLowerCase()
-      );
-    });
-    if (foundUser && (foundUser.colegio || foundUser.local_de_votacion || foundUser.local_de_votacion_asignado || foundUser.Colegio)) {
-      return {
-        colegio: foundUser.colegio || foundUser.local_de_votacion || foundUser.local_de_votacion_asignado || foundUser.Colegio,
-        distrito: foundUser.ubicacion || foundUser.distrito_donde_vota || foundUser.distrito_asignado || foundUser.Distrito || 'Lima'
-      };
-    }
-  }
-
-  // 4. Mapeo estándar de mesas conocidas
-  const MESA_MAP = {
-    '063769': { colegio: 'IE 0024 PEDRO ENRIQUE GONZALES SOTO', distrito: 'Ate' },
-    '63769': { colegio: 'IE 0024 PEDRO ENRIQUE GONZALES SOTO', distrito: 'Ate' },
-    '037163': { colegio: 'IE 0024 PEDRO ENRIQUE GONZALES SOTO', distrito: 'Ate' },
-    '37163': { colegio: 'IE 0024 PEDRO ENRIQUE GONZALES SOTO', distrito: 'Ate' },
-    '037175': { colegio: 'IE 0026 AICHI NAGOYA', distrito: 'Ate' },
-    '37175': { colegio: 'IE 0026 AICHI NAGOYA', distrito: 'Ate' },
-    '037187': { colegio: 'IE 0032 RAUL PORRAS BARRENECHEA', distrito: 'Ate' },
-    '37187': { colegio: 'IE 0032 RAUL PORRAS BARRENECHEA', distrito: 'Ate' },
-    '037207': { colegio: 'IE 0074 FERNANDO BELAUNDE TERRY', distrito: 'Ate' },
-    '37207': { colegio: 'IE 0074 FERNANDO BELAUNDE TERRY', distrito: 'Ate' },
-    '036999': { colegio: 'IE 3069 GENERALISIMO JOSE DE SAN MARTIN', distrito: 'Ancón' },
-    '36999': { colegio: 'IE 3069 GENERALISIMO JOSE DE SAN MARTIN', distrito: 'Ancón' },
-    '037020': { colegio: 'IE 2066 ALMIRANTE MIGUEL GRAU', distrito: 'Ancón' },
-    '37020': { colegio: 'IE 2066 ALMIRANTE MIGUEL GRAU', distrito: 'Ancón' },
-    '010001': { colegio: 'IE EMBLEMATICA GUADALUPE', distrito: 'Lima' },
-    '10001': { colegio: 'IE EMBLEMATICA GUADALUPE', distrito: 'Lima' },
-    '020001': { colegio: 'IE JUANA ALARCO DE D script', distrito: 'Miraflores' },
-    '20001': { colegio: 'IE JUANA ALARCO DE D script', distrito: 'Miraflores' },
-    '030001': { colegio: 'IE MANUEL POLO JIMENEZ', distrito: 'Surco' },
-    '30001': { colegio: 'IE MANUEL POLO JIMENEZ', distrito: 'Surco' },
-    '578858': { colegio: 'IE 2025 INMACULADA CONCEPCION', distrito: 'Los Olivos' },
-    '057885': { colegio: 'IE 2025 INMACULADA CONCEPCION', distrito: 'Los Olivos' },
-    '123456': { colegio: 'Colegio San Jose', distrito: 'Surco' }
-  };
-
-  return MESA_MAP[cleanMesa] || MESA_MAP[paddedMesa] || MESA_MAP[unpaddedMesa] || null;
 }

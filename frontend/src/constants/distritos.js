@@ -1,49 +1,48 @@
-// --- LISTA DE DISTRITOS DE LIMA METROPOLITANA ---
+// --- LISTA DE DISTRITOS DE LIMA METROPOLITANA (DATA NUEVA OFICIAL) ---
 export const DISTRITOS_LIMA = [
-  "Lima",
-  "Cercado de Lima",
-  "San Juan de Lurigancho",
-  "Ancón",
-  "Ate",
-  "Barranco",
-  "Breña",
-  "Carabayllo",
-  "Chaclacayo",
-  "Chorrillos",
-  "Cieneguilla",
-  "Comas",
-  "El Agustino",
-  "Independencia",
-  "Jesús María",
-  "La Molina",
-  "La Victoria",
-  "Lince",
-  "Los Olivos",
-  "Lurigancho-Chosica",
-  "Lurín",
-  "Magdalena del Mar",
-  "Miraflores",
-  "Pachacámac",
-  "Pucusana",
-  "Pueblo Libre",
-  "Puente Piedra",
-  "Punta Hermosa",
-  "Punta Negra",
-  "Rímac",
-  "San Bartolo",
-  "San Borja",
-  "San Isidro",
-  "San Juan de Miraflores",
-  "San Luis",
-  "San Martín de Porres",
-  "San Miguel",
-  "Santa Anita",
-  "Santa María del Mar",
-  "Santa Rosa",
-  "Santiago de Surco",
-  "Surquillo",
-  "Villa El Salvador",
-  "Villa María del Triunfo"
+  "BREÑA",
+  "CARABAYLLO",
+  "CHORRILLOS",
+  "BARRANCO",
+  "INDEPENDENCIA",
+  "LA MOLINA",
+  "LA VICTORIA",
+  "SAN LUIS",
+  "JESUS MARIA",
+  "LIMA",
+  "ATE",
+  "EL AGUSTINO",
+  "ANCON",
+  "PUENTE PIEDRA",
+  "SANTA ROSA",
+  "COMAS",
+  "RIMAC",
+  "LINCE",
+  "MAGDALENA DEL MAR",
+  "SAN ISIDRO",
+  "MIRAFLORES",
+  "SURQUILLO",
+  "SANTIAGO DE SURCO",
+  "LURIN",
+  "PACHACAMAC",
+  "PUCUSANA",
+  "PUNTA HERMOSA",
+  "PUNTA NEGRA",
+  "SAN BARTOLO",
+  "SANTA MARIA DEL MAR",
+  "CIENEGUILLA",
+  "VILLA MARIA DEL TRIUNFO",
+  "LOS OLIVOS",
+  "CHACLACAYO",
+  "LURIGANCHO",
+  "PUEBLO LIBRE",
+  "SAN BORJA",
+  "SAN JUAN DE LURIGANCHO",
+  "SAN JUAN DE MIRAFLORES",
+  "SAN MARTIN DE PORRES",
+  "SAN MIGUEL",
+  "SANTA ANITA",
+  "VILLA EL SALVADOR"
 ];
 
 // --- CANDIDATOS A ALCALDES POR DISTRITO ---
@@ -122,8 +121,8 @@ export function obtenerCandidatosPorUbicacion(ubicacion) {
   ];
 
   let seed = 0;
-  for (let i = 0; i < ubicacion.length; i++) {
-    seed += ubicacion.charCodeAt(i);
+  for (let i = 0; i < (ubicacion || 'Lima').length; i++) {
+    seed += (ubicacion || 'Lima').charCodeAt(i);
   }
 
   const generarNombre = (indicePartida) => {
@@ -269,44 +268,4 @@ export function obtenerNombreRealPartido(name, currentDistrict) {
   }
 
   return null;
-}
-
-export function generarLocalesYMesas(distrito) {
-  let seed = 0;
-  for (let i = 0; i < distrito.length; i++) {
-    seed += distrito.charCodeAt(i);
-  }
-  
-  const prefijos = ["I.E. Emblema", "I.E.", "Colegio Nacional", "Complejo Educativo", "I.E. Particular"];
-  const nombres = [
-    "Juana Alarco", "Fe y Alegría N° 25", "Mercedes Cabello", "Antenor Orrego", "Daniel A. Carrión",
-    "Ricardo Palma", "Túpac Amaru", "Alfonso Ugarte", "San Juan Bautista", "Coronel Bolognesi",
-    "José María Arguedas", "Ramón Castilla", "Nuestra Sra. de la Merced", "Miguel Grau", "Jorge Basadre"
-  ];
-  
-  const numLocales = 4 + (seed % 5);
-  const locales = [];
-  
-  for (let i = 0; i < numLocales; i++) {
-    const prefIdx = (seed + i * 11) % prefijos.length;
-    const nomIdx = (seed + i * 17) % nombres.length;
-    const sufijo = (seed + i * 3) % 2 === 0 ? ` N° ${(seed + i * 23) % 400 + 100}` : "";
-    
-    const schoolName = `${prefijos[prefIdx]} ${nombres[nomIdx]}${sufijo}`;
-    
-    const numMesas = 4 + (seed + i * 7) % 8;
-    const mesas = [];
-    
-    const baseMesa = 110000 + ((seed * 17 + i * 59) % 80000);
-    for (let m = 0; m < numMesas; m++) {
-      mesas.push(baseMesa + m);
-    }
-    
-    locales.push({
-      nombre: schoolName,
-      mesas: mesas
-    });
-  }
-  
-  return locales;
 }
