@@ -1,14 +1,76 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-export const PartyLogo = ({ partyKey, partyId, size = 32, className = '' }) => {
+const PARTY_IMAGE_MAP = {
+  'SOMOS PERU': '/images/SOMOSPERU.jpg',
+  'SP': '/images/SOMOSPERU.jpg',
+  'RENOVACION': '/images/RENOVACIONPOPULAR.jpg',
+  'RENOVACION POPULAR': '/images/RENOVACIONPOPULAR.jpg',
+  'RP': '/images/RENOVACIONPOPULAR.jpg',
+  'AHORA NACION': '/images/AHORANACION.jpg',
+  'AN': '/images/AHORANACION.jpg',
+  'AVANZA PAIS': '/images/AVANZAPAIS.jpg',
+  'AVANZA': '/images/AVANZAPAIS.jpg',
+  'PODEMOS': '/images/Logo_Podemos_Perú.png',
+  'PODEMOS PERU': '/images/Logo_Podemos_Perú.png',
+  'JP': '/images/Logo_juntos_por_el_Peru.svg.webp',
+  'JUNTOS POR EL PERU': '/images/Logo_juntos_por_el_Peru.svg.webp',
+  'OBRAS': '/images/PARTIDOCIVICOOBRAS.png',
+  'PARTIDO CIVICO OBRAS': '/images/PARTIDOCIVICOOBRAS.png',
+  'FREPAP': '/images/FREPAP.jpg',
+  'ACCION POPULAR': '/images/ACCIONPOPULAR.jpg',
+  'AP': '/images/ACCIONPOPULAR.jpg',
+  'VENCEREMOS': '/images/Logo_Alianza_Electoral_Venceremos.png',
+  'AEV': '/images/Logo_Alianza_Electoral_Venceremos.png',
+  'ALIANZA ELECTORAL VENCEREMOS': '/images/Logo_Alianza_Electoral_Venceremos.png',
+  'MORADO': '/images/PARTIDOMORADO.jpg',
+  'PARTIDO MORADO': '/images/PARTIDOMORADO.jpg',
+  'PM': '/images/PARTIDOMORADO.jpg'
+};
+
+export const PartyLogo = ({ partyKey, partyId, size = 36, className = '' }) => {
+  const [hasError, setHasError] = useState(false);
   const normKey = (partyKey || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
-  // Render SVG Symbol according to party
+  const imageSrc = PARTY_IMAGE_MAP[normKey];
+
+  if (imageSrc && !hasError) {
+    return (
+      <div
+        className={`party-logo-wrapper ${className}`}
+        style={{
+          width: `${size}px`,
+          height: `${size}px`,
+          borderRadius: '8px',
+          overflow: 'hidden',
+          backgroundColor: '#ffffff',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.25)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          flexShrink: 0
+        }}
+        title={partyKey}
+      >
+        <img
+          src={imageSrc}
+          alt={partyKey}
+          onError={() => setHasError(true)}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover'
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Fallback a símbolo vectorial para partidos restantes (o si falla la carga)
   const renderSymbol = () => {
     switch (normKey) {
       case 'SOMOS PERU':
       case 'SP':
-        // Corazón de Somos Perú
         return (
           <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
             <rect width="36" height="36" rx="8" fill="#1e3a8a" />
@@ -24,7 +86,6 @@ export const PartyLogo = ({ partyKey, partyId, size = 32, className = '' }) => {
 
       case 'RENOVACION':
       case 'RP':
-        // R Celeste / Sol de Renovación Popular
         return (
           <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
             <rect width="36" height="36" rx="8" fill="#0284c7" />
@@ -37,103 +98,10 @@ export const PartyLogo = ({ partyKey, partyId, size = 32, className = '' }) => {
           </svg>
         );
 
-      case 'AHORA NACION':
-      case 'AN':
-        // Ahora Nación - Sol naranja y franjas
-        return (
-          <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
-            <rect width="36" height="36" rx="8" fill="#ea580c" />
-            <circle cx="18" cy="18" r="13" fill="#fb923c" />
-            <path d="M18 7l2 4 4.5.5-3.5 3 1 4.5-4-2.5-4 2.5 1-4.5-3.5-3 4.5-.5z" fill="#ffffff" />
-            <text x="18" y="27" textAnchor="middle" fill="#ffffff" fontSize="8" fontWeight="900" fontFamily="sans-serif">AN</text>
-          </svg>
-        );
-
-      case 'AVANZA PAIS':
-      case 'AVANZA':
-        // Tren / Locomotora de Avanza País
-        return (
-          <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
-            <rect width="36" height="36" rx="8" fill="#1e293b" />
-            <rect x="9" y="11" width="18" height="13" rx="2" fill="#0284c7" stroke="#ffffff" strokeWidth="1" />
-            <rect x="12" y="13" width="5" height="4" fill="#f8fafc" />
-            <rect x="19" y="13" width="5" height="4" fill="#f8fafc" />
-            <circle cx="13" cy="25" r="2.5" fill="#ef4444" stroke="#ffffff" strokeWidth="0.8" />
-            <circle cx="23" cy="25" r="2.5" fill="#ef4444" stroke="#ffffff" strokeWidth="0.8" />
-            <path d="M16 8h4v3h-4z" fill="#f59e0b" />
-          </svg>
-        );
-
-      case 'PODEMOS':
-      case 'PODEMOS PERU':
-        // Letra P tricolor de Podemos
-        return (
-          <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
-            <rect width="36" height="36" rx="8" fill="#b91c1c" />
-            <circle cx="18" cy="18" r="14" fill="#dc2626" />
-            <path
-              d="M12 9h7a6 6 0 0 1 6 6 6 6 0 0 1-6 6h-3.5v6H12V9zm3.5 3.2v5.6h3.2c1.6 0 2.8-1.2 2.8-2.8s-1.2-2.8-2.8-2.8h-3.2z"
-              fill="#ffffff"
-            />
-            <path d="M19 12.2a2.8 2.8 0 0 1 2.8 2.8c0 1.6-1.2 2.8-2.8 2.8" fill="#0284c7" opacity="0.4" />
-          </svg>
-        );
-
-      case 'JP':
-      case 'JUNTOS POR EL PERU':
-        // JP - Sol verde y letras
-        return (
-          <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
-            <rect width="36" height="36" rx="8" fill="#15803d" />
-            <circle cx="18" cy="18" r="13" fill="#22c55e" />
-            <path d="M18 8l1.5 3 3.5.5-2.5 2.5.5 3.5-3-1.8-3 1.8.5-3.5-2.5-2.5 3.5-.5z" fill="#eab308" />
-            <text x="18" y="27" textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="900" fontFamily="sans-serif">JP</text>
-          </svg>
-        );
-
-      case 'OBRAS':
-      case 'PARTIDO CIVICO OBRAS':
-        // Pala / Herramienta de Obras
-        return (
-          <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
-            <rect width="36" height="36" rx="8" fill="#c2410c" />
-            <path d="M11 25l7-7 2 2-7 7z" fill="#ffffff" />
-            <path d="M18 16l4-4 4 4-4 4z" fill="#facc15" stroke="#ffffff" strokeWidth="1" />
-            <circle cx="10" cy="26" r="2" fill="#ffffff" />
-            <text x="18" y="32" textAnchor="middle" fill="#ffffff" fontSize="6.5" fontWeight="900">OBRAS</text>
-          </svg>
-        );
-
-      case 'FREPAP':
-        // Pez bíblico de FREPAP
-        return (
-          <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
-            <rect width="36" height="36" rx="8" fill="#1d4ed8" />
-            <circle cx="18" cy="18" r="13" fill="#eab308" />
-            <path
-              d="M8 18c3-4 10-6 16-3 2 1 4 3 6 4-2 1-4 3-6 4-6 3-13 1-16-3zm18-1a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"
-              fill="#1e3a8a"
-            />
-          </svg>
-        );
-
-      case 'ACCION POPULAR':
-      case 'AP':
-        // Lampa de Acción Popular
-        return (
-          <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
-            <rect width="36" height="36" rx="8" fill="#dc2626" />
-            <path d="M18 6l6 7h-4v9h-4v-9h-4l6-7z" fill="#ffffff" />
-            <rect x="16" y="22" width="4" height="8" fill="#ffffff" />
-            <text x="18" y="33" textAnchor="middle" fill="#ffffff" fontSize="6.5" fontWeight="900">AP</text>
-          </svg>
-        );
-
       case 'ESPERANZA':
       case 'FE':
       case 'FRENTE DE LA ESPERANZA':
       case 'FRENTE DE LA ESPERANZA 2021':
-        // La escoba de Frente de la Esperanza
         return (
           <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
             <rect width="36" height="36" rx="8" fill="#15803d" />
@@ -145,22 +113,9 @@ export const PartyLogo = ({ partyKey, partyId, size = 32, className = '' }) => {
           </svg>
         );
 
-      case 'VENCEREMOS':
-      case 'AEV':
-      case 'ALIANZA ELECTORAL VENCEREMOS':
-        // V de Victoria Venceremos
-        return (
-          <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
-            <rect width="36" height="36" rx="8" fill="#b91c1c" />
-            <path d="M11 9l7 14 7-14h-4l-3 7-3-7z" fill="#ffffff" />
-            <circle cx="18" cy="27" r="2.5" fill="#facc15" />
-          </svg>
-        );
-
       case 'VISION PERU':
       case 'VP':
       case 'VISION':
-        // Ojo / Sol Visión Perú
         return (
           <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
             <rect width="36" height="36" rx="8" fill="#0369a1" />
@@ -172,7 +127,6 @@ export const PartyLogo = ({ partyKey, partyId, size = 32, className = '' }) => {
 
       case 'APRA':
       case 'PARTIDO APRISTA PERUANO':
-        // Estrella Roja Aprista
         return (
           <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
             <rect width="36" height="36" rx="8" fill="#ffffff" stroke="#dc2626" strokeWidth="2" />
@@ -185,7 +139,6 @@ export const PartyLogo = ({ partyKey, partyId, size = 32, className = '' }) => {
 
       case 'FP':
       case 'FUERZA POPULAR':
-        // Letra K naranja de Fuerza Popular
         return (
           <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
             <rect width="36" height="36" rx="8" fill="#ea580c" />
@@ -200,7 +153,6 @@ export const PartyLogo = ({ partyKey, partyId, size = 32, className = '' }) => {
       case 'PPC':
       case 'PARTIDO POPULAR CRISTIANO':
       case 'PARTIDO POPULAR CRISTIANO (PPC)':
-        // Mapa / Letras verdes del PPC
         return (
           <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
             <rect width="36" height="36" rx="8" fill="#15803d" />
@@ -211,7 +163,6 @@ export const PartyLogo = ({ partyKey, partyId, size = 32, className = '' }) => {
 
       case 'PROGRESEMOS':
       case 'PROG':
-        // Flecha ascendente Progresemos
         return (
           <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
             <rect width="36" height="36" rx="8" fill="#0f766e" />
@@ -220,25 +171,9 @@ export const PartyLogo = ({ partyKey, partyId, size = 32, className = '' }) => {
           </svg>
         );
 
-      case 'MORADO':
-      case 'PM':
-      case 'PARTIDO MORADO':
-        // M Morada del Partido Morado
-        return (
-          <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
-            <rect width="36" height="36" rx="8" fill="#6b21a8" />
-            <circle cx="18" cy="18" r="14" fill="#7e22ce" />
-            <path
-              d="M10 26V10h4l4 7.5 4-7.5h4v16h-3.5v-10l-4.5 7.5h-1l-4.5-7.5v10H10z"
-              fill="#ffffff"
-            />
-          </svg>
-        );
-
       case 'BUEN GOBIERNO':
       case 'PBG':
       case 'PARTIDO DEL BUEN GOBIERNO':
-        // Balanza y sol de Buen Gobierno
         return (
           <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
             <rect width="36" height="36" rx="8" fill="#1e3a8a" />
@@ -250,7 +185,6 @@ export const PartyLogo = ({ partyKey, partyId, size = 32, className = '' }) => {
       case 'VERDE':
       case 'PDV':
       case 'PARTIDO DEMOCRATA VERDE':
-        // Hoja ecológica verde
         return (
           <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
             <rect width="36" height="36" rx="8" fill="#166534" />
@@ -266,7 +200,6 @@ export const PartyLogo = ({ partyKey, partyId, size = 32, className = '' }) => {
 
       case 'PERU LIBRE':
       case 'PL':
-        // El lápiz de Perú Libre
         return (
           <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
             <rect width="36" height="36" rx="8" fill="#dc2626" />
@@ -279,7 +212,6 @@ export const PartyLogo = ({ partyKey, partyId, size = 32, className = '' }) => {
       case 'TIERRA VERDE':
       case 'CTTV':
       case 'COALICION TRANSFORMADORA TIERRA VERDE':
-        // Planta de Tierra Verde
         return (
           <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
             <rect width="36" height="36" rx="8" fill="#14532d" />
@@ -290,7 +222,6 @@ export const PartyLogo = ({ partyKey, partyId, size = 32, className = '' }) => {
 
       case 'PUEBLO CONSCIENTE':
       case 'PC':
-        // Sol naciente y montaña
         return (
           <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
             <rect width="36" height="36" rx="8" fill="#7c2d12" />
@@ -301,7 +232,6 @@ export const PartyLogo = ({ partyKey, partyId, size = 32, className = '' }) => {
 
       case 'PPP':
       case 'PARTIDO PATRIOTICO DEL PERU':
-        // Escudo patriótico rojo y blanco
         return (
           <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
             <rect width="36" height="36" rx="8" fill="#991b1b" />
@@ -313,7 +243,6 @@ export const PartyLogo = ({ partyKey, partyId, size = 32, className = '' }) => {
       case 'INTEGRIDAD':
       case 'ID':
       case 'INTEGRIDAD DEMOCRATICA':
-        // Balanza de Integridad
         return (
           <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
             <rect width="36" height="36" rx="8" fill="#0f172a" />
@@ -323,7 +252,6 @@ export const PartyLogo = ({ partyKey, partyId, size = 32, className = '' }) => {
 
       case 'FUERZA CIUDADANA':
       case 'FC':
-        // Mano de Fuerza Ciudadana
         return (
           <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
             <rect width="36" height="36" rx="8" fill="#c2410c" />
@@ -334,7 +262,6 @@ export const PartyLogo = ({ partyKey, partyId, size = 32, className = '' }) => {
 
       case 'BATALLA PERU':
       case 'BP':
-        // Casco dorado Batalla Perú
         return (
           <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
             <rect width="36" height="36" rx="8" fill="#1e1b4b" />
@@ -345,7 +272,6 @@ export const PartyLogo = ({ partyKey, partyId, size = 32, className = '' }) => {
 
       case 'APP':
       case 'ALIANZA PARA EL PROGRESO':
-        // La "A" de APP
         return (
           <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
             <rect width="36" height="36" rx="8" fill="#1e3a8a" />
@@ -358,7 +284,6 @@ export const PartyLogo = ({ partyKey, partyId, size = 32, className = '' }) => {
       case 'ALIANZA REGIONAL':
       case 'ARP':
       case 'ALIANZA REGIONAL POR EL PERU':
-        // Mapa regional con sol
         return (
           <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
             <rect width="36" height="36" rx="8" fill="#0369a1" />
@@ -368,7 +293,6 @@ export const PartyLogo = ({ partyKey, partyId, size = 32, className = '' }) => {
         );
 
       default:
-        // Generic fallback symbol
         return (
           <svg viewBox="0 0 36 36" width={size} height={size} className={className}>
             <rect width="36" height="36" rx="8" fill="#334155" />
@@ -396,3 +320,4 @@ export const PartyLogo = ({ partyKey, partyId, size = 32, className = '' }) => {
     </div>
   );
 };
+
