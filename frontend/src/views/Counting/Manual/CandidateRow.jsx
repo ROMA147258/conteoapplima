@@ -1,4 +1,5 @@
 import React from 'react';
+import { PartyLogo } from '../../../components/common/PartyLogo';
 
 export const CandidateRow = ({
   partyKey,
@@ -10,13 +11,12 @@ export const CandidateRow = ({
   onChange,
   isReadOnly = false
 }) => {
-  const badgeText = shortName || partyKey;
   const safePartyId = (partyId || partyKey || 'generico').toLowerCase().replace(/[^a-z0-9]/g, '-');
 
   return (
     <div className={`table-row-grid candidate-row candidate-${safePartyId}`}>
-      <div>
-        <span className={`candidate-party-badge color-badge-${safePartyId}`}>{badgeText}</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <PartyLogo partyKey={partyKey} partyId={safePartyId} size={36} />
       </div>
       <div>
         <div className="candidate-name-text">{candName}</div>
