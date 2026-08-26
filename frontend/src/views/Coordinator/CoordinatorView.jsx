@@ -206,7 +206,11 @@ export const CoordinatorView = () => {
             </div>
             <span className="user-name" style={{ fontSize: '1.1rem', fontWeight: 800 }}>{currentUser?.nombre || 'Coordinador Oficial'}</span>
             <span className="user-info-text" style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-              DNI: <strong style={{ color: '#e2e8f0' }}>{currentUser?.dni || ''}</strong> | Distrito: <strong style={{ color: '#e2e8f0' }}>{currentUser?.ubicacion || 'Lima'}</strong>
+              DNI: <strong style={{ color: '#e2e8f0' }}>{currentUser?.dni || ''}</strong>
+              {(currentUser?.celular || currentUser?.telefono) && (
+                <> • Cel: <strong style={{ color: '#e2e8f0' }}>{currentUser.celular || currentUser.telefono}</strong></>
+              )}
+              {' '}| Distrito: <strong style={{ color: '#e2e8f0' }}>{currentUser?.ubicacion || 'Lima'}</strong>
             </span>
           </div>
         </div>
@@ -444,28 +448,30 @@ export const CoordinatorView = () => {
                   </div>
                 </div>
 
-                {/* Lado Derecho (Al Costado): Ficha del Coordinador Local */}
-                <div style={{
-                  background: 'rgba(15, 23, 42, 0.65)',
-                  border: '1px solid rgba(56, 189, 248, 0.35)',
-                  borderRadius: '12px',
-                  padding: '10px 16px',
-                  minWidth: '220px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-                }}>
-                  <div style={{ fontSize: '0.72rem', color: '#38bdf8', fontWeight: 800, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <User size={13} color="#38bdf8" /> Coordinador Local
-                  </div>
-                  <div style={{ fontSize: '0.96rem', fontWeight: 800, color: '#f8fafc', marginTop: '3px' }}>
-                    {stats.coordLocal?.nombre || 'Pendiente de Asignación'}
-                  </div>
-                  {stats.coordLocal?.dni && (
-                    <div style={{ fontSize: '0.76rem', color: '#94a3b8', marginTop: '2px' }}>
-                      DNI: <strong style={{ color: '#e2e8f0' }}>{stats.coordLocal.dni}</strong>
-                      {stats.coordLocal?.celular ? ` • Cel: ${stats.coordLocal.celular}` : ''}
+                {/* Lado Derecho (Al Costado): Ficha del Coordinador Local (solo visible para Coordinador Zonal) */}
+                {isCoordinadorZonal && (
+                  <div style={{
+                    background: 'rgba(15, 23, 42, 0.65)',
+                    border: '1px solid rgba(56, 189, 248, 0.35)',
+                    borderRadius: '12px',
+                    padding: '10px 16px',
+                    minWidth: '220px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                  }}>
+                    <div style={{ fontSize: '0.72rem', color: '#38bdf8', fontWeight: 800, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <User size={13} color="#38bdf8" /> Coordinador Local
                     </div>
-                  )}
-                </div>
+                    <div style={{ fontSize: '0.96rem', fontWeight: 800, color: '#f8fafc', marginTop: '3px' }}>
+                      {stats.coordLocal?.nombre || 'Pendiente de Asignación'}
+                    </div>
+                    {stats.coordLocal?.dni && (
+                      <div style={{ fontSize: '0.76rem', color: '#94a3b8', marginTop: '2px' }}>
+                        DNI: <strong style={{ color: '#e2e8f0' }}>{stats.coordLocal.dni}</strong>
+                        {stats.coordLocal?.celular ? ` • Cel: ${stats.coordLocal.celular}` : ''}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Estadísticas del Colegio */}

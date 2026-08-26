@@ -564,11 +564,13 @@ class PostgresRepository {
 
     const asisRes = await query('SELECT * FROM asistencia WHERE TRIM(dni) = $1 ORDER BY id DESC LIMIT 1', [dniQuery]);
     const llegadaRes = await query('SELECT * FROM asistenciallegada WHERE TRIM(dni) = $1 ORDER BY id DESC LIMIT 1', [dniQuery]);
-    const votoRes = await query('SELECT * FROM votos_detalle WHERE TRIM(dni) = $1 AND origen = \'MANUAL\' ORDER BY id DESC LIMIT 1', [dniQuery]);
+    const votoManualRes = await query('SELECT * FROM votos_detalle WHERE TRIM(dni) = $1 AND origen = \'MANUAL\' ORDER BY id DESC LIMIT 1', [dniQuery]);
+    const votoImagenRes = await query('SELECT * FROM votos_detalle WHERE TRIM(dni) = $1 AND origen = \'IMAGEN\' ORDER BY id DESC LIMIT 1', [dniQuery]);
 
     const asistencia_confirmada = Boolean(asisRes.rows && asisRes.rows.length > 0);
     const llegada_confirmada = Boolean(llegadaRes.rows && llegadaRes.rows.length > 0);
-    const voto_manual_enviado = Boolean(votoRes.rows && votoRes.rows.length > 0);
+    const voto_manual_enviado = Boolean(votoManualRes.rows && votoManualRes.rows.length > 0);
+    const voto_imagen_enviado = Boolean(votoImagenRes.rows && votoImagenRes.rows.length > 0);
 
     return {
       success: true,
@@ -576,8 +578,10 @@ class PostgresRepository {
       asistencia_confirmada,
       llegada: llegadaRes.rows[0] || null,
       llegada_confirmada,
-      voto_manual: votoRes.rows[0] || null,
-      voto_manual_enviado
+      voto_manual: votoManualRes.rows[0] || null,
+      voto_manual_enviado,
+      voto_imagen: votoImagenRes.rows[0] || null,
+      voto_imagen_enviado
     };
   }
 

@@ -30,7 +30,7 @@ export const CountingView = () => {
     }
   }, [currentUser, setCurrentView]);
 
-  const { currentVotes, ocrVotes, handleVoteChange, transmitVotes, isTransmitting, isManualLocked } = useVotes();
+  const { currentVotes, ocrVotes, handleVoteChange, transmitVotes, isTransmitting, isManualLocked, isOcrLocked } = useVotes();
   const {
     isAttendanceConfirmed, isLlegadaConfirmed,
     validateMesaBeforeAttendance, verifyAttendanceGpsRange,
@@ -251,6 +251,7 @@ export const CountingView = () => {
             onOpenScanner={() => setIsScannerModalOpen(true)}
             onTransmit={() => handleTransmit('IMAGEN')}
             isTransmitting={isTransmitting}
+            isOcrLocked={isOcrLocked}
           />
         )}
       </form>

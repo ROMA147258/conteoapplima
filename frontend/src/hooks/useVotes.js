@@ -15,12 +15,25 @@ export const useVotes = () => {
 
   const [isTransmitting, setIsTransmitting] = useState(false);
 
+  // Bloqueo de Conteo Manual (solo 1 vez)
   const [isManualLocked, setIsManualLocked] = useState(() => {
     if (currentUser?.dni) {
       if (currentUser?.voto_manual_enviado !== undefined) {
         return Boolean(currentUser.voto_manual_enviado);
       }
       const local = localStorage.getItem(`votoReal_manualLocked_${currentUser.dni}`);
+      return local === 'true';
+    }
+    return false;
+  });
+
+  // Bloqueo de Conteo por Imagen / OCR (solo 1 vez)
+  const [isOcrLocked, setIsOcrLocked] = useState(() => {
+    if (currentUser?.dni) {
+      if (currentUser?.voto_imagen_enviado !== undefined) {
+        return Boolean(currentUser.voto_imagen_enviado);
+      }
+      const local = localStorage.getItem(`votoReal_ocrLocked_${currentUser.dni}`);
       return local === 'true';
     }
     return false;
@@ -35,17 +48,26 @@ export const useVotes = () => {
       try {
         const res = await apiPost({ action: 'obtener_asistencia_por_dni', dni: currentUser.dni }, apiUrl);
         if (res && res.success && isMounted) {
-          const dbVotoEnviado = Boolean(res.voto_manual_enviado);
-          setIsManualLocked(dbVotoEnviado);
-          if (dbVotoEnviado) {
+          // 1. Voto Manual
+          const dbVotoManual = Boolean(res.voto_manual_enviado);
+          setIsManualLocked(dbVotoManual);
+          if (dbVotoManual) {
             localStorage.setItem(`votoReal_manualLocked_${currentUser.dni}`, 'true');
           } else {
-            // Si fue borrado de votos_detalle, desbloquear y limpiar localStorage
             localStorage.removeItem(`votoReal_manualLocked_${currentUser.dni}`);
+          }
+
+          // 2. Voto Imagen / OCR
+          const dbVotoImagen = Boolean(res.voto_imagen_enviado);
+          setIsOcrLocked(dbVotoImagen);
+          if (dbVotoImagen) {
+            localStorage.setItem(`votoReal_ocrLocked_${currentUser.dni}`, 'true');
+          } else {
+            localStorage.removeItem(`votoReal_ocrLocked_${currentUser.dni}`);
           }
         }
       } catch (e) {
-        console.warn('[useVotes] Error sincronizando votos manuales desde BD:', e);
+        console.warn('[useVotes] Error sincronizando estado de votos desde BD:', e);
       }
     };
 
@@ -70,8 +92,14 @@ export const useVotes = () => {
   const transmitVotes = async (mesaVal, colegioInput, ubicacion, origen = 'MANUAL') => {
     if (isTransmitting) return;
 
+    // Validación de Bloqueo Único
     if (origen === 'MANUAL' && isManualLocked) {
-      showToast('El conteo manual ya fue transmitido y se encuentra bloqueado.', 'warning');
+      showToast('El conteo manual ya fue transmitido y se encuentra bloqueado (solo 1 envío permitido).', 'warning');
+      return;
+    }
+
+    if (origen === 'IMAGEN' && isOcrLocked) {
+      showToast('El conteo por imagen ya fue transmitido y se encuentra bloqueado (solo 1 envío permitido).', 'warning');
       return;
     }
 
@@ -155,17 +183,24 @@ export const useVotes = () => {
       } else {
         const res = await apiPost(payload, apiUrl);
         if (res && res.success) {
-          showToast('¡Votos registrados y transmitidos con éxito al sistema!', 'success');
+          showToast(`¡Votos de ${origen === 'IMAGEN' ? 'Imagen' : 'Manual'} registrados y transmitidos con éxito!`, 'success');
         } else {
           throw new Error(res?.message || 'Error en transmisión');
         }
       }
 
+      // Bloquear según el origen enviado
       if (origen === 'MANUAL') {
         setIsManualLocked(true);
         if (currentUser?.dni) {
           localStorage.setItem(`votoReal_manualLocked_${currentUser.dni}`, 'true');
           localStorage.setItem(`votoReal_manualLocked_${currentUser.dni}_${mesa}`, 'true');
+        }
+      } else if (origen === 'IMAGEN') {
+        setIsOcrLocked(true);
+        if (currentUser?.dni) {
+          localStorage.setItem(`votoReal_ocrLocked_${currentUser.dni}`, 'true');
+          localStorage.setItem(`votoReal_ocrLocked_${currentUser.dni}_${mesa}`, 'true');
         }
       }
 
@@ -178,8 +213,13 @@ export const useVotes = () => {
         if (currentUser?.dni) {
           localStorage.setItem(`votoReal_manualLocked_${currentUser.dni}`, 'true');
         }
+      } else if (origen === 'IMAGEN') {
+        setIsOcrLocked(true);
+        if (currentUser?.dni) {
+          localStorage.setItem(`votoReal_ocrLocked_${currentUser.dni}`, 'true');
+        }
       }
-      showToast('Votos registrados localmente.', 'success');
+      showToast(`Votos de ${origen === 'IMAGEN' ? 'Imagen' : 'Manual'} registrados localmente.`, 'success');
     } finally {
       setIsTransmitting(false);
     }
@@ -191,6 +231,7 @@ export const useVotes = () => {
     handleVoteChange,
     transmitVotes,
     isTransmitting,
-    isManualLocked
+    isManualLocked,
+    isOcrLocked
   };
 };

@@ -1,19 +1,77 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useApp } from '../../context/AppContext';
-import { ScanLine, ImagePlus, CheckCircle2, FileText, RefreshCw } from 'lucide-react';
+import { 
+  ScanLine, 
+  ImagePlus, 
+  CheckCircle2, 
+  FileText, 
+  RefreshCw, 
+  Send, 
+  Building, 
+  MapPin, 
+  ChevronRight,
+  Layers,
+  Sparkles,
+  Table
+} from 'lucide-react';
 import { analizarImagenGemini, procesarTextoOCR } from '../../services/ocrPipeline';
+import { extractJsonFromString } from '../../utils/helpers';
 
 export const ScannerModal = () => {
-  const { isScannerModalOpen, setIsScannerModalOpen, geminiApiKey, currentUser, setCurrentVotes, setOcrVotes, setOcrRawDetail, showToast } = useApp();
+  const { 
+    isScannerModalOpen, 
+    setIsScannerModalOpen, 
+    geminiApiKey, 
+    currentUser, 
+    setCurrentVotes, 
+    setOcrVotes, 
+    setOcrRawDetail, 
+    showToast 
+  } = useApp();
 
   const [images, setImages] = useState([]);
   const [progress, setProgress] = useState({ show: false, percentage: 0, status: '' });
   const [digitalizedVotes, setDigitalizedVotes] = useState(null);
   const [rawExtractedText, setRawExtractedText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [activeTab, setActiveTab] = useState('PROVINCIAL'); // 'PROVINCIAL' | 'DISTRITAL' | 'TABLE'
+  const [selectedDistrictCol, setSelectedDistrictCol] = useState(() => currentUser?.ubicacion || 'BREÑA');
 
   const fileInputRef = useRef(null);
+
+  // Extraer datos de la tabla si existen en el JSON
+  const detectedTable = useMemo(() => {
+    if (!rawExtractedText) return null;
+    const json = extractJsonFromString(rawExtractedText);
+    if (json && (json.tabla_completa || json.table || json.tabla)) {
+      const t = json.tabla_completa || json.table || json.tabla;
+      const headers = t.columnas || t.headers || [];
+      const rows = t.filas || t.rows || [];
+      return { headers, rows };
+    }
+    return null;
+  }, [rawExtractedText]);
+
+  // Distritos detectados en la tabla para el selector
+  const availableDistricts = useMemo(() => {
+    if (detectedTable && detectedTable.headers) {
+      return detectedTable.headers.filter(h => {
+        const normH = h.toUpperCase().trim();
+        return normH !== 'PARTIDO' && normH !== 'LIMA' && normH !== 'PROVINCIAL' && normH !== 'METROPOLITANA';
+      });
+    }
+    return [currentUser?.ubicacion || 'BREÑA'];
+  }, [detectedTable, currentUser]);
+
+  // Si cambia el distrito seleccionado en la matriz, recalcular votos distritales
+  useEffect(() => {
+    if (detectedTable && detectedTable.rows && selectedDistrictCol) {
+      const userDist = selectedDistrictCol;
+      const recalculated = procesarTextoOCR(rawExtractedText, userDist);
+      setDigitalizedVotes(recalculated);
+    }
+  }, [selectedDistrictCol, detectedTable]);
 
   if (!isScannerModalOpen) return null;
 
@@ -38,29 +96,30 @@ export const ScannerModal = () => {
   const processImages = async (imgList) => {
     if (imgList.length === 0) return;
     setIsProcessing(true);
-    setProgress({ show: true, percentage: 10, status: 'Iniciando escáner...' });
+    setProgress({ show: true, percentage: 10, status: 'Iniciando escáner de acta...' });
 
     try {
-      const userDist = currentUser ? currentUser.ubicacion : 'Lima';
+      const userDist = currentUser ? currentUser.ubicacion : 'BREÑA';
       let combinedRawText = '';
 
       for (let i = 0; i < imgList.length; i++) {
-        const step = Math.round(((i + 1) / imgList.length) * 80);
-        setProgress({ show: true, percentage: 10 + step, status: `Analizando imagen ${i + 1}/${imgList.length}...` });
+        const step = Math.round(((i + 1) / imgList.length) * 75);
+        setProgress({ show: true, percentage: 15 + step, status: `Analizando con IA imagen ${i + 1}/${imgList.length}...` });
         
         const result = await analizarImagenGemini(imgList[i], geminiApiKey, userDist);
         combinedRawText += (combinedRawText ? '\n\n' : '') + result.rawText;
       }
 
-      setProgress({ show: true, percentage: 95, status: 'Calculando votos...' });
+      setProgress({ show: true, percentage: 95, status: 'Calculando votos por jurisdicción...' });
       const parsedVotes = procesarTextoOCR(combinedRawText, userDist);
 
       setRawExtractedText(combinedRawText);
       setDigitalizedVotes(parsedVotes);
       setOcrRawDetail(combinedRawText);
+      setOcrVotes(parsedVotes);
 
-      setProgress({ show: true, percentage: 100, status: '¡Procesamiento completo!' });
-      showToast('Acta escaneada y procesada correctamente.', 'success');
+      setProgress({ show: true, percentage: 100, status: '¡Votos detectados con éxito!' });
+      showToast('Acta procesada: Votos reconocidos listos para revisar y aplicar.', 'success');
     } catch (err) {
       console.error(err);
       showToast('Error durante el procesamiento del acta.', 'error');
@@ -71,10 +130,11 @@ export const ScannerModal = () => {
 
   const handleReparse = () => {
     if (!rawExtractedText.trim()) return;
-    const userDist = currentUser ? currentUser.ubicacion : 'Lima';
+    const userDist = selectedDistrictCol || currentUser?.ubicacion || 'BREÑA';
     const recalculated = procesarTextoOCR(rawExtractedText, userDist);
     setDigitalizedVotes(recalculated);
     setOcrRawDetail(rawExtractedText);
+    setOcrVotes(recalculated);
     showToast('Votos re-calculados a partir del texto actual.', 'success');
   };
 
@@ -98,7 +158,7 @@ export const ScannerModal = () => {
 
     setOcrVotes(digitalizedVotes);
 
-    showToast('Votos del escaneo aplicados exitosamente a la mesa.', 'success');
+    showToast('¡Votos Provinciales y Distritales aplicados exitosamente a la mesa!', 'success');
     setIsScannerModalOpen(false);
   };
 
@@ -110,23 +170,38 @@ export const ScannerModal = () => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  // Calcular totales por sección
+  const totalProv = digitalizedVotes ? Object.values(digitalizedVotes.provincial || {}).reduce((a, b) => a + (Number(b) || 0), 0) : 0;
+  const totalDist = digitalizedVotes ? Object.values(digitalizedVotes.distrital || {}).reduce((a, b) => a + (Number(b) || 0), 0) : 0;
+
   return createPortal(
     <div id="modal-scanner" className="modal active">
-      <div className="modal-content glass" style={{ maxWidth: 'min(94vw, 500px)', width: '100%' }}>
-        <div className="modal-header">
-          <h3>
-            <ScanLine className="inline-icon" size={20} style={{ color: '#a855f7' }} /> Escáner de Acta
-          </h3>
+      <div className="modal-content glass" style={{ maxWidth: 'min(94vw, 560px)', width: '100%', borderRadius: '18px', padding: '20px' }}>
+        
+        {/* Cabecera del Modal */}
+        <div className="modal-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ background: 'rgba(168, 85, 247, 0.15)', padding: '8px', borderRadius: '10px' }}>
+              <ScanLine size={22} color="#c084fc" />
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#f8fafc' }}>
+                Escáner y Reconocimiento de Acta (IA)
+              </h3>
+              <span style={{ fontSize: '0.74rem', color: '#94a3b8' }}>
+                Detecta y separa votos de Lima Metropolitana y Distrital
+              </span>
+            </div>
+          </div>
           <button id="btn-close-scanner" className="btn-icon-close" onClick={() => setIsScannerModalOpen(false)}>
             &times;
           </button>
         </div>
-        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <p className="modal-desc">
-            Sube o toma una foto del Acta electoral. Nuestro sistema analizará los números por capas para digitalizar los votos.
-          </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', width: '100%' }}>
+        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px' }}>
+          
+          {/* Zona de Subida / Captura */}
+          <div style={{ width: '100%' }}>
             <label
               htmlFor="image-upload"
               id="upload-dropzone"
@@ -137,16 +212,20 @@ export const ScannerModal = () => {
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                border: '2px dashed rgba(168, 85, 247, 0.4)',
-                borderRadius: '12px',
-                padding: '25px 10px',
-                background: 'rgba(168, 85, 247, 0.05)',
-                transition: 'background 0.2s'
+                border: '2px dashed rgba(168, 85, 247, 0.45)',
+                borderRadius: '14px',
+                padding: images.length > 0 ? '14px 10px' : '22px 10px',
+                background: 'rgba(168, 85, 247, 0.04)',
+                transition: 'all 0.2s ease'
               }}
             >
-              <ImagePlus size={40} color="#a855f7" style={{ marginBottom: '8px' }} />
-              <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#f1f5f9' }}>Tomar Foto / Subir Imágenes</span>
-              <span style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '4px' }}>Selecciona una o más fotos de tus actas</span>
+              <ImagePlus size={32} color="#c084fc" style={{ marginBottom: '6px' }} />
+              <span style={{ fontWeight: 700, fontSize: '0.88rem', color: '#f1f5f9' }}>
+                {images.length > 0 ? 'Cambiar Foto / Subir Otra Imagen' : 'Tomar Foto del Acta / Subir Imagen'}
+              </span>
+              <span style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>
+                Formatos compatibles: JPG, PNG, WEBP
+              </span>
               <input
                 type="file"
                 id="image-upload"
@@ -159,160 +238,311 @@ export const ScannerModal = () => {
             </label>
           </div>
 
+          {/* Miniaturas de Fotos */}
           {images.length > 0 && (
-            <div id="scan-preview-container" style={{ display: 'flex', width: '100%', flexDirection: 'column', gap: '8px' }}>
+            <div id="scan-preview-container" style={{ display: 'flex', width: '100%', flexDirection: 'column', gap: '6px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <label style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600 }}>Actas Cargadas:</label>
+                <span style={{ fontSize: '0.76rem', color: '#94a3b8', fontWeight: 600 }}>Foto Cargada:</span>
                 <button
                   type="button"
                   id="btn-remove-photo"
                   onClick={clearAll}
                   style={{
-                    background: 'rgba(239, 68, 68, 0.2)',
-                    border: '1px solid rgba(239, 68, 68, 0.4)',
+                    background: 'rgba(239, 68, 68, 0.15)',
+                    border: '1px solid rgba(239, 68, 68, 0.35)',
                     borderRadius: '6px',
                     color: '#fca5a5',
                     fontSize: '0.7rem',
-                    padding: '2px 6px',
+                    padding: '2px 8px',
                     cursor: 'pointer'
                   }}
                 >
-                  Limpiar Todo
+                  Limpiar
                 </button>
               </div>
-              <div
-                id="scan-thumbnails-list"
-                style={{
-                  display: 'flex',
-                  gap: '10px',
-                  overflowX: 'auto',
-                  padding: '4px 0 8px 0',
-                  width: '100%',
-                  scrollbarWidth: 'thin'
-                }}
-              >
+              <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
                 {images.map((img, idx) => (
                   <img
                     key={idx}
                     src={img}
                     alt={`Acta ${idx + 1}`}
-                    style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #a855f7' }}
+                    style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #a855f7' }}
                   />
                 ))}
               </div>
             </div>
           )}
 
+          {/* Barra de Progreso */}
           {progress.show && (
             <div id="scan-progress-container" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', fontWeight: 500 }}>
-                <span id="scan-progress-status" style={{ color: '#a855f7' }}>{progress.status}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', fontWeight: 600 }}>
+                <span id="scan-progress-status" style={{ color: '#c084fc' }}>{progress.status}</span>
                 <span id="scan-progress-percentage" style={{ color: '#94a3b8' }}>{progress.percentage}%</span>
               </div>
-              <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{ width: '100%', height: '7px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', overflow: 'hidden' }}>
                 <div
                   id="scan-progress-bar"
                   style={{
                     width: `${progress.percentage}%`,
                     height: '100%',
                     background: 'linear-gradient(90deg, #a855f7 0%, #7c3aed 100%)',
-                    transition: 'width 0.2s linear'
+                    transition: 'width 0.25s linear'
                   }}
                 />
               </div>
             </div>
           )}
 
+          {/* ════════════════════════════════════════════════════════════════════════ */}
+          {/* RESULTADOS CON PESTAÑAS SEPARADAS (LIMA METROPOLITANA VS DISTRITAL) */}
+          {/* ════════════════════════════════════════════════════════════════════════ */}
           {digitalizedVotes && (
-            <div
-              id="scan-results-scrollable"
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '10px',
-                maxHeight: '380px',
-                overflowY: 'auto',
-                paddingRight: '4px'
-              }}
-            >
-              <div
-                id="scan-results-container"
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '8px',
-                  padding: '10px',
-                  background: 'rgba(15, 23, 42, 0.6)'
-                }}
-              >
-                <h4 style={{ margin: 0, fontSize: '0.82rem', color: '#a855f7', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <CheckCircle2 size={14} color="#22c55e" />
-                  <span>Votos Digitalizados</span>
-                </h4>
-                <div id="scan-results-list" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '0.75rem', marginTop: '4px' }}>
-                  {Object.entries(digitalizedVotes.provincial || {}).map(([p, v]) => (
-                    <div key={`p-${p}`} style={{ color: '#cbd5e1' }}>
-                      <strong style={{ color: '#38bdf8' }}>Prov {p}:</strong> {v} votos
-                    </div>
-                  ))}
-                  {Object.entries(digitalizedVotes.distrital || {}).map(([p, v]) => (
-                    <div key={`d-${p}`} style={{ color: '#cbd5e1' }}>
-                      <strong style={{ color: '#a855f7' }}>Dist {p}:</strong> {v} votos
-                    </div>
-                  ))}
-                </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              
+              {/* Selector de Pestañas (Lima Metropolitana vs Distrital) */}
+              <div style={{ display: 'flex', background: 'rgba(15, 23, 42, 0.8)', padding: '4px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.08)', gap: '4px' }}>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('PROVINCIAL')}
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: activeTab === 'PROVINCIAL' ? 'linear-gradient(135deg, #0284c7, #2563eb)' : 'transparent',
+                    color: activeTab === 'PROVINCIAL' ? '#ffffff' : '#94a3b8',
+                    fontWeight: 700,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <Building size={15} />
+                  <span>1. Lima Metropolitana</span>
+                  <span style={{ fontSize: '0.7rem', background: 'rgba(0,0,0,0.3)', padding: '1px 6px', borderRadius: '4px' }}>
+                    {totalProv}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('DISTRITAL')}
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: activeTab === 'DISTRITAL' ? 'linear-gradient(135deg, #7c3aed, #9333ea)' : 'transparent',
+                    color: activeTab === 'DISTRITAL' ? '#ffffff' : '#94a3b8',
+                    fontWeight: 700,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <MapPin size={15} />
+                  <span>2. Distrital ({selectedDistrictCol})</span>
+                  <span style={{ fontSize: '0.7rem', background: 'rgba(0,0,0,0.3)', padding: '1px 6px', borderRadius: '4px' }}>
+                    {totalDist}
+                  </span>
+                </button>
+
+                {detectedTable && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('TABLE')}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: activeTab === 'TABLE' ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
+                      color: activeTab === 'TABLE' ? '#ffffff' : '#94a3b8',
+                      fontWeight: 700,
+                      fontSize: '0.8rem',
+                      cursor: 'pointer'
+                    }}
+                    title="Ver matriz completa"
+                  >
+                    <Table size={15} />
+                  </button>
+                )}
               </div>
 
-              <div
-                id="scan-raw-text-container"
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '8px',
-                  padding: '10px',
-                  background: 'rgba(15, 23, 42, 0.4)'
-                }}
-              >
-                <h4 style={{ margin: 0, fontSize: '0.78rem', color: '#a855f7', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <FileText size={14} color="#a855f7" />
-                  <span>Texto Extraído (Paso 1: Edita o corrige si es necesario)</span>
-                </h4>
+              {/* CONTENIDO PESTAÑA 1: LIMA METROPOLITANA (PROVINCIAL) */}
+              {activeTab === 'PROVINCIAL' && (
+                <div style={{ background: 'rgba(2, 132, 199, 0.06)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '12px', padding: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#38bdf8', textTransform: 'uppercase' }}>
+                      🏛️ Votos Alcaldía de Lima Metropolitana (Columna LIMA)
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: '#cbd5e1', fontWeight: 700 }}>
+                      Total: <strong style={{ color: '#38bdf8' }}>{totalProv} votos</strong>
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '6px' }}>
+                    {Object.entries(digitalizedVotes.provincial || {}).map(([p, v]) => (
+                      <div
+                        key={`prov-${p}`}
+                        style={{
+                          background: 'rgba(15, 23, 42, 0.65)',
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          borderRadius: '8px',
+                          padding: '6px 10px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#94a3b8' }}>{p}:</span>
+                        <span style={{ fontSize: '0.92rem', fontWeight: 800, color: '#38bdf8' }}>{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* CONTENIDO PESTAÑA 2: DISTRITAL */}
+              {activeTab === 'DISTRITAL' && (
+                <div style={{ background: 'rgba(124, 58, 237, 0.06)', border: '1px solid rgba(168, 85, 247, 0.25)', borderRadius: '12px', padding: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#c084fc', textTransform: 'uppercase' }}>
+                        📍 Votos Distritales:
+                      </span>
+                      {/* Selector de Distrito si hay matriz */}
+                      {availableDistricts.length > 1 && (
+                        <select
+                          value={selectedDistrictCol}
+                          onChange={(e) => setSelectedDistrictCol(e.target.value)}
+                          style={{
+                            background: 'rgba(15, 23, 42, 0.8)',
+                            color: '#c084fc',
+                            border: '1px solid rgba(168, 85, 247, 0.4)',
+                            borderRadius: '6px',
+                            padding: '2px 6px',
+                            fontSize: '0.76rem',
+                            fontWeight: 700
+                          }}
+                        >
+                          {availableDistricts.map((d, idx) => (
+                            <option key={idx} value={d}>{d}</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: '#cbd5e1', fontWeight: 700 }}>
+                      Total: <strong style={{ color: '#c084fc' }}>{totalDist} votos</strong>
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '6px' }}>
+                    {Object.entries(digitalizedVotes.distrital || {}).map(([p, v]) => (
+                      <div
+                        key={`dist-${p}`}
+                        style={{
+                          background: 'rgba(15, 23, 42, 0.65)',
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          borderRadius: '8px',
+                          padding: '6px 10px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#94a3b8' }}>{p}:</span>
+                        <span style={{ fontSize: '0.92rem', fontWeight: 800, color: '#c084fc' }}>{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* CONTENIDO PESTAÑA 3: MATRIZ COMPLETA DETECTADA */}
+              {activeTab === 'TABLE' && detectedTable && (
+                <div style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', padding: '10px', overflowX: 'auto' }}>
+                  <span style={{ fontSize: '0.74rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
+                    Matriz Completa Detectada por la IA:
+                  </span>
+                  <table style={{ width: '100%', fontSize: '0.76rem', borderCollapse: 'collapse', textAlign: 'center' }}>
+                    <thead>
+                      <tr style={{ background: 'rgba(255, 255, 255, 0.06)' }}>
+                        {detectedTable.headers.map((h, i) => (
+                          <th key={i} style={{ padding: '6px 8px', color: '#cbd5e1', fontWeight: 800, border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detectedTable.rows.map((r, i) => (
+                        <tr key={i}>
+                          {Array.isArray(r) ? (
+                            r.map((val, j) => (
+                              <td key={j} style={{ padding: '5px 8px', border: '1px solid rgba(255, 255, 255, 0.05)', color: j === 0 ? '#f8fafc' : '#38bdf8', fontWeight: j === 0 ? 700 : 500 }}>
+                                {val}
+                              </td>
+                            ))
+                          ) : (
+                            Object.values(r).map((val, j) => (
+                              <td key={j} style={{ padding: '5px 8px', border: '1px solid rgba(255, 255, 255, 0.05)', color: j === 0 ? '#f8fafc' : '#38bdf8', fontWeight: j === 0 ? 700 : 500 }}>
+                                {val}
+                              </td>
+                            ))
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Área de JSON / Texto Editable */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <span style={{ fontSize: '0.74rem', color: '#94a3b8', fontWeight: 600 }}>
+                  Respuesta Raw / JSON (Editable):
+                </span>
                 <textarea
                   id="scan-raw-text-content"
                   value={rawExtractedText}
                   onChange={(e) => setRawExtractedText(e.target.value)}
                   style={{
                     width: '100%',
-                    minHeight: '100px',
+                    minHeight: '80px',
+                    maxHeight: '120px',
                     fontFamily: 'monospace',
-                    fontSize: '0.72rem',
+                    fontSize: '0.7rem',
                     color: '#f1f5f9',
-                    background: 'rgba(0,0,0,0.3)',
+                    background: 'rgba(0,0,0,0.35)',
                     padding: '8px',
-                    borderRadius: '6px',
+                    borderRadius: '8px',
                     border: '1px solid rgba(168, 85, 247, 0.3)',
                     outline: 'none',
                     resize: 'vertical'
                   }}
-                  placeholder="El texto extraído aparecerá aquí..."
                 />
                 <button
                   type="button"
                   id="btn-reparse-text"
-                  className="btn btn-secondary"
                   onClick={handleReparse}
                   style={{
-                    marginTop: '6px',
-                    padding: '8px 12px',
-                    fontSize: '0.75rem',
+                    padding: '6px 10px',
+                    fontSize: '0.74rem',
                     borderColor: 'rgba(168, 85, 247, 0.4)',
                     background: 'rgba(168, 85, 247, 0.1)',
                     color: '#c084fc',
-                    width: '100%',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(168, 85, 247, 0.3)',
+                    cursor: 'pointer',
                     fontWeight: 700,
                     display: 'flex',
                     alignItems: 'center',
@@ -320,11 +550,12 @@ export const ScannerModal = () => {
                     gap: '6px'
                   }}
                 >
-                  <RefreshCw size={14} />
-                  <span>Procesar Texto y Calcular Votos</span>
+                  <RefreshCw size={13} />
+                  <span>Recalcular Votos desde Texto</span>
                 </button>
               </div>
 
+              {/* Botón Principal: Aplicar Votos */}
               <button
                 type="button"
                 id="btn-apply-scan"
@@ -332,12 +563,20 @@ export const ScannerModal = () => {
                 onClick={handleApplyVotes}
                 style={{
                   width: '100%',
-                  padding: '10px',
+                  padding: '12px',
                   background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
-                  fontWeight: 700
+                  fontWeight: 800,
+                  fontSize: '0.92rem',
+                  borderRadius: '12px',
+                  boxShadow: '0 4px 14px rgba(168, 85, 247, 0.35)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
                 }}
               >
-                Aplicar Votos
+                <CheckCircle2 size={18} />
+                <span>Aplicar Votos al Formulario (Provincial + Distrital)</span>
               </button>
             </div>
           )}
@@ -347,4 +586,3 @@ export const ScannerModal = () => {
     document.body
   );
 };
-

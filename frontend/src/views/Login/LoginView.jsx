@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { User, IdCard, ArrowRight } from 'lucide-react';
+import { User, IdCard, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
 export const LoginView = () => {
   const { login } = useAuth();
   const [nombre, setNombre] = useState('');
   const [dni, setDni] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -45,18 +46,45 @@ export const LoginView = () => {
           </div>
 
           <div className="input-group">
-            <label htmlFor="login-dni">DNI / Documento</label>
-            <div className="input-wrapper">
+            <label htmlFor="login-dni">DNI / Clave de Acceso</label>
+            <div className="input-wrapper" style={{ position: 'relative' }}>
               <IdCard className="input-icon" size={18} />
               <input
-                type="text"
+                type={showPassword ? "text" : "password"}
                 id="login-dni"
                 value={dni}
                 onChange={(e) => setDni(e.target.value)}
                 placeholder="Ingresa tu DNI de 8 dígitos"
-                autoComplete="off"
+                autoComplete="current-password"
                 maxLength="30"
+                style={{ paddingRight: '44px' }}
               />
+              <button
+                type="button"
+                className="btn-input-action"
+                onClick={() => setShowPassword(prev => !prev)}
+                title={showPassword ? "Ocultar clave" : "Ver clave"}
+                aria-label={showPassword ? "Ocultar clave" : "Ver clave"}
+                tabIndex="-1"
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'transparent',
+                  border: 'none',
+                  color: showPassword ? '#38bdf8' : '#94a3b8',
+                  cursor: 'pointer',
+                  padding: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '6px',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
           </div>
 

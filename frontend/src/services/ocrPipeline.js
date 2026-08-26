@@ -154,164 +154,176 @@ export function autoDetectTipoDocumento(rawText) {
 }
 
 export function procesarTextoOCR(text, currentDistrict = 'ATE') {
-  const lines = text.split('\n');
-  let currentSection = 'provincial';
-  
+  const norm = (s) => (s || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  const userDistNorm = norm(currentDistrict || 'ATE');
+
   const detected = {
-    provincial: { "FP": 0, "JP": 0, "SOMOS PERU": 0, "FREPAP": 0, "VERDE": 0, "MORADO": 0 },
-    distrital: { "FP": 0, "JP": 0, "SOMOS PERU": 0, "FREPAP": 0, "VERDE": 0, "MORADO": 0 }
+    provincial: { "FP": 0, "JP": 0, "SOMOS PERU": 0, "FREPAP": 0, "VERDE": 0, "MORADO": 0, "NULOS": 0, "VACIOS": 0 },
+    distrital: { "FP": 0, "JP": 0, "SOMOS PERU": 0, "FREPAP": 0, "VERDE": 0, "MORADO": 0, "NULOS": 0, "VACIOS": 0 }
   };
 
-  let distritalColIndex = -1;
-  let provincialColIndex = -1;
+  if (!text) return detected;
 
-  for (let i = 0; i < Math.min(lines.length, 12); i++) {
-    const cleanLine = lines[i].toUpperCase().replace(/[\s\-_|]+/g, ' ').trim();
-    if (!cleanLine) continue;
+  const parties = ["FP", "JP", "SOMOS PERU", "FREPAP", "VERDE", "MORADO", "NULOS", "VACIOS"];
 
-    const userDist = currentDistrict.toUpperCase();
-    const hasDistritalKeyword = cleanLine.includes('BREÑA') || cleanLine.includes(userDist) || cleanLine.includes('DISTRITAL') || cleanLine.includes('LOCAL') || cleanLine.includes('BRENA');
-    const hasProvincialKeyword = cleanLine.includes('LIMA') || cleanLine.includes('PROVINCIAL') || cleanLine.includes('METROPOLITANA');
+  const matchPartyKey = (str) => {
+    const s = norm(str).toUpperCase();
+    const firstWord = s.split(/[\s|,\t\-:]+/)[0];
 
-    if (hasDistritalKeyword && hasProvincialKeyword) {
-      let distWord = '';
-      if (cleanLine.includes('BREÑA')) distWord = 'BREÑA';
-      else if (cleanLine.includes('BRENA')) distWord = 'BRENA';
-      else if (cleanLine.includes(userDist)) distWord = userDist;
-      else if (cleanLine.includes('DISTRITAL')) distWord = 'DISTRITAL';
-      else if (cleanLine.includes('LOCAL')) distWord = 'LOCAL';
+    if (firstWord === 'FP' || s.startsWith('FP ') || s.includes('FUERZA POPULAR') || s.startsWith('FUERZA')) return 'FP';
+    if (firstWord === 'JP' || s.startsWith('JP ') || s.includes('JUNTOS POR EL PERU') || s.startsWith('JUNTOS')) return 'JP';
+    if (firstWord === 'SP' || s.includes('SOMOS') || s.startsWith('SP ')) return 'SOMOS PERU';
+    if (s.includes('FREPAP') || s.includes('AGRICOLA')) return 'FREPAP';
+    if (s.includes('VERDE') || s.includes('DEMOCRATA VERDE')) return 'VERDE';
+    if (s.includes('MORADO') || s.includes('PARTIDO MORADO')) return 'MORADO';
+    if (s.includes('NULO') || s.includes('IMPUGNADO') || s.includes('ANULADO')) return 'NULOS';
+    if (s.includes('VACIO') || s.includes('BLANCO') || s.includes('EN BLANCO')) return 'VACIOS';
+    return null;
+  };
 
-      let provWord = '';
-      if (cleanLine.includes('LIMA')) provWord = 'LIMA';
-      else if (cleanLine.includes('PROVINCIAL')) provWord = 'PROVINCIAL';
-      else if (cleanLine.includes('METROPOLITANA')) provWord = 'METROPOLITANA';
+  // 1. Si el texto viene como JSON estructurado de Gemini
+  const parsedDirectJson = extractJsonFromString(text);
+  if (parsedDirectJson && typeof parsedDirectJson === 'object') {
+    // A. Si tiene tabla_completa / table / filas
+    const tableData = parsedDirectJson.tabla_completa || parsedDirectJson.table || parsedDirectJson.tabla;
+    if (tableData && (tableData.rows || tableData.filas || Array.isArray(tableData))) {
+      const headers = (tableData.headers || tableData.columnas || []).map(h => norm(h));
+      const rows = tableData.rows || tableData.filas || (Array.isArray(tableData) ? tableData : []);
 
-      if (distWord && provWord) {
-        const distIndex = cleanLine.indexOf(distWord);
-        const provIndex = cleanLine.indexOf(provWord);
-        if (distIndex < provIndex) {
-          distritalColIndex = 0;
-          provincialColIndex = 1;
-        } else {
-          provincialColIndex = 0;
-          distritalColIndex = 1;
-        }
-        break;
+      let colProvIdx = headers.findIndex(h => h.includes('lima') || h.includes('prov'));
+      let colDistIdx = headers.findIndex(h => h.includes(userDistNorm) || (userDistNorm.includes('brena') && h.includes('bren')) || h.includes('dist'));
+      
+      if (colDistIdx === -1 && headers.length > 2) {
+        colDistIdx = headers.findIndex((h, idx) => idx > 0 && idx !== colProvIdx);
       }
-    }
-  }
 
-  if (distritalColIndex === -1) {
-    let twoNumLines = 0;
-    lines.forEach(line => {
-      const words = line.split(/[\s|\-_:]+/).map(w => w.trim()).filter(w => w.length > 0);
-      let count = 0;
-      words.forEach(w => {
-        const isNumericToken = /^[0-9OoIiLl|ZzEeAaSsGgBbTtDdQq[\](){}/\\_\-]{1,5}$/.test(w) || /\d/.test(w);
-        if (isNumericToken && !isNaN(convertConfusedTextToNumber(w))) {
-          count++;
+      rows.forEach(r => {
+        let pKey = null;
+        let provVal = undefined;
+        let distVal = undefined;
+
+        if (Array.isArray(r)) {
+          pKey = matchPartyKey(r[0]);
+          if (colProvIdx !== -1 && r[colProvIdx] !== undefined) provVal = Number(r[colProvIdx]);
+          if (colDistIdx !== -1 && r[colDistIdx] !== undefined) distVal = Number(r[colDistIdx]);
+        } else if (typeof r === 'object' && r !== null) {
+          const keys = Object.keys(r);
+          const firstKey = keys[0];
+          pKey = matchPartyKey(r[firstKey] || firstKey);
+
+          for (const [k, v] of Object.entries(r)) {
+            const kn = norm(k);
+            if (kn.includes('lima') || kn.includes('prov')) provVal = Number(v);
+            if (kn.includes(userDistNorm) || kn.includes('dist') || (userDistNorm.includes('brena') && kn.includes('bren'))) distVal = Number(v);
+          }
+        }
+
+        if (pKey) {
+          if (!isNaN(provVal) && provVal >= 0) detected.provincial[pKey] = provVal;
+          if (!isNaN(distVal) && distVal >= 0) detected.distrital[pKey] = distVal;
         }
       });
-      if (count >= 2) twoNumLines++;
+
+      const totalCount = Object.values(detected.provincial).reduce((a, b) => a + b, 0) + Object.values(detected.distrital).reduce((a, b) => a + b, 0);
+      if (totalCount > 0) return detected;
+    }
+
+    // B. Si tiene votos.provincial / votos.distrital directos
+    const rawVotos = parsedDirectJson.votos || parsedDirectJson.votes || parsedDirectJson;
+    const prov = rawVotos.provincial || rawVotos.Provincial || rawVotos.PROVINCIAL || rawVotos.lima || rawVotos.Lima || {};
+    const dist = rawVotos.distrital || rawVotos.Distrital || rawVotos.DISTRITAL || rawVotos[userDistNorm] || rawVotos[currentDistrict] || rawVotos.local || {};
+
+    let foundCount = 0;
+    parties.forEach(p => {
+      const findValInObj = (obj) => {
+        if (!obj || typeof obj !== 'object') return undefined;
+        for (const [k, v] of Object.entries(obj)) {
+          if (matchPartyKey(k) === p) {
+            const num = Number(v);
+            if (!isNaN(num) && num >= 0 && num <= 999) return num;
+          }
+        }
+        return undefined;
+      };
+
+      const vProv = findValInObj(prov);
+      if (vProv !== undefined) {
+        detected.provincial[p] = vProv;
+        foundCount++;
+      }
+      const vDist = findValInObj(dist);
+      if (vDist !== undefined) {
+        detected.distrital[p] = vDist;
+        foundCount++;
+      }
     });
-    if (twoNumLines >= 2) {
-      distritalColIndex = 0;
-      provincialColIndex = 1;
+
+    if (foundCount > 0) return detected;
+  }
+
+  // 2. Parseo de Tabla en Texto Plano / Markdown / Matrices Multicolumna
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  
+  let headerColNames = [];
+  let colLimaIndex = -1;
+  let colDistIndex = -1;
+
+  // Buscar línea de encabezado con nombres de distritos / provincias
+  for (let i = 0; i < Math.min(lines.length, 6); i++) {
+    const rawLine = lines[i];
+    const tokens = rawLine.split(/[|,\t\s]{2,}|\t+|\|/).map(t => t.trim()).filter(Boolean);
+    const tokensNorm = tokens.map(t => norm(t));
+
+    const hasLima = tokensNorm.some(t => t === 'lima' || t.includes('lima') || t.includes('prov'));
+    const hasDist = tokensNorm.some(t => t === userDistNorm || t.includes(userDistNorm) || (userDistNorm.includes('brena') && t.includes('bren')) || t.includes('dist'));
+
+    if (hasLima || hasDist || (tokens.length >= 3 && !tokens.some(t => !isNaN(Number(t))))) {
+      headerColNames = tokensNorm;
+      colLimaIndex = tokensNorm.findIndex(t => t === 'lima' || t.includes('lima') || t.includes('prov'));
+      colDistIndex = tokensNorm.findIndex(t => t === userDistNorm || t.includes(userDistNorm) || (userDistNorm.includes('brena') && t.includes('bren')) || t.includes('dist'));
+
+      if (colDistIndex === -1 && headerColNames.length >= 2) {
+        colDistIndex = headerColNames.findIndex((t, idx) => idx !== colLimaIndex && t !== 'partido');
+      }
+      break;
     }
   }
 
+  // Procesar filas de datos
   lines.forEach(line => {
-    const cleanLine = line.toUpperCase().replace(/[|\-_:]+/g, ' ').trim();
-    if (!cleanLine) return;
+    const pKey = matchPartyKey(line);
+    if (!pKey) return;
 
-    if (cleanLine.includes('METROPOLITANA') || cleanLine.includes('LIMA') || cleanLine.includes('PROVINCIAL') || cleanLine.includes('ALIAGA')) {
-      currentSection = 'provincial';
-    } else if (cleanLine.includes('DISTRITAL') || cleanLine.includes('LOCAL') || cleanLine.includes('VIDAL') || cleanLine.includes('AVANZA') || cleanLine.includes('ATE') || cleanLine.includes('BREÑA') || cleanLine.includes('BRENA')) {
-      currentSection = 'distrital';
-    }
+    // Extraer todos los números de la línea
+    const numTokens = line.split(/[|,\t\s]+/)
+      .map(tok => convertConfusedTextToNumber(tok))
+      .filter(n => !isNaN(n) && n >= 0 && n <= 999);
 
-    let matchedMetric = null;
-    if (cleanLine.includes('NULO') || cleanLine.includes('NULOS')) {
-      matchedMetric = 'NULOS';
-    } else if (cleanLine.includes('VACIO') || cleanLine.includes('VACIOS') || cleanLine.includes('BLANCO') || cleanLine.includes('BLANCOS')) {
-      matchedMetric = 'VACIOS';
-    }
+    if (numTokens.length === 0) return;
 
-    if (matchedMetric) {
-      const tokens = cleanLine.split(/[\s|\-_:]+/).map(t => t.trim()).filter(t => t.length > 0);
-      const numbers = tokens
-        .filter(t => /^[0-9OoIiLl|ZzEeAaSsGgBbTt]{1,3}$/.test(t) || /\d/.test(t))
-        .map(convertConfusedTextToNumber)
-        .filter(n => !isNaN(n) && n >= 0 && n <= 999);
-
-      if (numbers.length > 0) {
-        if (distritalColIndex !== -1 && provincialColIndex !== -1 && numbers.length >= 2) {
-          const distVal = numbers[distritalColIndex];
-          const provVal = numbers[provincialColIndex];
-          if (distVal !== undefined) detected.distrital[matchedMetric] = distVal;
-          if (provVal !== undefined) detected.provincial[matchedMetric] = provVal;
-        } else {
-          detected[currentSection][matchedMetric] = numbers[0];
-        }
+    if (headerColNames.length > 0 && numTokens.length >= 2) {
+      if (colLimaIndex !== -1 && numTokens[colLimaIndex] !== undefined) {
+        detected.provincial[pKey] = numTokens[colLimaIndex];
       }
-      return;
-    }
-
-    const matchedParty = obtenerNombreRealPartido(cleanLine, currentDistrict);
-
-    if (matchedParty) {
-      const columnTokens = cleanLine.split(/[|,\t\-_:/\\#]+|\s{2,}/);
-      let numbers = [];
-      columnTokens.forEach(tok => {
-        const cleanTok = tok.trim().replace(/\s+/g, '');
-        if (!cleanTok) return;
-        const num = convertConfusedTextToNumber(cleanTok);
-        if (!isNaN(num) && num >= 0 && num <= 999) {
-          numbers.push(num);
-        }
-      });
-
-      if (numbers.length === 0) {
-        let voteText = cleanLine;
-        voteText = voteText.replace(matchedParty, ' ');
-        const longName = (PARTIDO_NOMBRES_LARGOS[matchedParty] || '').toUpperCase();
-        voteText = voteText.replace(longName, ' ');
-        
-        const candProv = (obtenerCandidatosPorUbicacion("Lima")[matchedParty] || "").toUpperCase();
-        const candDist = (obtenerCandidatosPorUbicacion(currentDistrict)[matchedParty] || "").toUpperCase();
-        if (candProv) voteText = voteText.replace(candProv, ' ');
-        if (candDist) voteText = voteText.replace(candDist, ' ');
-
-        const tokens = voteText.split(/[\s|\-_:]+/).map(t => t.trim()).filter(t => t.length > 0);
-        numbers = tokens
-          .filter(t => /^[0-9OoIiLl|ZzEeAaSsGgBbTt]{1,3}$/.test(t) || /\d/.test(t))
-          .map(convertConfusedTextToNumber)
-          .filter(n => !isNaN(n) && n >= 0 && n <= 999);
+      if (colDistIndex !== -1 && numTokens[colDistIndex] !== undefined) {
+        detected.distrital[pKey] = numTokens[colDistIndex];
       }
-
-      if (numbers.length > 0) {
-        if (distritalColIndex !== -1 && provincialColIndex !== -1 && numbers.length >= 2) {
-          const distVal = numbers[distritalColIndex];
-          const provVal = numbers[provincialColIndex];
-          if (distVal !== undefined && distVal >= 0 && distVal <= 999) {
-            detected.distrital[matchedParty] = distVal;
-          }
-          if (provVal !== undefined && provVal >= 0 && provVal <= 999) {
-            detected.provincial[matchedParty] = provVal;
-          }
-        } else {
-          let lineScope = currentSection;
-          if (cleanLine.includes('ROMERO') || cleanLine.includes('GONZALO') || cleanLine.includes('ALEGRIA') || cleanLine.includes('FORSYTH') || cleanLine.includes('YURI') || cleanLine.includes('NESTOR')) {
-            lineScope = 'provincial';
-          } else if (cleanLine.includes('PATRICIA') || cleanLine.includes('PAREDES') || cleanLine.includes('CHAVEZ') || cleanLine.includes('VICTOR') || cleanLine.includes('ANA') || cleanLine.includes('SONIA') || cleanLine.includes('ROJAS')) {
-            lineScope = 'distrital';
-          }
-          
-          const voteCount = numbers[numbers.length - 1];
-          if (voteCount !== undefined && voteCount >= 0 && voteCount <= 999) {
-            detected[lineScope][matchedParty] = voteCount;
-          }
-        }
+    } else if (numTokens.length >= 2) {
+      // Si vienen 2 números y no hay encabezado explícito: [Distrital, Provincial] o [Provincial, Distrital]
+      const isProvFirst = norm(line).includes('lima') || norm(line).includes('prov');
+      if (isProvFirst) {
+        detected.provincial[pKey] = numTokens[0];
+        detected.distrital[pKey] = numTokens[1];
+      } else {
+        detected.distrital[pKey] = numTokens[0];
+        detected.provincial[pKey] = numTokens[1];
+      }
+    } else if (numTokens.length === 1) {
+      const isProv = norm(line).includes('lima') || norm(line).includes('prov');
+      if (isProv) {
+        detected.provincial[pKey] = numTokens[0];
+      } else {
+        detected.distrital[pKey] = numTokens[0];
       }
     }
   });
@@ -320,18 +332,13 @@ export function procesarTextoOCR(text, currentDistrict = 'ATE') {
 }
 
 export async function analizarImagenGemini(imageSrc, apiKey, currentDistrict = 'Lima') {
-  if (!apiKey) {
-    return {
-      rawText: JSON.stringify({
-        tipoDocumento: "error_temporal",
-        mensaje: "Reconocimiento automático no disponible. Por favor, digita los votos manualmente."
-      }, null, 2),
-      preprocessedDataUrl: imageSrc
-    };
-  }
+  const effectiveKey = apiKey || 
+    (typeof localStorage !== 'undefined' ? localStorage.getItem('votoReal_geminiApiKey') : '') || 
+    (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_GEMINI_API_KEY : '') || 
+    '';
 
-  const base64Image = imageSrc.split(',')[1];
-  const mimeType = imageSrc.split(';')[0].split(':')[1] || 'image/png';
+  const base64Image = imageSrc.includes(',') ? imageSrc.split(',')[1] : imageSrc;
+  const mimeType = imageSrc.includes(';') ? (imageSrc.split(';')[0].split(':')[1] || 'image/jpeg') : 'image/jpeg';
 
   const candidatosProvinciales = obtenerCandidatosPorUbicacion("Lima");
   const candidatosDistritales = obtenerCandidatosPorUbicacion(currentDistrict);
@@ -343,108 +350,163 @@ export async function analizarImagenGemini(imageSrc, apiKey, currentDistrict = '
     .map(([p, n]) => `  - ${p} (${PARTIDO_NOMBRES_LARGOS[p] || p}): ${n}`)
     .join('\n');
 
-  const prompt = `Eres un sistema de conteo electoral peruano. Analiza esta imagen de acta electoral.
+  const prompt = `Eres un sistema experto de conteo electoral peruano. Analiza esta imagen con máxima precisión y extrae los votos exactos por partido.
 
-CONTEXTO DEL SISTEMA:
-Los únicos partidos válidos son (usa EXACTAMENTE estas claves):
-- FP = Fuerza Popular
-- JP = Juntos por el Perú
-- SOMOS PERU = Somos Perú
-- FREPAP = Frepap
-- VERDE = Partido Verde
-- MORADO = Partido Morado
+ESTRUCTURA DE LA TABLA O ACTA ELECTORAL:
+1. Partidos válidos (usa exactamente estas claves):
+   - FP = Fuerza Popular
+   - JP = Juntos por el Perú
+   - SOMOS PERU = Somos Perú
+   - FREPAP = Frepap
+   - VERDE = Partido Demócrata Verde / Verde
+   - MORADO = Partido Morado
+   - NULOS = Votos Nulos
+   - VACIOS = Votos en Blanco / Vacíos
 
-CANDIDATOS PROVINCIALES (Lima Metropolitana):
-${candidatosProvContext}
+2. Mapeo de Columnas:
+   - La columna "LIMA" (o "PROVINCIAL") corresponde a la sección Provincial.
+   - La columna con el distrito "${currentDistrict}" (ej. BREÑA, ATE, LURÍN, etc.) o "DISTRITAL" corresponde a la sección Distrital.
+   - Si la imagen muestra una matriz de múltiples columnas (ej. BREÑA, LIMA, ATE, LURIN), lee cada valor numérico en su intersección fila/columna.
 
-CANDIDATOS DISTRITALES (${currentDistrict}):
-${candidatosDistContext}
+Devuelve ÚNICAMENTE un JSON válido sin Markdown ni explicaciones:
+{
+  "tipoDocumento": "acta_electoral",
+  "votos": {
+    "provincial": {
+      "FP": 0,
+      "JP": 0,
+      "SOMOS PERU": 0,
+      "FREPAP": 0,
+      "VERDE": 0,
+      "MORADO": 0,
+      "NULOS": 0,
+      "VACIOS": 0
+    },
+    "distrital": {
+      "FP": 0,
+      "JP": 0,
+      "SOMOS PERU": 0,
+      "FREPAP": 0,
+      "VERDE": 0,
+      "MORADO": 0,
+      "NULOS": 0,
+      "VACIOS": 0
+    }
+  },
+  "tabla_completa": {
+    "columnas": ["PARTIDO", "LIMA", "${currentDistrict}"],
+    "filas": [
+      {"PARTIDO": "FP", "LIMA": 0, "${currentDistrict}": 0}
+    ]
+  }
+}`;
 
-INSTRUCCIONES:
-1. Si la imagen muestra una tabla con PARTIDOS como filas y DISTRITOS como columnas:
-   - Extrae los votos por partido para cada distrito visible.
-   - Devuelve un JSON con "tipoDocumento": "tabla" y "table": {"headers": [...], "rows": [...]}.
-2. Si la imagen muestra una lista de CANDIDATOS con números:
-   - Devuelve un JSON con "tipoDocumento": "candidatos_votos" y "votos": {"provincial": {}, "distrital": {}}.
-3. Si no reconoces el formato, extrae el texto estructurado.
+  // 1. Si hay effectiveKey, intentar llamada directa a Gemini desde el cliente
+  if (effectiveKey) {
+    const modelsToTry = [
+      "gemini-2.5-flash",
+      "gemini-2.0-flash",
+      "gemini-1.5-flash",
+      "gemini-1.5-flash-latest"
+    ];
 
-REGLAS:
-- Usa SOLO las claves de partido: FP, JP, SOMOS PERU, FREPAP, VERDE, MORADO.
-- No inventes votos. Solo transcribe lo visible en la imagen.
-- Devuelve ÚNICAMENTE JSON válido, sin explicaciones ni Markdown.
-- No uses bloques \`\`\`json.`;
+    for (const modelName of modelsToTry) {
+      const endpointUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${effectiveKey}`;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
 
-  const modelsToTry = [
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash",
-    "gemini-1.5-flash-002"
-  ];
+        const response = await fetch(endpointUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: prompt },
+                  { inlineData: { mimeType, data: base64Image } }
+                ]
+              }
+            ]
+          })
+        });
 
-  let lastError = null;
+        clearTimeout(timeoutId);
 
-  for (const modelName of modelsToTry) {
-    const endpointUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-    try {
-      const response = await fetch(endpointUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: prompt },
-                { inlineData: { mimeType, data: base64Image } }
-              ]
-            }
-          ]
-        })
-      });
+        if (response.ok) {
+          const result = await response.json();
+          const rawText = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+          const parsedJson = extractJsonFromString(rawText);
 
-      if (response.ok) {
-        const result = await response.json();
-        const rawText = result.candidates[0].content.parts[0].text.trim();
-        const parsedJson = extractJsonFromString(rawText);
+          if (parsedJson) {
+            const structuredResult = parsedJson.tipoDocumento ? parsedJson : {
+              tipoDocumento: autoDetectTipoDocumento(JSON.stringify(parsedJson)),
+              ...parsedJson
+            };
+            return {
+              rawText: JSON.stringify(structuredResult, null, 2),
+              preprocessedDataUrl: imageSrc
+            };
+          }
 
-        if (parsedJson) {
-          const structuredResult = parsedJson.tipoDocumento ? parsedJson : {
-            tipoDocumento: autoDetectTipoDocumento(JSON.stringify(parsedJson)),
-            ...parsedJson
-          };
-          return {
-            rawText: JSON.stringify(structuredResult, null, 2),
-            preprocessedDataUrl: imageSrc
-          };
-        }
+          const parsedTables = parseMarkdownTableToJSON(rawText);
+          if (parsedTables && parsedTables.length > 0) {
+            return {
+              rawText: JSON.stringify({
+                tipoDocumento: "tabla",
+                columnas: parsedTables[0].columnas,
+                filas: parsedTables[0].filas
+              }, null, 2),
+              preprocessedDataUrl: imageSrc
+            };
+          }
 
-        const parsedTables = parseMarkdownTableToJSON(rawText);
-        if (parsedTables && parsedTables.length > 0) {
           return {
             rawText: JSON.stringify({
-              tipoDocumento: "tabla",
-              columnas: parsedTables[0].columnas,
-              filas: parsedTables[0].filas
+              tipoDocumento: autoDetectTipoDocumento(rawText),
+              textoExtraido: rawText
             }, null, 2),
             preprocessedDataUrl: imageSrc
           };
         }
+      } catch (err) {
+        console.warn(`[analizarImagenGemini] Error o timeout con modelo ${modelName}:`, err.message);
+      }
+    }
+  }
 
+  // 2. Fallback a través del servidor backend (/api/voto-real con action: procesar_acta_ocr)
+  try {
+    const backendRes = await fetch('/api/voto-real', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'procesar_acta_ocr',
+        imageBase64: base64Image,
+        mimeType: mimeType,
+        prompt: prompt,
+        distrito: currentDistrict
+      })
+    });
+
+    if (backendRes.ok) {
+      const serverData = await backendRes.json();
+      if (serverData && serverData.success && serverData.rawText) {
+        const parsedJson = extractJsonFromString(serverData.rawText);
         return {
-          rawText: JSON.stringify({
-            tipoDocumento: autoDetectTipoDocumento(rawText),
-            textoExtraido: rawText
-          }, null, 2),
+          rawText: parsedJson ? JSON.stringify(parsedJson, null, 2) : serverData.rawText,
           preprocessedDataUrl: imageSrc
         };
       }
-    } catch (err) {
-      lastError = err;
     }
+  } catch (backendErr) {
+    console.warn('[analizarImagenGemini] Error en backend proxy OCR:', backendErr.message);
   }
 
   const errorFallback = {
     tipoDocumento: "error_temporal",
-    mensaje: "No se pudo reconocer el texto del acta con suficiente claridad. Por favor, digita los votos de forma manual o sube una foto más nítida e iluminada."
+    mensaje: "No se pudo conectar con la API de Gemini o el acta no fue nítida. Por favor, verifica tu API Key de Gemini en Configuración o ingresa los votos manualmente."
   };
 
   return {

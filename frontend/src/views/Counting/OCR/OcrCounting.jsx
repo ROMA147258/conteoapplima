@@ -1,5 +1,5 @@
 import React from 'react';
-import { Camera, Shield, Send } from 'lucide-react';
+import { Camera, Shield, Send, Lock, CheckCircle2 } from 'lucide-react';
 import { OcrCandidatesTable } from './OcrCandidatesTable';
 
 export const OcrCounting = ({
@@ -11,33 +11,60 @@ export const OcrCounting = ({
   ocrVotes,
   onOpenScanner,
   onTransmit,
-  isTransmitting
+  isTransmitting,
+  isOcrLocked = false
 }) => {
   return (
     <div id="ocr-table-group" style={{ display: 'flex', flexDirection: 'column', marginTop: '16px' }}>
-      {/* Scan Button at top of OCR Table Group */}
+      
+      {/* Banner Informativo si ya fue transmitido y bloqueado */}
+      {isOcrLocked && (
+        <div
+          style={{
+            background: 'rgba(16, 185, 129, 0.12)',
+            border: '1px solid rgba(16, 185, 129, 0.4)',
+            borderRadius: '10px',
+            padding: '10px 14px',
+            marginBottom: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            color: '#4ade80',
+            fontSize: '0.84rem',
+            fontWeight: 700
+          }}
+        >
+          <CheckCircle2 size={18} color="#4ade80" />
+          <span>🔒 Conteo por Imagen Transmitido con Éxito (Bloqueado)</span>
+        </div>
+      )}
+
+      {/* Botón de Escaneo */}
       <button
         type="button"
         id="btn-scan-acta"
         className="btn btn-secondary btn-block"
         onClick={onOpenScanner}
+        disabled={isOcrLocked}
         style={{
-          background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
-          color: 'white',
+          background: isOcrLocked 
+            ? 'rgba(255, 255, 255, 0.05)' 
+            : 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+          color: isOcrLocked ? '#94a3b8' : 'white',
+          border: isOcrLocked ? '1px solid rgba(255, 255, 255, 0.1)' : 'none',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           gap: '8px',
           fontWeight: 600,
-          border: 'none',
           borderRadius: '8px',
           padding: '10px',
-          cursor: 'pointer',
+          cursor: isOcrLocked ? 'not-allowed' : 'pointer',
           marginBottom: '16px'
         }}
       >
-        <Camera size={18} />
-        <span>Escanear Acta (Tomar Foto)</span>
+        {isOcrLocked ? <Lock size={18} /> : <Camera size={18} />}
+        <span>{isOcrLocked ? 'Acta de Imagen ya Transmitida' : 'Escanear Acta (Tomar Foto)'}</span>
       </button>
 
       <div
@@ -63,14 +90,25 @@ export const OcrCounting = ({
         id="btn-submit-ocr-votes"
         className="btn btn-primary btn-block btn-large-submit mt-4"
         onClick={onTransmit}
-        disabled={isTransmitting}
+        disabled={isTransmitting || isOcrLocked}
         style={{
-          background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
-          borderColor: '#9333ea'
+          background: isOcrLocked 
+            ? 'rgba(16, 185, 129, 0.2)' 
+            : 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+          borderColor: isOcrLocked ? '#10b981' : '#9333ea',
+          color: isOcrLocked ? '#86efac' : '#ffffff',
+          cursor: isOcrLocked ? 'not-allowed' : 'pointer',
+          opacity: isOcrLocked ? 0.9 : 1
         }}
       >
-        <span>Transmitir Votos de Imagen</span>
-        <Send size={18} />
+        <span>
+          {isOcrLocked 
+            ? 'Transmisión por Imagen Realizada ✓' 
+            : isTransmitting 
+            ? 'Transmitiendo Votos...' 
+            : 'Transmitir Votos de Imagen'}
+        </span>
+        {isOcrLocked ? <CheckCircle2 size={18} /> : <Send size={18} />}
       </button>
     </div>
   );
