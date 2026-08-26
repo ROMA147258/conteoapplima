@@ -15,8 +15,8 @@ export const CandidateRow = ({
 
   return (
     <div className={`table-row-grid candidate-row candidate-${safePartyId}`}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <PartyLogo partyKey={partyKey} partyId={safePartyId} size={36} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: '4px' }}>
+        <PartyLogo partyKey={partyKey} partyId={safePartyId} size={42} />
       </div>
       <div>
         <div className="candidate-name-text">{candName}</div>
