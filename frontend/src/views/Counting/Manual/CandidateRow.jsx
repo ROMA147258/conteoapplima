@@ -2,6 +2,7 @@ import React from 'react';
 
 export const CandidateRow = ({
   partyKey,
+  shortName,
   partyId,
   candName,
   partyLong,
@@ -9,14 +10,17 @@ export const CandidateRow = ({
   onChange,
   isReadOnly = false
 }) => {
+  const badgeText = shortName || partyKey;
+  const safePartyId = (partyId || partyKey || 'generico').toLowerCase().replace(/[^a-z0-9]/g, '-');
+
   return (
-    <div className={`table-row-grid candidate-row candidate-${partyId}`}>
+    <div className={`table-row-grid candidate-row candidate-${safePartyId}`}>
       <div>
-        <span className={`candidate-party-badge color-badge-${partyId}`}>{partyKey}</span>
+        <span className={`candidate-party-badge color-badge-${safePartyId}`}>{badgeText}</span>
       </div>
       <div>
         <div className="candidate-name-text">{candName}</div>
-        <div className="candidate-party-name">{partyLong}</div>
+        <div className="candidate-party-name">{partyLong || partyKey}</div>
       </div>
       <div
         className="counter-controller-horizontal"

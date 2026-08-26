@@ -218,6 +218,8 @@ CREATE TABLE IF NOT EXISTS votos_detalle (
     p_morado_votos INT DEFAULT 0,
     p_nulos INT DEFAULT 0,
     p_vacios INT DEFAULT 0,
+    p_blanco INT DEFAULT 0,
+    p_impugnados INT DEFAULT 0,
     p_total_votos INT DEFAULT 0,
     
     d_fp_candidato VARCHAR(150),
@@ -234,6 +236,8 @@ CREATE TABLE IF NOT EXISTS votos_detalle (
     d_morado_votos INT DEFAULT 0,
     d_nulos INT DEFAULT 0,
     d_vacios INT DEFAULT 0,
+    d_blanco INT DEFAULT 0,
+    d_impugnados INT DEFAULT 0,
     d_total_votos INT DEFAULT 0,
 
     CONSTRAINT uq_mesa_origen UNIQUE (numero_mesa, origen)

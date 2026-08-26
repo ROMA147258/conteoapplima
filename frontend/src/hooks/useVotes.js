@@ -3,7 +3,12 @@ import { useApp } from '../context/AppContext';
 import { apiPost } from '../services/api/apiClient';
 import { offlineQueue } from '../services/sync/offlineQueue';
 import { isCountingTimeEnabled } from '../utils/helpers';
-import { obtenerCandidatosPorUbicacion, PARTIDO_ID_MAP } from '../constants/distritos';
+import {
+  obtenerCandidatosPorUbicacion,
+  obtenerListaCandidatosProvincial,
+  obtenerListaCandidatosDistrital,
+  PARTIDO_ID_MAP
+} from '../constants/distritos';
 
 export const useVotes = () => {
   const {
@@ -122,39 +127,46 @@ export const useVotes = () => {
     setIsTransmitting(true);
 
     const votesToSubmit = (origen === 'IMAGEN') ? ocrVotes : currentVotes;
-    const candProv = obtenerCandidatosPorUbicacion('Lima');
-    const candDist = obtenerCandidatosPorUbicacion(ubicacion || 'Lima');
+    const provCandidates = obtenerListaCandidatosProvincial();
+    const distCandidates = obtenerListaCandidatosDistrital(ubicacion || 'Lima');
 
     // Estructurar votos provinciales y distritales con candidatos y dígitos asegurados
     const formattedProv = {};
     const formattedDist = {};
 
-    Object.keys(PARTIDO_ID_MAP).forEach(partyKey => {
-      const rawProvVal = votesToSubmit.provincial?.[partyKey];
+    provCandidates.forEach(cand => {
+      const rawProvVal = votesToSubmit.provincial?.[cand.key];
       const pVotes = typeof rawProvVal === 'object' 
         ? (parseInt(rawProvVal?.votos, 10) || 0) 
         : (parseInt(rawProvVal, 10) || 0);
 
-      formattedProv[partyKey] = {
-        candidato: candProv[partyKey] || '',
+      formattedProv[cand.key] = {
+        candidato: cand.candidato || '',
+        organizacion: cand.organizacion || cand.partyLong || '',
         votos: pVotes
       };
+    });
 
-      const rawDistVal = votesToSubmit.distrital?.[partyKey];
+    distCandidates.forEach(cand => {
+      const rawDistVal = votesToSubmit.distrital?.[cand.key];
       const dVotes = typeof rawDistVal === 'object' 
         ? (parseInt(rawDistVal?.votos, 10) || 0) 
         : (parseInt(rawDistVal, 10) || 0);
 
-      formattedDist[partyKey] = {
-        candidato: candDist[partyKey] || '',
+      formattedDist[cand.key] = {
+        candidato: cand.candidato || '',
+        organizacion: cand.organizacion || cand.partyLong || '',
         votos: dVotes
       };
     });
 
     const pNulos = parseInt(votesToSubmit.provincial?.NULOS, 10) || 0;
-    const pVacios = parseInt(votesToSubmit.provincial?.VACIOS, 10) || 0;
+    const pBlanco = parseInt(votesToSubmit.provincial?.BLANCO ?? votesToSubmit.provincial?.VACIOS, 10) || 0;
+    const pImpugnados = parseInt(votesToSubmit.provincial?.IMPUGNADOS, 10) || 0;
+
     const dNulos = parseInt(votesToSubmit.distrital?.NULOS, 10) || 0;
-    const dVacios = parseInt(votesToSubmit.distrital?.VACIOS, 10) || 0;
+    const dBlanco = parseInt(votesToSubmit.distrital?.BLANCO ?? votesToSubmit.distrital?.VACIOS, 10) || 0;
+    const dImpugnados = parseInt(votesToSubmit.distrital?.IMPUGNADOS, 10) || 0;
 
     const payload = {
       action: 'registrar_votos',
@@ -171,9 +183,13 @@ export const useVotes = () => {
         distrital: formattedDist
       },
       votos_nulos: pNulos,
-      votos_vacios: pVacios,
+      votos_blancos: pBlanco,
+      votos_vacios: pBlanco,
+      votos_impugnados: pImpugnados,
       votos_dist_nulos: dNulos,
-      votos_dist_vacios: dVacios
+      votos_dist_blancos: dBlanco,
+      votos_dist_vacios: dBlanco,
+      votos_dist_impugnados: dImpugnados
     };
 
     try {

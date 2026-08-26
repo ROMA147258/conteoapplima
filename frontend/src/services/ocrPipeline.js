@@ -158,26 +158,60 @@ export function procesarTextoOCR(text, currentDistrict = 'ATE') {
   const userDistNorm = norm(currentDistrict || 'ATE');
 
   const detected = {
-    provincial: { "FP": 0, "JP": 0, "SOMOS PERU": 0, "FREPAP": 0, "VERDE": 0, "MORADO": 0, "NULOS": 0, "VACIOS": 0 },
-    distrital: { "FP": 0, "JP": 0, "SOMOS PERU": 0, "FREPAP": 0, "VERDE": 0, "MORADO": 0, "NULOS": 0, "VACIOS": 0 }
+    provincial: { "FP": 0, "JP": 0, "SOMOS PERU": 0, "FREPAP": 0, "VERDE": 0, "MORADO": 0, "RENOVACION": 0, "AHORA NACION": 0, "AVANZA PAIS": 0, "PODEMOS": 0, "OBRAS": 0, "ACCION POPULAR": 0, "ESPERANZA": 0, "VENCEREMOS": 0, "VISION PERU": 0, "APRA": 0, "PPC": 0, "PROGRESEMOS": 0, "BUEN GOBIERNO": 0, "PERU LIBRE": 0, "TIERRA VERDE": 0, "PUEBLO CONSCIENTE": 0, "PPP": 0, "INTEGRIDAD": 0, "FUERZA CIUDADANA": 0, "BATALLA PERU": 0, "APP": 0, "ALIANZA REGIONAL": 0, "BLANCO": 0, "NULOS": 0, "IMPUGNADOS": 0, "VACIOS": 0 },
+    distrital: { "FP": 0, "JP": 0, "SOMOS PERU": 0, "FREPAP": 0, "VERDE": 0, "MORADO": 0, "RENOVACION": 0, "AHORA NACION": 0, "AVANZA PAIS": 0, "PODEMOS": 0, "OBRAS": 0, "ACCION POPULAR": 0, "ESPERANZA": 0, "VENCEREMOS": 0, "VISION PERU": 0, "APRA": 0, "PPC": 0, "PROGRESEMOS": 0, "BUEN GOBIERNO": 0, "PERU LIBRE": 0, "TIERRA VERDE": 0, "PUEBLO CONSCIENTE": 0, "PPP": 0, "INTEGRIDAD": 0, "FUERZA CIUDADANA": 0, "BATALLA PERU": 0, "APP": 0, "ALIANZA REGIONAL": 0, "BLANCO": 0, "NULOS": 0, "IMPUGNADOS": 0, "VACIOS": 0 }
   };
 
   if (!text) return detected;
 
-  const parties = ["FP", "JP", "SOMOS PERU", "FREPAP", "VERDE", "MORADO", "NULOS", "VACIOS"];
+  const parties = [
+    "SOMOS PERU", "RENOVACION", "AHORA NACION", "AVANZA PAIS", "PODEMOS", "JP",
+    "OBRAS", "FREPAP", "ACCION POPULAR", "ESPERANZA", "VENCEREMOS", "VISION PERU",
+    "APRA", "FP", "PPC", "PROGRESEMOS", "MORADO", "BUEN GOBIERNO", "VERDE",
+    "PERU LIBRE", "TIERRA VERDE", "PUEBLO CONSCIENTE", "PPP", "INTEGRIDAD",
+    "FUERZA CIUDADANA", "BATALLA PERU", "APP", "ALIANZA REGIONAL",
+    "BLANCO", "NULOS", "IMPUGNADOS"
+  ];
 
   const matchPartyKey = (str) => {
+    if (!str) return null;
     const s = norm(str).toUpperCase();
-    const firstWord = s.split(/[\s|,\t\-:]+/)[0];
 
-    if (firstWord === 'FP' || s.startsWith('FP ') || s.includes('FUERZA POPULAR') || s.startsWith('FUERZA')) return 'FP';
-    if (firstWord === 'JP' || s.startsWith('JP ') || s.includes('JUNTOS POR EL PERU') || s.startsWith('JUNTOS')) return 'JP';
-    if (firstWord === 'SP' || s.includes('SOMOS') || s.startsWith('SP ')) return 'SOMOS PERU';
-    if (s.includes('FREPAP') || s.includes('AGRICOLA')) return 'FREPAP';
-    if (s.includes('VERDE') || s.includes('DEMOCRATA VERDE')) return 'VERDE';
-    if (s.includes('MORADO') || s.includes('PARTIDO MORADO')) return 'MORADO';
-    if (s.includes('NULO') || s.includes('IMPUGNADO') || s.includes('ANULADO')) return 'NULOS';
-    if (s.includes('VACIO') || s.includes('BLANCO') || s.includes('EN BLANCO')) return 'VACIOS';
+    if (s.includes('IMPUGNAD')) return 'IMPUGNADOS';
+    if (s.includes('VACIO') || s.includes('BLANCO') || s.includes('EN BLANCO')) return 'BLANCO';
+    if (s.includes('NULO') || s.includes('ANULADO')) return 'NULOS';
+
+    if (s.includes('RENOVACION') || s.includes('LOPEZ ALIAGA') || s.includes('ACOSTA CAJALEON')) return 'RENOVACION';
+    if (s.includes('AHORA NACION') || s.includes('SUSEL') || s.includes('CABELLO ACOSTA')) return 'AHORA NACION';
+    if (s.includes('AVANZA') || s.includes('ALLISON') || s.includes('COMBINA') || s.includes('CASAS')) return 'AVANZA PAIS';
+    if (s.includes('PODEMOS') || s.includes('URRESTI') || s.includes('AMAYA')) return 'PODEMOS';
+    if (s.includes('OBRAS') || s.includes('BELMONT')) return 'OBRAS';
+    if (s.includes('ACCION POPULAR') || s.includes('TEJADA') || s.includes('CHACON') || s.includes('ARANA')) return 'ACCION POPULAR';
+    if (s.includes('ESPERANZA') || s.includes('LEON CHINCHAY') || s.includes('SILVA MONTERO')) return 'ESPERANZA';
+    if (s.includes('VENCEREMOS') || s.includes('ALVARADO')) return 'VENCEREMOS';
+    if (s.includes('VISION') || s.includes('ABARCA') || s.includes('CAVERO')) return 'VISION PERU';
+    if (s.includes('APRA') || s.includes('APRISTA') || s.includes('YAYA') || s.includes('MUNOZ')) return 'APRA';
+    if (s.includes('PPC') || s.includes('CRISTIANO') || s.includes('DE POMAR') || s.includes('GARCIA DURANTE')) return 'PPC';
+    if (s.includes('PROGRESEMOS') || s.includes('LLANOS')) return 'PROGRESEMOS';
+    if (s.includes('BUEN GOBIERNO') || s.includes('GALLARDO')) return 'BUEN GOBIERNO';
+    if (s.includes('PERU LIBRE') || s.includes('RAMIREZ MATEO')) return 'PERU LIBRE';
+    if (s.includes('TIERRA VERDE') || s.includes('YEHUDE') || s.includes('SIMON')) return 'TIERRA VERDE';
+    if (s.includes('PUEBLO CONSCIENTE') || s.includes('HUETTE')) return 'PUEBLO CONSCIENTE';
+    if (s.includes('PATRIOTICO') || s.includes('CALLER')) return 'PPP';
+    if (s.includes('INTEGRIDAD') || s.includes('LINARES')) return 'INTEGRIDAD';
+    if (s.includes('FUERZA CIUDADANA') || s.includes('BONILLA')) return 'FUERZA CIUDADANA';
+    if (s.includes('BATALLA') || s.includes('QUISPE CABALLERO')) return 'BATALLA PERU';
+    if (s.includes('ALIANZA PARA EL PROGRESO') || s.includes('BENEL') || s.includes('APP')) return 'APP';
+    if (s.includes('ALIANZA REGIONAL') || s.includes('MANCHEGO')) return 'ALIANZA REGIONAL';
+
+    const firstWord = s.split(/[\s|,\t\-:]+/)[0];
+    if (firstWord === 'FP' || s.startsWith('FP ') || s.includes('FUERZA POPULAR') || s.startsWith('FUERZA') || s.includes('DAZA')) return 'FP';
+    if (firstWord === 'JP' || s.startsWith('JP ') || s.includes('JUNTOS POR EL PERU') || s.startsWith('JUNTOS') || s.includes('VARGAS CUELLAR')) return 'JP';
+    if (firstWord === 'SP' || s.includes('SOMOS') || s.startsWith('SP ') || s.includes('BRUCE') || s.includes('LEGUIA') || s.includes('BAZAN')) return 'SOMOS PERU';
+    if (s.includes('FREPAP') || s.includes('AGRICOLA') || s.includes('VALDEZ')) return 'FREPAP';
+    if (s.includes('DEMOCRATA VERDE') || s.includes('HURTADO')) return 'VERDE';
+    if (s.includes('MORADO') || s.includes('PARTIDO MORADO') || s.includes('LA CRUZ') || s.includes('RUIZ GUTIERREZ')) return 'MORADO';
+
     return null;
   };
 
@@ -294,10 +328,27 @@ export function procesarTextoOCR(text, currentDistrict = 'ATE') {
     const pKey = matchPartyKey(line);
     if (!pKey) return;
 
-    // Extraer todos los números de la línea
-    const numTokens = line.split(/[|,\t\s]+/)
-      .map(tok => convertConfusedTextToNumber(tok))
-      .filter(n => !isNaN(n) && n >= 0 && n <= 999);
+    // Extraer números de la línea
+    let numTokens = [];
+    if (line.includes('|')) {
+      const parts = line.split('|').map(p => p.trim()).filter(Boolean);
+      parts.slice(1).forEach(part => {
+        const cleaned = part.replace(/[^\d]/g, '');
+        if (cleaned) {
+          const num = parseInt(cleaned, 10);
+          if (!isNaN(num) && num >= 0 && num <= 999) {
+            numTokens.push(num);
+          }
+        }
+      });
+    }
+
+    if (numTokens.length === 0) {
+      const tokens = line.split(/[\t\s]+/).filter(t => /\d/.test(t));
+      numTokens = tokens
+        .map(tok => convertConfusedTextToNumber(tok))
+        .filter(n => !isNaN(n) && n >= 0 && n <= 999);
+    }
 
     if (numTokens.length === 0) return;
 
@@ -361,7 +412,8 @@ ESTRUCTURA DE LA TABLA O ACTA ELECTORAL:
    - VERDE = Partido Demócrata Verde / Verde
    - MORADO = Partido Morado
    - NULOS = Votos Nulos
-   - VACIOS = Votos en Blanco / Vacíos
+   - BLANCO = Votos en Blanco
+   - IMPUGNADOS = Votos Impugnados
 
 2. Mapeo de Columnas:
    - La columna "LIMA" (o "PROVINCIAL") corresponde a la sección Provincial.
@@ -379,8 +431,9 @@ Devuelve ÚNICAMENTE un JSON válido sin Markdown ni explicaciones:
       "FREPAP": 0,
       "VERDE": 0,
       "MORADO": 0,
+      "BLANCO": 0,
       "NULOS": 0,
-      "VACIOS": 0
+      "IMPUGNADOS": 0
     },
     "distrital": {
       "FP": 0,
@@ -389,8 +442,9 @@ Devuelve ÚNICAMENTE un JSON válido sin Markdown ni explicaciones:
       "FREPAP": 0,
       "VERDE": 0,
       "MORADO": 0,
+      "BLANCO": 0,
       "NULOS": 0,
-      "VACIOS": 0
+      "IMPUGNADOS": 0
     }
   },
   "tabla_completa": {

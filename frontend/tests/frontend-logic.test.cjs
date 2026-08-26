@@ -7,10 +7,10 @@ const {
   isCountingTimeEnabled,
   isLlegadaButtonUnlocked,
   extractJsonFromString
-} = require('../frontend/src/utils/helpers.js');
+} = require('../src/utils/helpers.js');
 
 // 2. OCR parser test
-const { procesarTextoOCR } = require('../frontend/src/services/ocrPipeline.js');
+const { procesarTextoOCR } = require('../src/services/ocrPipeline.js');
 
 console.log('\n======================================================');
 console.log('🧪 EJECUTANDO PRUEBAS DE LÓGICA FRONTEND');
@@ -38,7 +38,8 @@ FREPAP | 20 | 15
 PARTIDO VERDE | 10 | 8
 PARTIDO MORADO | 15 | 12
 VOTOS NULOS | 5 | 3
-VOTOS VACIOS | 2 | 1
+VOTOS EN BLANCO | 2 | 1
+VOTOS IMPUGNADOS | 4 | 2
 `;
 const parsedVotes = procesarTextoOCR(sampleActaText, 'Ate');
 assert.ok(parsedVotes.provincial);
@@ -47,7 +48,11 @@ assert.strictEqual(parsedVotes.provincial.FP, 45);
 assert.strictEqual(parsedVotes.distrital.FP, 38);
 assert.strictEqual(parsedVotes.provincial["SOMOS PERU"], 50);
 assert.strictEqual(parsedVotes.distrital["SOMOS PERU"], 60);
-console.log('  ✅ [PASSED] OCR Text to Votes multi-column parser');
+assert.strictEqual(parsedVotes.provincial.BLANCO, 2);
+assert.strictEqual(parsedVotes.distrital.BLANCO, 1);
+assert.strictEqual(parsedVotes.provincial.IMPUGNADOS, 4);
+assert.strictEqual(parsedVotes.distrital.IMPUGNADOS, 2);
+console.log('  ✅ [PASSED] OCR Text to Votes multi-column parser (including BLANCO & IMPUGNADOS)');
 
 console.log('\n======================================================');
 console.log('🎉 TODAS LAS PRUEBAS DE LÓGICA FRONTEND PASARON');

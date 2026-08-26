@@ -35,7 +35,7 @@ CANDIDATOS DISTRITALES (${currentDistrict}):
 ${candidatosDistContext}
 
 INSTRUCCIONES:
-1. Extrae los votos por partido y métricas (NULOS, VACIOS).
+1. Extrae los votos por partido y métricas (NULOS, BLANCO, IMPUGNADOS).
 2. Devuelve ÚNICAMENTE un JSON válido sin Markdown.`;
 
     // 1. Intentar procesamiento seguro a través del Backend (sin exponer API key)

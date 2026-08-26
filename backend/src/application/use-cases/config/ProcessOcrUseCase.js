@@ -32,7 +32,8 @@ ESTRUCTURA DE LA TABLA O ACTA ELECTORAL:
    - VERDE = Partido Demócrata Verde / Verde
    - MORADO = Partido Morado
    - NULOS = Votos Nulos
-   - VACIOS = Votos en Blanco / Vacíos
+   - BLANCO = Votos en Blanco
+   - IMPUGNADOS = Votos Impugnados
 
 2. Mapeo de Columnas:
    - La columna "LIMA" (o "PROVINCIAL") corresponde a la sección Provincial.
@@ -43,8 +44,8 @@ Devuelve ÚNICAMENTE un JSON válido sin Markdown ni explicaciones:
 {
   "tipoDocumento": "acta_electoral",
   "votos": {
-    "provincial": { "FP": 0, "JP": 0, "SOMOS PERU": 0, "FREPAP": 0, "VERDE": 0, "MORADO": 0, "NULOS": 0, "VACIOS": 0 },
-    "distrital": { "FP": 0, "JP": 0, "SOMOS PERU": 0, "FREPAP": 0, "VERDE": 0, "MORADO": 0, "NULOS": 0, "VACIOS": 0 }
+    "provincial": { "FP": 0, "JP": 0, "SOMOS PERU": 0, "FREPAP": 0, "VERDE": 0, "MORADO": 0, "BLANCO": 0, "NULOS": 0, "IMPUGNADOS": 0 },
+    "distrital": { "FP": 0, "JP": 0, "SOMOS PERU": 0, "FREPAP": 0, "VERDE": 0, "MORADO": 0, "BLANCO": 0, "NULOS": 0, "IMPUGNADOS": 0 }
   },
   "tabla_completa": {
     "columnas": ["PARTIDO", "LIMA", "${distrito}"],

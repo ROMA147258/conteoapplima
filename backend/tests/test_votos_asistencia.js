@@ -41,9 +41,11 @@ async function testLiveDb() {
         }
       },
       votos_nulos: 4,
-      votos_vacios: 1,
+      votos_blancos: 1,
+      votos_impugnados: 3,
       votos_dist_nulos: 2,
-      votos_dist_vacios: 0
+      votos_dist_blancos: 0,
+      votos_dist_impugnados: 1
     };
 
     const resVotos = await postgresRepo.registrarVotos(payloadManual);
@@ -61,8 +63,9 @@ async function testLiveDb() {
     assert.strictEqual(row.p_verde_votos, 2, 'p_verde_votos debe ser 2');
     assert.strictEqual(row.p_morado_votos, 8, 'p_morado_votos debe ser 8');
     assert.strictEqual(row.p_nulos, 4, 'p_nulos debe ser 4');
-    assert.strictEqual(row.p_vacios, 1, 'p_vacios debe ser 1');
-    assert.strictEqual(row.p_total_votos, 87, 'p_total_votos debe ser 87');
+    assert.strictEqual(row.p_blanco, 1, 'p_blanco debe ser 1');
+    assert.strictEqual(row.p_impugnados, 3, 'p_impugnados debe ser 3');
+    assert.strictEqual(row.p_total_votos, 90, 'p_total_votos debe ser 90');
 
     assert.strictEqual(row.d_fp_votos, 10, 'd_fp_votos debe ser 10');
     assert.strictEqual(row.d_jp_votos, 18, 'd_jp_votos debe ser 18');
@@ -71,10 +74,11 @@ async function testLiveDb() {
     assert.strictEqual(row.d_verde_votos, 1, 'd_verde_votos debe ser 1');
     assert.strictEqual(row.d_morado_votos, 6, 'd_morado_votos debe ser 6');
     assert.strictEqual(row.d_nulos, 2, 'd_nulos debe ser 2');
-    assert.strictEqual(row.d_vacios, 0, 'd_vacios debe ser 0');
-    assert.strictEqual(row.d_total_votos, 80, 'd_total_votos debe ser 80');
+    assert.strictEqual(row.d_blanco, 0, 'd_blanco debe ser 0');
+    assert.strictEqual(row.d_impugnados, 1, 'd_impugnados debe ser 1');
+    assert.strictEqual(row.d_total_votos, 81, 'd_total_votos debe ser 81');
 
-    console.log('✅ [PASSED] Votos manuales registrados en la tabla votos_detalle con dígitos exactos y totales correctos.');
+    console.log('✅ [PASSED] Votos manuales registrados en la tabla votos_detalle con dígitos exactos y totales correctos (incluyendo BLANCOS e IMPUGNADOS).');
 
     // 2. Probar registro de asistencia con foto
     const sampleFoto = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAAAAAAAD/2wBD...';
@@ -101,6 +105,12 @@ async function testLiveDb() {
     assert.strictEqual(asisRow.dni, testDni);
     assert.strictEqual(asisRow.mesa, testMesa);
     console.log('✅ [PASSED] Asistencia registrada en la tabla asistencia con foto_url guardada exitosamente.');
+
+    // 3. Probar reporte con agrupación por distrito
+    const reporte = await postgresRepo.obtenerReporte();
+    assert.strictEqual(reporte.success, true);
+    assert.ok(reporte.reporte_por_distrito['MIRAFLORES'], 'Debe existir reporte agrupado para MIRAFLORES');
+    console.log('✅ [PASSED] Reporte electoral agrupado por distrito y candidatos generado exitosamente.');
 
     // Limpiar datos de prueba
     await query('DELETE FROM votos_detalle WHERE numero_mesa = $1', [testMesa]);

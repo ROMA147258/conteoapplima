@@ -12,8 +12,12 @@ class Vote {
     distrital = {},
     votosNulos = 0,
     votosVacios = 0,
+    votosBlancos = 0,
+    votosImpugnados = 0,
     votosDistNulos = 0,
-    votosDistVacios = 0
+    votosDistVacios = 0,
+    votosDistBlancos = 0,
+    votosDistImpugnados = 0
   }) {
     this.mesa = (mesa || '').toString().trim();
     this.origen = (origen || 'MANUAL').toUpperCase();
@@ -26,9 +30,13 @@ class Vote {
     this.provincial = provincial;
     this.distrital = distrital;
     this.votosNulos = parseInt(votosNulos, 10) || 0;
-    this.votosVacios = parseInt(votosVacios, 10) || 0;
+    this.votosBlancos = parseInt(votosBlancos || votosVacios, 10) || 0;
+    this.votosVacios = this.votosBlancos;
+    this.votosImpugnados = parseInt(votosImpugnados, 10) || 0;
     this.votosDistNulos = parseInt(votosDistNulos, 10) || 0;
-    this.votosDistVacios = parseInt(votosDistVacios, 10) || 0;
+    this.votosDistBlancos = parseInt(votosDistBlancos || votosDistVacios, 10) || 0;
+    this.votosDistVacios = this.votosDistBlancos;
+    this.votosDistImpugnados = parseInt(votosDistImpugnados, 10) || 0;
   }
 
   calculateProvincialTotal() {
@@ -37,7 +45,7 @@ class Vote {
       const num = typeof v === 'object' ? parseInt(v.votos, 10) : parseInt(v, 10);
       if (!isNaN(num)) sum += num;
     });
-    return sum + this.votosNulos + this.votosVacios;
+    return sum + this.votosNulos + this.votosBlancos + this.votosImpugnados;
   }
 
   calculateDistritalTotal() {
@@ -46,7 +54,7 @@ class Vote {
       const num = typeof v === 'object' ? parseInt(v.votos, 10) : parseInt(v, 10);
       if (!isNaN(num)) sum += num;
     });
-    return sum + this.votosDistNulos + this.votosDistVacios;
+    return sum + this.votosDistNulos + this.votosDistBlancos + this.votosDistImpugnados;
   }
 }
 

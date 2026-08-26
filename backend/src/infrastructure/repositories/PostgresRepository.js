@@ -333,8 +333,16 @@ class PostgresRepository {
     const p_verde_v = extractVote(prov.VERDE);
     const p_morado_v = extractVote(prov.MORADO);
     const p_nulos = parseInt(data.votos_nulos ?? prov.NULOS ?? 0, 10) || 0;
-    const p_vacios = parseInt(data.votos_vacios ?? prov.VACIOS ?? 0, 10) || 0;
-    const p_tot = p_fp_v + p_jp_v + p_sp_v + p_frepap_v + p_verde_v + p_morado_v + p_nulos + p_vacios;
+    const p_blanco = parseInt(data.votos_blancos ?? data.votos_vacios ?? prov.BLANCO ?? prov.VACIOS ?? 0, 10) || 0;
+    const p_impugnados = parseInt(data.votos_impugnados ?? prov.IMPUGNADOS ?? 0, 10) || 0;
+
+    let p_cands_sum = 0;
+    Object.keys(prov).forEach(k => {
+      if (!['NULOS', 'BLANCO', 'VACIOS', 'IMPUGNADOS'].includes(k.toUpperCase())) {
+        p_cands_sum += extractVote(prov[k]);
+      }
+    });
+    const p_tot = p_cands_sum + p_nulos + p_blanco + p_impugnados;
 
     const d_fp_v = extractVote(dist.FP);
     const d_jp_v = extractVote(dist.JP);
@@ -343,27 +351,37 @@ class PostgresRepository {
     const d_verde_v = extractVote(dist.VERDE);
     const d_morado_v = extractVote(dist.MORADO);
     const d_nulos = parseInt(data.votos_dist_nulos ?? dist.NULOS ?? 0, 10) || 0;
-    const d_vacios = parseInt(data.votos_dist_vacios ?? dist.VACIOS ?? 0, 10) || 0;
-    const d_tot = d_fp_v + d_jp_v + d_sp_v + d_frepap_v + d_verde_v + d_morado_v + d_nulos + d_vacios;
+    const d_blanco = parseInt(data.votos_dist_blancos ?? data.votos_dist_vacios ?? dist.BLANCO ?? dist.VACIOS ?? 0, 10) || 0;
+    const d_impugnados = parseInt(data.votos_dist_impugnados ?? dist.IMPUGNADOS ?? 0, 10) || 0;
+
+    let d_cands_sum = 0;
+    Object.keys(dist).forEach(k => {
+      if (!['NULOS', 'BLANCO', 'VACIOS', 'IMPUGNADOS'].includes(k.toUpperCase())) {
+        d_cands_sum += extractVote(dist[k]);
+      }
+    });
+    const d_tot = d_cands_sum + d_nulos + d_blanco + d_impugnados;
+
+    const votosJson = JSON.stringify(data.votos || { provincial: prov, distrital: dist });
 
     const sql = `
       INSERT INTO votos_detalle (
         personero, dni, departamento, provincia, ubicacion, colegio, numero_mesa, origen,
         p_fp_candidato, p_fp_votos, p_jp_candidato, p_jp_votos, p_sp_candidato, p_sp_votos,
         p_frepap_candidato, p_frepap_votos, p_verde_candidato, p_verde_votos, p_morado_candidato, p_morado_votos,
-        p_nulos, p_vacios, p_total_votos,
+        p_nulos, p_vacios, p_blanco, p_impugnados, p_total_votos,
         d_fp_candidato, d_fp_votos, d_jp_candidato, d_jp_votos, d_sp_candidato, d_sp_votos,
         d_frepap_candidato, d_frepap_votos, d_verde_candidato, d_verde_votos, d_morado_candidato, d_morado_votos,
-        d_nulos, d_vacios, d_total_votos, fecha_hora
+        d_nulos, d_vacios, d_blanco, d_impugnados, d_total_votos, votos_json, fecha_hora
       )
       VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8,
         $9, $10, $11, $12, $13, $14,
         $15, $16, $17, $18, $19, $20,
-        $21, $22, $23,
-        $24, $25, $26, $27, $28, $29,
-        $30, $31, $32, $33, $34, $35,
-        $36, $37, $38, CURRENT_TIMESTAMP
+        $21, $22, $23, $24, $25,
+        $26, $27, $28, $29, $30, $31,
+        $32, $33, $34, $35, $36, $37,
+        $38, $39, $40, $41, $42, $43, CURRENT_TIMESTAMP
       )
       ON CONFLICT (numero_mesa, origen) DO UPDATE SET
         personero = EXCLUDED.personero,
@@ -378,14 +396,15 @@ class PostgresRepository {
         p_frepap_candidato = EXCLUDED.p_frepap_candidato, p_frepap_votos = EXCLUDED.p_frepap_votos,
         p_verde_candidato = EXCLUDED.p_verde_candidato, p_verde_votos = EXCLUDED.p_verde_votos,
         p_morado_candidato = EXCLUDED.p_morado_candidato, p_morado_votos = EXCLUDED.p_morado_votos,
-        p_nulos = EXCLUDED.p_nulos, p_vacios = EXCLUDED.p_vacios, p_total_votos = EXCLUDED.p_total_votos,
+        p_nulos = EXCLUDED.p_nulos, p_vacios = EXCLUDED.p_vacios, p_blanco = EXCLUDED.p_blanco, p_impugnados = EXCLUDED.p_impugnados, p_total_votos = EXCLUDED.p_total_votos,
         d_fp_candidato = EXCLUDED.d_fp_candidato, d_fp_votos = EXCLUDED.d_fp_votos,
         d_jp_candidato = EXCLUDED.d_jp_candidato, d_jp_votos = EXCLUDED.d_jp_votos,
         d_sp_candidato = EXCLUDED.d_sp_candidato, d_sp_votos = EXCLUDED.d_sp_votos,
         d_frepap_candidato = EXCLUDED.d_frepap_candidato, d_frepap_votos = EXCLUDED.d_frepap_votos,
         d_verde_candidato = EXCLUDED.d_verde_candidato, d_verde_votos = EXCLUDED.d_verde_votos,
         d_morado_candidato = EXCLUDED.d_morado_candidato, d_morado_votos = EXCLUDED.d_morado_votos,
-        d_nulos = EXCLUDED.d_nulos, d_vacios = EXCLUDED.d_vacios, d_total_votos = EXCLUDED.d_total_votos,
+        d_nulos = EXCLUDED.d_nulos, d_vacios = EXCLUDED.d_vacios, d_blanco = EXCLUDED.d_blanco, d_impugnados = EXCLUDED.d_impugnados, d_total_votos = EXCLUDED.d_total_votos,
+        votos_json = EXCLUDED.votos_json,
         fecha_hora = CURRENT_TIMESTAMP
     `;
 
@@ -394,10 +413,11 @@ class PostgresRepository {
       data.ubicacion || '', data.colegio || '', mesaStr, origenStr,
       extractCand(prov.FP), p_fp_v, extractCand(prov.JP), p_jp_v, extractCand(prov["SOMOS PERU"] || prov.SP), p_sp_v,
       extractCand(prov.FREPAP), p_frepap_v, extractCand(prov.VERDE), p_verde_v, extractCand(prov.MORADO), p_morado_v,
-      p_nulos, p_vacios, p_tot,
+      p_nulos, p_blanco, p_blanco, p_impugnados, p_tot,
       extractCand(dist.FP), d_fp_v, extractCand(dist.JP), d_jp_v, extractCand(dist["SOMOS PERU"] || dist.SP), d_sp_v,
       extractCand(dist.FREPAP), d_frepap_v, extractCand(dist.VERDE), d_verde_v, extractCand(dist.MORADO), d_morado_v,
-      d_nulos, d_vacios, d_tot
+      d_nulos, d_blanco, d_blanco, d_impugnados, d_tot,
+      votosJson
     ];
 
     await query(sql, params);
@@ -829,7 +849,7 @@ class PostgresRepository {
   }
 
   // 14. REPORTE
-  async obtenerReporte() {
+  async obtenerReporte(distritoFiltro = null) {
     const reportRes = await query(`
       SELECT 
         COALESCE(SUM(p_fp_votos), 0)::int AS "FP", 
@@ -839,7 +859,9 @@ class PostgresRepository {
         COALESCE(SUM(p_verde_votos), 0)::int AS "VERDE", 
         COALESCE(SUM(p_morado_votos), 0)::int AS "MORADO",
         COALESCE(SUM(p_nulos), 0)::int AS "NULOS", 
-        COALESCE(SUM(p_vacios), 0)::int AS "VACIOS"
+        COALESCE(SUM(COALESCE(p_blanco, p_vacios)), 0)::int AS "BLANCO",
+        COALESCE(SUM(p_impugnados), 0)::int AS "IMPUGNADOS",
+        COALESCE(SUM(COALESCE(p_blanco, p_vacios)), 0)::int AS "VACIOS"
       FROM votos_detalle
     `);
 
@@ -852,16 +874,77 @@ class PostgresRepository {
         COALESCE(SUM(d_verde_votos), 0)::int AS "VERDE", 
         COALESCE(SUM(d_morado_votos), 0)::int AS "MORADO",
         COALESCE(SUM(d_nulos), 0)::int AS "NULOS", 
-        COALESCE(SUM(d_vacios), 0)::int AS "VACIOS"
+        COALESCE(SUM(COALESCE(d_blanco, d_vacios)), 0)::int AS "BLANCO",
+        COALESCE(SUM(d_impugnados), 0)::int AS "IMPUGNADOS",
+        COALESCE(SUM(COALESCE(d_blanco, d_vacios)), 0)::int AS "VACIOS"
       FROM votos_detalle
     `);
 
-    const mesasRes = await query('SELECT numero_mesa AS mesa, origen, ubicacion FROM votos_detalle');
+    const mesasRes = await query(`
+      SELECT 
+        numero_mesa AS mesa, 
+        origen, 
+        ubicacion AS distrito, 
+        colegio, 
+        personero, 
+        dni, 
+        p_total_votos, 
+        d_total_votos, 
+        votos_json, 
+        fecha_hora
+      FROM votos_detalle
+      ${distritoFiltro ? 'WHERE ubicacion ILIKE $1' : ''}
+      ORDER BY fecha_hora DESC
+    `, distritoFiltro ? [`%${distritoFiltro}%`] : []);
+
+    const totalesProvincialCompleto = { ...(reportRes.rows[0] || {}) };
+    const totalesDistritalCompleto = { ...(distRes.rows[0] || {}) };
+    const reportePorDistrito = {};
+
+    mesasRes.rows.forEach(row => {
+      const dist = (row.distrito || 'Sin Distrito').toUpperCase().trim();
+      if (!reportePorDistrito[dist]) {
+        reportePorDistrito[dist] = {
+          mesas_contabilizadas: 0,
+          total_votos_provincial: 0,
+          total_votos_distrital: 0,
+          candidatos_provincial: {},
+          candidatos_distrital: {}
+        };
+      }
+      reportePorDistrito[dist].mesas_contabilizadas += 1;
+      reportePorDistrito[dist].total_votos_provincial += (row.p_total_votos || 0);
+      reportePorDistrito[dist].total_votos_distrital += (row.d_total_votos || 0);
+
+      let parsedVotos = null;
+      try {
+        parsedVotos = typeof row.votos_json === 'string' ? JSON.parse(row.votos_json) : row.votos_json;
+      } catch (e) {}
+
+      if (parsedVotos) {
+        // Provincial
+        const prov = parsedVotos.provincial || {};
+        Object.entries(prov).forEach(([key, val]) => {
+          const v = typeof val === 'object' ? (parseInt(val.votos, 10) || 0) : (parseInt(val, 10) || 0);
+          totalesProvincialCompleto[key] = (totalesProvincialCompleto[key] || 0) + v;
+          reportePorDistrito[dist].candidatos_provincial[key] = (reportePorDistrito[dist].candidatos_provincial[key] || 0) + v;
+        });
+
+        // Distrital
+        const distVotos = parsedVotos.distrital || {};
+        Object.entries(distVotos).forEach(([key, val]) => {
+          const v = typeof val === 'object' ? (parseInt(val.votos, 10) || 0) : (parseInt(val, 10) || 0);
+          totalesDistritalCompleto[key] = (totalesDistritalCompleto[key] || 0) + v;
+          reportePorDistrito[dist].candidatos_distrital[key] = (reportePorDistrito[dist].candidatos_distrital[key] || 0) + v;
+        });
+      }
+    });
 
     return {
       success: true,
-      totales_provincial: reportRes.rows[0] || {},
-      totales_distrital: distRes.rows[0] || {},
+      totales_provincial: totalesProvincialCompleto,
+      totales_distrital: totalesDistritalCompleto,
+      reporte_por_distrito: reportePorDistrito,
       mesas: mesasRes.rows || []
     };
   }

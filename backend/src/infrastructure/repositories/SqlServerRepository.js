@@ -388,7 +388,8 @@ class SqlServerRepository {
     const p_verde_v = extractVote(prov.VERDE);
     const p_morado_v = extractVote(prov.MORADO);
     const p_nulos = parseInt(data.votos_nulos ?? prov.NULOS ?? 0, 10) || 0;
-    const p_vacios = parseInt(data.votos_vacios ?? prov.VACIOS ?? 0, 10) || 0;
+    const p_blanco = parseInt(data.votos_blancos ?? data.votos_vacios ?? prov.BLANCO ?? prov.VACIOS ?? 0, 10) || 0;
+    const p_impugnados = parseInt(data.votos_impugnados ?? prov.IMPUGNADOS ?? 0, 10) || 0;
 
     const d_fp_v = extractVote(dist.FP);
     const d_jp_v = extractVote(dist.JP);
@@ -397,7 +398,8 @@ class SqlServerRepository {
     const d_verde_v = extractVote(dist.VERDE);
     const d_morado_v = extractVote(dist.MORADO);
     const d_nulos = parseInt(data.votos_dist_nulos ?? dist.NULOS ?? 0, 10) || 0;
-    const d_vacios = parseInt(data.votos_dist_vacios ?? dist.VACIOS ?? 0, 10) || 0;
+    const d_blanco = parseInt(data.votos_dist_blancos ?? data.votos_dist_vacios ?? dist.BLANCO ?? dist.VACIOS ?? 0, 10) || 0;
+    const d_impugnados = parseInt(data.votos_dist_impugnados ?? dist.IMPUGNADOS ?? 0, 10) || 0;
 
     const req = pool.request()
       .input('personero', mssql.VarChar, data.brigadista || '')
@@ -423,7 +425,9 @@ class SqlServerRepository {
       .input('p_morado_cand', mssql.VarChar, extractCand(prov.MORADO))
       .input('p_morado_votos', mssql.Int, p_morado_v)
       .input('p_nulos', mssql.Int, p_nulos)
-      .input('p_vacios', mssql.Int, p_vacios)
+      .input('p_vacios', mssql.Int, p_blanco)
+      .input('p_blanco', mssql.Int, p_blanco)
+      .input('p_impugnados', mssql.Int, p_impugnados)
 
       // Distrital
       .input('d_fp_cand', mssql.VarChar, extractCand(dist.FP))
@@ -439,7 +443,9 @@ class SqlServerRepository {
       .input('d_morado_cand', mssql.VarChar, extractCand(dist.MORADO))
       .input('d_morado_votos', mssql.Int, d_morado_v)
       .input('d_nulos', mssql.Int, d_nulos)
-      .input('d_vacios', mssql.Int, d_vacios);
+      .input('d_vacios', mssql.Int, d_blanco)
+      .input('d_blanco', mssql.Int, d_blanco)
+      .input('d_impugnados', mssql.Int, d_impugnados);
 
     await req.query(`
       MERGE dbo.Votos_Detalle AS target
@@ -456,7 +462,7 @@ class SqlServerRepository {
           p_verde_candidato = @p_verde_cand, p_verde_votos = @p_verde_votos,
           p_morado_candidato = @p_morado_cand, p_morado_votos = @p_morado_votos,
           p_nulos = @p_nulos, p_vacios = @p_vacios,
-          p_total_votos = (@p_fp_votos + @p_jp_votos + @p_sp_votos + @p_frepap_votos + @p_verde_votos + @p_morado_votos + @p_nulos + @p_vacios),
+          p_total_votos = (@p_fp_votos + @p_jp_votos + @p_sp_votos + @p_frepap_votos + @p_verde_votos + @p_morado_votos + @p_nulos + @p_blanco + @p_impugnados),
           d_fp_candidato = @d_fp_cand, d_fp_votos = @d_fp_votos,
           d_jp_candidato = @d_jp_cand, d_jp_votos = @d_jp_votos,
           d_sp_candidato = @d_sp_cand, d_sp_votos = @d_sp_votos,
@@ -464,7 +470,7 @@ class SqlServerRepository {
           d_verde_candidato = @d_verde_cand, d_verde_votos = @d_verde_votos,
           d_morado_candidato = @d_morado_cand, d_morado_votos = @d_morado_votos,
           d_nulos = @d_nulos, d_vacios = @d_vacios,
-          d_total_votos = (@d_fp_votos + @d_jp_votos + @d_sp_votos + @d_frepap_votos + @d_verde_votos + @d_morado_votos + @d_nulos + @d_vacios)
+          d_total_votos = (@d_fp_votos + @d_jp_votos + @d_sp_votos + @d_frepap_votos + @d_verde_votos + @d_morado_votos + @d_nulos + @d_blanco + @d_impugnados)
       WHEN NOT MATCHED THEN
         INSERT (
           personero, dni, departamento, provincia, ubicacion, colegio, numero_mesa, origen,
@@ -479,10 +485,10 @@ class SqlServerRepository {
           @personero, @dni, @departamento, @provincia, @ubicacion, @colegio, @numero_mesa, @origen,
           @p_fp_cand, @p_fp_votos, @p_jp_cand, @p_jp_votos, @p_sp_cand, @p_sp_votos,
           @p_frepap_cand, @p_frepap_votos, @p_verde_cand, @p_verde_votos, @p_morado_cand, @p_morado_votos,
-          @p_nulos, @p_vacios, (@p_fp_votos + @p_jp_votos + @p_sp_votos + @p_frepap_votos + @p_verde_votos + @p_morado_votos + @p_nulos + @p_vacios),
+          @p_nulos, @p_vacios, (@p_fp_votos + @p_jp_votos + @p_sp_votos + @p_frepap_votos + @p_verde_votos + @p_morado_votos + @p_nulos + @p_blanco + @p_impugnados),
           @d_fp_cand, @d_fp_votos, @d_jp_cand, @d_jp_votos, @d_sp_cand, @d_sp_votos,
           @d_frepap_cand, @d_frepap_votos, @d_verde_cand, @d_verde_votos, @d_morado_cand, @d_morado_votos,
-          @d_nulos, @d_vacios, (@d_fp_votos + @d_jp_votos + @d_sp_votos + @d_frepap_votos + @d_verde_votos + @d_morado_votos + @d_nulos + @d_vacios)
+          @d_nulos, @d_vacios, (@d_fp_votos + @d_jp_votos + @d_sp_votos + @d_frepap_votos + @d_verde_votos + @d_morado_votos + @d_nulos + @d_blanco + @d_impugnados)
         );
     `);
     return { success: true, message: 'Votos registrados correctamente en la base de datos "conteo".' };
@@ -807,7 +813,10 @@ class SqlServerRepository {
       SELECT 
         ISNULL(SUM(p_fp_votos), 0) AS FP, ISNULL(SUM(p_jp_votos), 0) AS JP, ISNULL(SUM(p_sp_votos), 0) AS [SOMOS PERU], 
         ISNULL(SUM(p_frepap_votos), 0) AS FREPAP, ISNULL(SUM(p_verde_votos), 0) AS VERDE, ISNULL(SUM(p_morado_votos), 0) AS MORADO,
-        ISNULL(SUM(p_nulos), 0) AS NULOS, ISNULL(SUM(p_vacios), 0) AS VACIOS
+        ISNULL(SUM(p_nulos), 0) AS NULOS, 
+        ISNULL(SUM(ISNULL(p_blanco, p_vacios)), 0) AS BLANCO,
+        ISNULL(SUM(p_impugnados), 0) AS IMPUGNADOS,
+        ISNULL(SUM(ISNULL(p_blanco, p_vacios)), 0) AS VACIOS
       FROM dbo.Votos_Detalle
     `);
 
@@ -815,7 +824,10 @@ class SqlServerRepository {
       SELECT 
         ISNULL(SUM(d_fp_votos), 0) AS FP, ISNULL(SUM(d_jp_votos), 0) AS JP, ISNULL(SUM(d_sp_votos), 0) AS [SOMOS PERU], 
         ISNULL(SUM(d_frepap_votos), 0) AS FREPAP, ISNULL(SUM(d_verde_votos), 0) AS VERDE, ISNULL(SUM(d_morado_votos), 0) AS MORADO,
-        ISNULL(SUM(d_nulos), 0) AS NULOS, ISNULL(SUM(d_vacios), 0) AS VACIOS
+        ISNULL(SUM(d_nulos), 0) AS NULOS, 
+        ISNULL(SUM(ISNULL(d_blanco, d_vacios)), 0) AS BLANCO,
+        ISNULL(SUM(d_impugnados), 0) AS IMPUGNADOS,
+        ISNULL(SUM(ISNULL(d_blanco, d_vacios)), 0) AS VACIOS
       FROM dbo.Votos_Detalle
     `);
 
