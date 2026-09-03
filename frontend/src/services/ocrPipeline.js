@@ -216,7 +216,7 @@ export function procesarTextoOCR(text, currentDistrict = 'ATE') {
     return null;
   };
 
-  // 1. Si el texto viene como JSON estructurado de Ollama / IA
+  // 1. Si el texto viene como JSON estructurado de IA / Gemini
   const parsedDirectJson = extractJsonFromString(text);
   if (parsedDirectJson && typeof parsedDirectJson === 'object') {
     // A. Si tiene tabla_completa / table / filas
@@ -399,67 +399,20 @@ export function procesarTextoOCR(text, currentDistrict = 'ATE') {
   return detected;
 }
 
-export async function analizarImagenOllama(imageSrc, options = {}) {
-  const host = (options.ollamaHost || (typeof localStorage !== 'undefined' ? localStorage.getItem('votoReal_ollamaHost') : '') || 'http://127.0.0.1:11434').replace(/\/$/, '');
-  const model = (options.ollamaModel || (typeof localStorage !== 'undefined' ? localStorage.getItem('votoReal_ollamaModel') : '') || 'moondream:latest').trim();
+export async function analizarImagenActa(imageSrc, options = {}) {
+  const cleanBase64 = imageSrc.includes(',') ? imageSrc.split(',')[1] : imageSrc;
+  const mimeType = imageSrc.includes(';') ? (imageSrc.split(';')[0].split(':')[1] || 'image/jpeg') : 'image/jpeg';
   const currentDistrict = options.currentDistrict || 'Lima';
 
-  const base64Image = imageSrc.includes(',') ? imageSrc.split(',')[1] : imageSrc;
-  const mimeType = imageSrc.includes(';') ? (imageSrc.split(';')[0].split(':')[1] || 'image/jpeg') : 'image/jpeg';
-
-  const prompt = `Eres un sistema experto de conteo electoral peruano (ONPE / JNE). Analiza esta imagen con máxima precisión y extrae los votos exactos por organización política.
-
-ESTRUCTURA DE LA TABLA O ACTA ELECTORAL:
-1. Partidos válidos (usa exactamente estas claves):
-   - FP = Fuerza Popular
-   - JP = Juntos por el Perú
-   - SOMOS PERU = Somos Perú
-   - FREPAP = Frepap
-   - VERDE = Partido Demócrata Verde / Verde
-   - MORADO = Partido Morado
-   - RENOVACION = Renovación Popular
-   - AHORA NACION = Ahora Nación
-   - AVANZA PAIS = Avanza País
-   - PODEMOS = Podemos Perú
-   - APRA = Partido Aprista Peruano
-   - PPC = Partido Popular Cristiano
-   - NULOS = Votos Nulos
-   - BLANCO = Votos en Blanco
-   - IMPUGNADOS = Votos Impugnados
-
-2. Mapeo de Columnas:
-   - La columna "LIMA" (o "PROVINCIAL" / "METROPOLITANA") corresponde a la sección Provincial.
-   - La columna con el distrito "${currentDistrict}" (ej. BREÑA, ATE, LURÍN, etc.) o "DISTRITAL" corresponde a la sección Distrital.
-   - Si la imagen muestra una matriz de múltiples columnas, lee cada valor numérico en su intersección fila/columna.
-
-Devuelve ÚNICAMENTE un JSON válido sin Markdown ni explicaciones:
-{
-  "tipoDocumento": "acta_electoral",
-  "votos": {
-    "provincial": { "FP": 0, "JP": 0, "SOMOS PERU": 0, "FREPAP": 0, "VERDE": 0, "MORADO": 0, "BLANCO": 0, "NULOS": 0, "IMPUGNADOS": 0 },
-    "distrital": { "FP": 0, "JP": 0, "SOMOS PERU": 0, "FREPAP": 0, "VERDE": 0, "MORADO": 0, "BLANCO": 0, "NULOS": 0, "IMPUGNADOS": 0 }
-  },
-  "tabla_completa": {
-    "columnas": ["PARTIDO", "LIMA", "${currentDistrict}"],
-    "filas": [
-      {"PARTIDO": "FP", "LIMA": 0, "${currentDistrict}": 0}
-    ]
-  }
-}`;
-
-  // 1. Canal Primario: Backend Proxy Express (1 sola petición limpia, sin problemas de CORS)
   try {
     const backendRes = await fetch('/api/voto-real', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'procesar_acta_ocr',
-        provider: 'ollama',
-        ollamaHost: host,
-        ollamaModel: model,
-        imageBase64: base64Image,
+        provider: 'gemini',
+        imageBase64: cleanBase64,
         mimeType: mimeType,
-        prompt: prompt,
         distrito: currentDistrict
       })
     });
@@ -471,85 +424,22 @@ Devuelve ÚNICAMENTE un JSON válido sin Markdown ni explicaciones:
         return {
           rawText: parsedJson ? JSON.stringify(parsedJson, null, 2) : serverData.rawText,
           preprocessedDataUrl: imageSrc,
-          provider: 'ollama',
-          model: serverData.model || model
+          provider: 'gemini',
+          model: serverData.model || 'gemini-2.5-flash'
         };
       }
     }
   } catch (backendErr) {
-    console.warn('[analizarImagenOllama] Error en backend proxy, intentando conexión directa:', backendErr.message);
-  }
-
-  // 2. Canal Secundario: Intento directo a Ollama local con modelo configurado y fallbacks
-  const candidateModels = Array.from(new Set([
-    model,
-    model.includes(':') ? model.split(':')[0] : `${model}:latest`,
-    'moondream:latest',
-    'moondream',
-    'llama3.2-vision:latest',
-    'llama3.2-vision',
-    'llava:latest',
-    'llava'
-  ])).filter(Boolean);
-
-  for (const targetModel of candidateModels) {
-    try {
-      const timeoutMs = targetModel.includes('vision') ? 60000 : 35000;
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-      const ollamaRes = await fetch(`${host}/api/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: controller.signal,
-        body: JSON.stringify({
-          model: targetModel,
-          prompt: prompt,
-          images: [base64Image],
-          stream: false,
-          format: 'json',
-          options: {
-            temperature: 0.1
-          }
-        })
-      });
-
-      clearTimeout(timeoutId);
-
-      if (ollamaRes.ok) {
-        const data = await ollamaRes.json();
-        const rawText = data?.response?.trim() || '';
-        const parsedJson = extractJsonFromString(rawText);
-
-        if (parsedJson) {
-          const structuredResult = parsedJson.tipoDocumento ? parsedJson : {
-            tipoDocumento: autoDetectTipoDocumento(JSON.stringify(parsedJson)),
-            ...parsedJson
-          };
-          return {
-            rawText: JSON.stringify(structuredResult, null, 2),
-            preprocessedDataUrl: imageSrc,
-            provider: 'ollama',
-            model: targetModel
-          };
-        }
-      }
-    } catch (err) {
-      console.warn(`[analizarImagenOllama] Intento directo con ${targetModel} falló:`, err.message);
-    }
+    console.warn('[analizarImagenActa] Error procesando con Gemini:', backendErr.message);
   }
 
   return {
     rawText: JSON.stringify({
       tipoDocumento: "error_temporal",
-      mensaje: `No se pudo conectar con Ollama (${host}). Asegúrate de que Ollama esté ejecutándose o ingresa los votos manualmente.`
+      mensaje: "No se pudo procesar el acta con Gemini Vision. Por favor verifica tu conexión o ingresa los votos manualmente."
     }, null, 2),
     preprocessedDataUrl: imageSrc
   };
-}
-
-export async function analizarImagenActa(imageSrc, options = {}) {
-  return await analizarImagenOllama(imageSrc, options);
 }
 
 

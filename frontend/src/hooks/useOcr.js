@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { ocrPipeline } from '../services/ocr/ocrPipeline';
+import { analizarImagenActa, procesarTextoOCR } from '../services/ocrPipeline';
 
 export const useOcr = () => {
-  const { ollamaHost, ollamaModel, currentUser, setCurrentVotes, setOcrVotes, setOcrRawDetail, showToast } = useApp();
+  const { currentUser, setCurrentVotes, setOcrVotes, setOcrRawDetail, showToast } = useApp();
   const [isProcessing, setIsProcessing] = useState(false);
   const [ocrProgress, setOcrProgress] = useState({ show: false, percentage: 0, status: '' });
 
@@ -18,17 +18,16 @@ export const useOcr = () => {
 
       for (let i = 0; i < imgList.length; i++) {
         const step = Math.round(((i + 1) / imgList.length) * 80);
-        setOcrProgress({ show: true, percentage: 10 + step, status: `Analizando con Ollama Local imagen ${i + 1}/${imgList.length}...` });
+        setOcrProgress({ show: true, percentage: 10 + step, status: `Analizando con Google Gemini Vision imagen ${i + 1}/${imgList.length}...` });
 
-        const result = await ocrPipeline.processActaImage(imgList[i], userDist, {
-          ollamaHost,
-          ollamaModel
+        const result = await analizarImagenActa(imgList[i], {
+          currentDistrict: userDist
         });
-        combinedRawText += (combinedRawText ? '\n\n' : '') + result.rawText;
+        combinedRawText += (combinedRawText ? '\n\n' : '') + (result.rawText || '');
       }
 
       setOcrProgress({ show: true, percentage: 95, status: 'Calculando votos...' });
-      const parsedVotes = ocrPipeline.parseOcrTextToVotes(combinedRawText, userDist);
+      const parsedVotes = procesarTextoOCR(combinedRawText, userDist);
 
       setOcrRawDetail(combinedRawText);
       setOcrProgress({ show: true, percentage: 100, status: '¡Procesamiento completo!' });

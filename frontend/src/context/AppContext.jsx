@@ -28,14 +28,7 @@ const DEFAULT_VOTES = {
 export const AppProvider = ({ children }) => {
   // Config state
   const [apiUrl, setApiUrl] = useState(DEFAULT_API_URL);
-  const [ollamaHost, setOllamaHost] = useState(() => localStorage.getItem('votoReal_ollamaHost') || 'http://127.0.0.1:11434');
-  const [ollamaModel, setOllamaModel] = useState(() => {
-    const saved = localStorage.getItem('votoReal_ollamaModel');
-    if (saved && (saved.includes('minicpm') || saved.includes('vision') || saved.includes('moondream'))) {
-      return saved;
-    }
-    return 'minicpm-v:latest';
-  });
+  const [ocrProvider, setOcrProvider] = useState(() => localStorage.getItem('votoReal_ocrProvider') || 'gemini');
 
   // User & View state
   const [currentUser, setCurrentUser] = useState(() => {
@@ -192,9 +185,8 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     (async () => {
       const cfg = await fetchServerConfig();
-      if (cfg) {
-        if (cfg.ollamaHost) setOllamaHost(cfg.ollamaHost);
-        if (cfg.ollamaModel) setOllamaModel(cfg.ollamaModel);
+      if (cfg && cfg.ocrProvider) {
+        setOcrProvider(cfg.ocrProvider);
       }
     })();
   }, []);
@@ -308,8 +300,7 @@ export const AppProvider = ({ children }) => {
   return (
     <AppContext.Provider value={{
       apiUrl, setApiUrl,
-      ollamaHost, setOllamaHost,
-      ollamaModel, setOllamaModel,
+      ocrProvider, setOcrProvider,
       currentUser, setCurrentUser,
       currentView, setCurrentView: changeView,
       activeViewFilter, setActiveViewFilter: (filter) => {

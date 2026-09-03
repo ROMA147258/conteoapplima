@@ -8,10 +8,6 @@ const configController = require('../controllers/ConfigController');
 router.get('/config', (req, res) => configController.getConfig(req, res));
 router.post('/save-config', (req, res) => configController.saveConfig(req, res));
 router.get('/config-ocr', (req, res) => configController.getOcrConfig(req, res));
-router.get('/ocr/models', (req, res) => configController.getOllamaModels(req, res));
-router.post('/ocr/models', (req, res) => configController.getOllamaModels(req, res));
-router.get('/ocr/test', (req, res) => configController.testOllama(req, res));
-router.post('/ocr/test', (req, res) => configController.testOllama(req, res));
 router.post('/ocr/process', (req, res) => configController.processOcr(req, res));
 
 // 2. Endpoints REST específicos (PostgreSQL 16)
@@ -127,11 +123,6 @@ router.all('/voto-real', async (req, res) => {
         return res.json(await postgresRepo.obtenerReporte());
       case 'obtener_config_ocr':
         return configController.getOcrConfig(req, res);
-      case 'obtener_modelos_ollama':
-        return configController.getOllamaModels(req, res);
-      case 'probar_ollama':
-      case 'test_ollama':
-        return configController.testOllama(req, res);
       case 'procesar_acta_ocr':
         return configController.processOcr(req, res);
       default:
@@ -139,23 +130,6 @@ router.all('/voto-real', async (req, res) => {
     }
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// Compatibilidad adicional
-router.get('/obtener_reporte', async (req, res) => {
-  try {
-    return res.json(await postgresRepo.obtenerReporte());
-  } catch (e) {
-    return res.status(500).json({ success: false, message: e.message });
-  }
-});
-
-router.get('/read_reporte', async (req, res) => {
-  try {
-    return res.json(await postgresRepo.obtenerReporte());
-  } catch (e) {
-    return res.status(500).json({ success: false, message: e.message });
   }
 });
 

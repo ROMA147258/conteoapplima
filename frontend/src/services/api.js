@@ -8,7 +8,7 @@ export async function fetchServerConfig() {
       return await response.json();
     }
   } catch (e) {
-    console.warn('[API] No se pudo cargar config del backend local:', e);
+    console.warn('[API] No se pudo cargar config del backend:', e);
   }
   return null;
 }
@@ -25,96 +25,6 @@ export async function saveServerConfig(configData) {
     throw new Error('Error al guardar configuración en el servidor');
   }
   return await response.json();
-}
-
-export async function fetchOllamaModels(host = 'http://127.0.0.1:11434') {
-  // 1. Intentar a través del backend proxy (evita bloqueos de CORS)
-  try {
-    const backendRes = await fetch(`${API_BASE_URL}/ocr/models?host=${encodeURIComponent(host)}`);
-    if (backendRes.ok) {
-      const data = await backendRes.json();
-      if (data && data.success && data.models) {
-        return data.models;
-      }
-    }
-  } catch (e) {
-    console.warn('[API] Falló fetchOllamaModels vía backend, intentando directo:', e.message);
-  }
-
-  // 2. Fallback: Conexión directa a Ollama
-  try {
-    const cleanHost = host.trim().replace(/\/$/, '');
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
-    const res = await fetch(`${cleanHost}/api/tags`, { signal: controller.signal });
-    clearTimeout(timeoutId);
-    if (res.ok) {
-      const data = await res.json();
-      return (data.models || []).map(m => {
-        const hasVision = (m.capabilities && m.capabilities.includes('vision')) ||
-          m.name.includes('vision') ||
-          m.name.includes('moondream') ||
-          m.name.includes('llava');
-        return {
-          name: m.name,
-          size: m.size,
-          hasVision
-        };
-      });
-    }
-  } catch (e) {
-    console.warn('[API] Falló fetchOllamaModels directo:', e.message);
-  }
-
-  return [];
-}
-
-export async function testOllamaConnection(host = 'http://127.0.0.1:11434') {
-  // 1. Intento vía backend proxy
-  try {
-    const backendRes = await fetch(`${API_BASE_URL}/ocr/test?host=${encodeURIComponent(host)}`);
-    if (backendRes.ok) {
-      return await backendRes.json();
-    }
-  } catch (e) {
-    console.warn('[API] Falló testOllamaConnection vía backend:', e.message);
-  }
-
-  // 2. Fallback directo
-  try {
-    const cleanHost = host.trim().replace(/\/$/, '');
-    const startTime = Date.now();
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-    const res = await fetch(`${cleanHost}/api/tags`, { signal: controller.signal });
-    clearTimeout(timeoutId);
-    const latencyMs = Date.now() - startTime;
-
-    if (res.ok) {
-      const data = await res.json();
-      const models = (data.models || []).map(m => m.name);
-      const visionModels = models.filter(m => m.includes('moondream') || m.includes('vision') || m.includes('llava'));
-      return {
-        success: true,
-        host: cleanHost,
-        latencyMs,
-        models,
-        visionModels,
-        hasVision: visionModels.length > 0,
-        message: `Conexión directa exitosa (${latencyMs}ms). ${models.length} modelos detectados.`
-      };
-    }
-  } catch (err) {
-    return {
-      success: false,
-      message: `No se pudo conectar con ${host}. Asegúrate de que Ollama esté ejecutándose.`
-    };
-  }
-
-  return {
-    success: false,
-    message: `No se pudo conectar a Ollama (${host}).`
-  };
 }
 
 export async function apiPost(data, customApiUrl = null) {

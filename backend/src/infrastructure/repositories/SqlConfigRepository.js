@@ -7,8 +7,9 @@ class SqlConfigRepository extends IConfigRepository {
   getConfig() {
     const configPath = path.resolve(__dirname, '../../../config.json');
     let cfg = {
-      ollamaHost: env.OLLAMA_HOST || 'http://127.0.0.1:11434',
-      ollamaModel: env.OLLAMA_MODEL || 'llama3.2-vision'
+      apiUrl: '/api/voto-real',
+      ocrProvider: env.OCR_PROVIDER || 'gemini',
+      geminiModel: 'gemini-2.5-flash'
     };
 
     if (fs.existsSync(configPath)) {

@@ -1119,17 +1119,12 @@ class PostgresRepository {
 
   // 15. CONFIG OCR
   async obtenerConfigOcr() {
-    let host = env.OLLAMA_HOST || 'http://127.0.0.1:11434';
-    let model = env.OLLAMA_MODEL || 'llama3.2-vision';
-    try {
-      const cfgPath = path.resolve(__dirname, '../../../config.json');
-      if (fs.existsSync(cfgPath)) {
-        const saved = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-        if (saved.ollamaHost) host = saved.ollamaHost;
-        if (saved.ollamaModel) model = saved.ollamaModel;
-      }
-    } catch (e) {}
-    return { success: true, ollamaHost: host, ollamaModel: model, configured: true };
+    return {
+      success: true,
+      ocrProvider: env.OCR_PROVIDER || 'gemini',
+      geminiModel: 'gemini-2.5-flash',
+      configured: true
+    };
   }
 }
 

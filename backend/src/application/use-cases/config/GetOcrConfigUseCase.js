@@ -1,4 +1,5 @@
 const sqlConfigRepo = require('../../../infrastructure/repositories/SqlConfigRepository');
+const env = require('../../../config/env');
 
 class GetOcrConfigUseCase {
   constructor(configRepo = sqlConfigRepo) {
@@ -9,9 +10,8 @@ class GetOcrConfigUseCase {
     const cfg = this.configRepo.getConfig();
     return {
       success: true,
-      ollamaHost: cfg.ollamaHost,
-      ollamaModel: cfg.ollamaModel,
-      apiKey: cfg.apiKey || '',
+      ocrProvider: env.OCR_PROVIDER || 'gemini',
+      geminiModel: 'gemini-2.5-flash',
       configured: true
     };
   }

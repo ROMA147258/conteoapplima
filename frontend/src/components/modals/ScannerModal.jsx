@@ -22,8 +22,6 @@ export const ScannerModal = () => {
   const { 
     isScannerModalOpen, 
     setIsScannerModalOpen, 
-    ollamaHost,
-    ollamaModel,
     currentUser, 
     setCurrentVotes, 
     setOcrVotes, 
@@ -105,11 +103,9 @@ export const ScannerModal = () => {
 
       for (let i = 0; i < imgList.length; i++) {
         const step = Math.round(((i + 1) / imgList.length) * 75);
-        setProgress({ show: true, percentage: 15 + step, status: `Analizando con Ollama Local imagen ${i + 1}/${imgList.length}...` });
+        setProgress({ show: true, percentage: 15 + step, status: `Analizando con Google Gemini Vision imagen ${i + 1}/${imgList.length}...` });
         
         const result = await analizarImagenActa(imgList[i], {
-          ollamaHost,
-          ollamaModel,
           currentDistrict: userDist
         });
         combinedRawText += (combinedRawText ? '\n\n' : '') + result.rawText;
