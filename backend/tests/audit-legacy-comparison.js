@@ -135,7 +135,7 @@ const expectedServices = [
   'services/sync/syncManager.js',
   'services/ocr/opencvService.js',
   'services/ocr/tesseractService.js',
-  'services/ocr/geminiService.js',
+  'services/ocr/ollamaService.js',
   'services/ocr/ocrPipeline.js'
 ];
 expectedServices.forEach(s => {

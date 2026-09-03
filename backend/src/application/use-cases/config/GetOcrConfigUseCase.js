@@ -9,8 +9,10 @@ class GetOcrConfigUseCase {
     const cfg = this.configRepo.getConfig();
     return {
       success: true,
-      apiKey: cfg.geminiApiKey,
-      geminiApiKey: cfg.geminiApiKey
+      ollamaHost: cfg.ollamaHost,
+      ollamaModel: cfg.ollamaModel,
+      apiKey: cfg.apiKey || '',
+      configured: true
     };
   }
 }

@@ -44,22 +44,29 @@ export const DistrictTable = ({
 
       {/* Votos Nulos */}
       <div className="table-row-grid candidate-row metric-row-nulos">
-        <div><span className="candidate-party-badge color-badge-metric-nulo">NULO</span></div>
-        <div><div className="candidate-name-text">Votos Nulos</div><div className="candidate-party-name">Métrica de Acta</div></div>
-        <div className="counter-controller-horizontal" style={{ display: 'flex', justifyContent: isReadOnly ? 'center' : 'flex-end', alignItems: 'center', width: '100%', fontSize: isReadOnly ? '1.1rem' : undefined, fontWeight: isReadOnly ? 700 : undefined, color: isReadOnly ? '#fff' : undefined, paddingRight: isReadOnly ? '20px' : undefined }}>
+        <div className="candidate-logo-cell">
+          <span className="candidate-party-badge color-badge-metric-nulo">NULO</span>
+        </div>
+        <div className="candidate-info-cell">
+          <div className="candidate-name-text">Votos Nulos</div>
+          <div className="candidate-party-name">Métrica Oficial de Acta</div>
+        </div>
+        <div className="vote-count-container">
           {isReadOnly ? (
-            votes.NULOS || 0
+            <div className="vote-badge-readonly">
+              {votes.NULOS ?? 0}
+            </div>
           ) : (
             <input
               type="number"
               id="votos-dist-nulos"
-              className="counter-input-field"
-              value={votes.NULOS || 0}
+              className="vote-input-symmetric"
+              value={votes.NULOS ?? 0}
               min="0"
               max="999"
-              onChange={(e) => onVoteChange('distrital', 'NULOS', e.target.value)}
+              onChange={(e) => onVoteChange && onVoteChange('distrital', 'NULOS', e.target.value)}
               onFocus={(e) => e.target.select()}
-              style={{ margin: 0, width: '80px', textAlign: 'center' }}
+              placeholder="0"
             />
           )}
         </div>
@@ -67,25 +74,34 @@ export const DistrictTable = ({
 
       {/* Votos en Blanco */}
       <div className="table-row-grid candidate-row metric-row-blanco">
-        <div><span className="candidate-party-badge color-badge-metric-blanco">BLANCO</span></div>
-        <div><div className="candidate-name-text">Votos en Blanco</div><div className="candidate-party-name">Métrica de Acta</div></div>
-        <div className="counter-controller-horizontal" style={{ display: 'flex', justifyContent: isReadOnly ? 'center' : 'flex-end', alignItems: 'center', width: '100%', fontSize: isReadOnly ? '1.1rem' : undefined, fontWeight: isReadOnly ? 700 : undefined, color: isReadOnly ? '#fff' : undefined, paddingRight: isReadOnly ? '20px' : undefined }}>
+        <div className="candidate-logo-cell">
+          <span className="candidate-party-badge color-badge-metric-blanco">BLANCO</span>
+        </div>
+        <div className="candidate-info-cell">
+          <div className="candidate-name-text">Votos en Blanco</div>
+          <div className="candidate-party-name">Métrica Oficial de Acta</div>
+        </div>
+        <div className="vote-count-container">
           {isReadOnly ? (
-            votes.BLANCO ?? votes.VACIOS ?? 0
+            <div className="vote-badge-readonly">
+              {votes.BLANCO ?? votes.VACIOS ?? 0}
+            </div>
           ) : (
             <input
               type="number"
               id="votos-dist-blanco"
-              className="counter-input-field"
+              className="vote-input-symmetric"
               value={votes.BLANCO ?? votes.VACIOS ?? 0}
               min="0"
               max="999"
               onChange={(e) => {
-                onVoteChange('distrital', 'BLANCO', e.target.value);
-                onVoteChange('distrital', 'VACIOS', e.target.value);
+                if (onVoteChange) {
+                  onVoteChange('distrital', 'BLANCO', e.target.value);
+                  onVoteChange('distrital', 'VACIOS', e.target.value);
+                }
               }}
               onFocus={(e) => e.target.select()}
-              style={{ margin: 0, width: '80px', textAlign: 'center' }}
+              placeholder="0"
             />
           )}
         </div>
@@ -93,22 +109,29 @@ export const DistrictTable = ({
 
       {/* Votos Impugnados */}
       <div className="table-row-grid candidate-row metric-row-impugnados">
-        <div><span className="candidate-party-badge color-badge-metric-impugnado">IMPUGNADO</span></div>
-        <div><div className="candidate-name-text">Votos Impugnados</div><div className="candidate-party-name">Métrica de Acta</div></div>
-        <div className="counter-controller-horizontal" style={{ display: 'flex', justifyContent: isReadOnly ? 'center' : 'flex-end', alignItems: 'center', width: '100%', fontSize: isReadOnly ? '1.1rem' : undefined, fontWeight: isReadOnly ? 700 : undefined, color: isReadOnly ? '#fff' : undefined, paddingRight: isReadOnly ? '20px' : undefined }}>
+        <div className="candidate-logo-cell">
+          <span className="candidate-party-badge color-badge-metric-impugnado">IMPUGN.</span>
+        </div>
+        <div className="candidate-info-cell">
+          <div className="candidate-name-text">Votos Impugnados</div>
+          <div className="candidate-party-name">Métrica Oficial de Acta</div>
+        </div>
+        <div className="vote-count-container">
           {isReadOnly ? (
-            votes.IMPUGNADOS || 0
+            <div className="vote-badge-readonly">
+              {votes.IMPUGNADOS ?? 0}
+            </div>
           ) : (
             <input
               type="number"
               id="votos-dist-impugnados"
-              className="counter-input-field"
-              value={votes.IMPUGNADOS || 0}
+              className="vote-input-symmetric"
+              value={votes.IMPUGNADOS ?? 0}
               min="0"
               max="999"
-              onChange={(e) => onVoteChange('distrital', 'IMPUGNADOS', e.target.value)}
+              onChange={(e) => onVoteChange && onVoteChange('distrital', 'IMPUGNADOS', e.target.value)}
               onFocus={(e) => e.target.select()}
-              style={{ margin: 0, width: '80px', textAlign: 'center' }}
+              placeholder="0"
             />
           )}
         </div>

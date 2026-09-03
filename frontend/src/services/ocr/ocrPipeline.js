@@ -1,11 +1,8 @@
-import { geminiService } from './geminiService';
-import { opencvService } from './opencvService';
-import { tesseractService } from './tesseractService';
-import { procesarTextoOCR } from '../ocrPipeline';
+import { analizarImagenActa, procesarTextoOCR } from '../ocrPipeline';
 
 export const ocrPipeline = {
-  async processActaImage(imageSrc, apiKey, district) {
-    return await geminiService.analyzeDocumentImage(imageSrc, apiKey, district);
+  async processActaImage(imageSrc, district, options = {}) {
+    return await analizarImagenActa(imageSrc, { currentDistrict: district, ...options });
   },
 
   parseOcrTextToVotes(text, district) {

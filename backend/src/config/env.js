@@ -12,5 +12,7 @@ module.exports = {
   DB_PORT: parseInt(process.env.DB_PORT || process.env.POSTGRES_PORT || '5432', 10),
   DB_NAME: process.env.DB_NAME || process.env.POSTGRES_DB || 'conteo',
   DATABASE_URL: process.env.DATABASE_URL || '',
-  GEMINI_API_KEY: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || ''
+  OCR_PROVIDER: process.env.OCR_PROVIDER || 'gemini',
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY || ''
 };

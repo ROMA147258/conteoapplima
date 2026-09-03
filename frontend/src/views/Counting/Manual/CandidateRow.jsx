@@ -15,40 +15,34 @@ export const CandidateRow = ({
 
   return (
     <div className={`table-row-grid candidate-row candidate-${safePartyId}`}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: '4px' }}>
+      {/* Columna 1: Logo del Partido (Centrado Perfecto) */}
+      <div className="candidate-logo-cell">
         <PartyLogo partyKey={partyKey} partyId={safePartyId} size={42} />
       </div>
-      <div>
+
+      {/* Columna 2: Nombre de Candidato y Organización */}
+      <div className="candidate-info-cell">
         <div className="candidate-name-text">{candName}</div>
         <div className="candidate-party-name">{partyLong || partyKey}</div>
       </div>
-      <div
-        className="counter-controller-horizontal"
-        style={{
-          position: 'relative',
-          display: 'flex',
-          justifyContent: isReadOnly ? 'center' : 'flex-end',
-          alignItems: 'center',
-          width: '100%',
-          fontSize: isReadOnly ? '1.1rem' : undefined,
-          fontWeight: isReadOnly ? 700 : undefined,
-          color: isReadOnly ? '#fff' : undefined,
-          paddingRight: isReadOnly ? '20px' : undefined
-        }}
-      >
+
+      {/* Columna 3: Contador de Votos / Cero (Centrado y Simétrico) */}
+      <div className="vote-count-container">
         {isReadOnly ? (
-          voteValue || 0
+          <div className="vote-badge-readonly">
+            {voteValue ?? 0}
+          </div>
         ) : (
           <input
             type="number"
-            id={`votos-input-${partyId}`}
-            className="counter-input-field"
-            value={voteValue || 0}
+            id={`votos-input-${safePartyId}`}
+            className="vote-input-symmetric"
+            value={voteValue ?? 0}
             min="0"
             max="999"
             onChange={(e) => onChange && onChange(e.target.value)}
             onFocus={(e) => e.target.select()}
-            style={{ margin: 0, width: '80px', textAlign: 'center' }}
+            placeholder="0"
           />
         )}
       </div>

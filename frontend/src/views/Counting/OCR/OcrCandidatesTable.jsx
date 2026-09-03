@@ -13,9 +13,9 @@ export const OcrCandidatesTable = ({
   return (
     <div className="table-container glass" id="ocr-table-container">
       <div className="table-header-grid">
-        <div>Partido</div>
-        <div>Alcalde</div>
-        <div className="text-center">Votos Imagen</div>
+        <div className="table-header-cell text-center">PARTIDO</div>
+        <div className="table-header-cell">CANDIDATO / ORGANIZACIÓN</div>
+        <div className="table-header-cell text-center">VOTOS (IA)</div>
       </div>
 
       <div className="table-body-grid" id="ocr-candidates-table-body">

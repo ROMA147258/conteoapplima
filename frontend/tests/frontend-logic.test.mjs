@@ -27,7 +27,7 @@ assert.strictEqual(sampleJson.success, true);
 assert.strictEqual(sampleJson.votos, 45);
 console.log('  ✅ [PASSED] extractJsonFromString markdown extractor');
 
-// Test OCR Text Parser
+// Test 1: OCR Text Parser con Matriz Multicolumna
 const sampleActaText = `
 ACTA ELECTORAL - ELECCIONES MUNICIPALES
 LIMA METROPOLITANA | ATE DISTRITAL
@@ -53,6 +53,42 @@ assert.strictEqual(parsedVotes.distrital.BLANCO, 1);
 assert.strictEqual(parsedVotes.provincial.IMPUGNADOS, 4);
 assert.strictEqual(parsedVotes.distrital.IMPUGNADOS, 2);
 console.log('  ✅ [PASSED] OCR Text to Votes multi-column parser (including BLANCO & IMPUGNADOS)');
+
+// Test 2: OCR Text Parser con Lista de Columna Única (Caso Real de Usuario)
+const sampleSingleCol = `
+SOMOS PERÚ              30
+RENOVACIÓN POPULAR      10
+AVANZA PAÍS              7
+PODEMOS PERÚ             1
+FREPAP                  17
+JUNTOS POR EL PERÚ      25
+FUERZA POPULAR          30
+PPC                     91
+---------------------------
+TOTAL                  211
+`;
+const singleColVotes = procesarTextoOCR(sampleSingleCol, 'Pueblo Libre');
+assert.strictEqual(singleColVotes.provincial["SOMOS PERU"], 30);
+assert.strictEqual(singleColVotes.provincial.RENOVACION, 10);
+assert.strictEqual(singleColVotes.provincial["AVANZA PAIS"], 7);
+assert.strictEqual(singleColVotes.provincial.PODEMOS, 1);
+assert.strictEqual(singleColVotes.provincial.FREPAP, 17);
+assert.strictEqual(singleColVotes.provincial.JP, 25);
+assert.strictEqual(singleColVotes.provincial.FP, 30);
+assert.strictEqual(singleColVotes.provincial.PPC, 91);
+
+assert.strictEqual(singleColVotes.distrital["SOMOS PERU"], 30);
+assert.strictEqual(singleColVotes.distrital.RENOVACION, 10);
+assert.strictEqual(singleColVotes.distrital["AVANZA PAIS"], 7);
+assert.strictEqual(singleColVotes.distrital.PODEMOS, 1);
+assert.strictEqual(singleColVotes.distrital.FREPAP, 17);
+assert.strictEqual(singleColVotes.distrital.JP, 25);
+assert.strictEqual(singleColVotes.distrital.FP, 30);
+assert.strictEqual(singleColVotes.distrital.PPC, 91);
+
+const sumProv = Object.values(singleColVotes.provincial).reduce((a, b) => a + b, 0);
+assert.strictEqual(sumProv, 211);
+console.log('  ✅ [PASSED] OCR Single-column List Parser (incluyendo Renovación Popular y suma total de 211 votos)');
 
 console.log('\n======================================================');
 console.log('🎉 TODAS LAS PRUEBAS DE LÓGICA FRONTEND PASARON');

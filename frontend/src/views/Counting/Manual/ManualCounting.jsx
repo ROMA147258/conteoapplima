@@ -77,9 +77,9 @@ export const ManualCounting = ({
 
       <div className="table-container glass" id="manual-table-container">
         <div className="table-header-grid">
-          <div>Partido</div>
-          <div>Alcalde</div>
-          <div className="text-center">Conteo Votos</div>
+          <div className="table-header-cell text-center">PARTIDO</div>
+          <div className="table-header-cell">CANDIDATO / ORGANIZACIÓN</div>
+          <div className="table-header-cell text-center">VOTOS</div>
         </div>
 
         <div className="table-body-grid" id="candidates-table-body">

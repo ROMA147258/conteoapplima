@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { ocrPipeline } from '../services/ocr/ocrPipeline';
 
 export const useOcr = () => {
-  const { geminiApiKey, currentUser, setCurrentVotes, setOcrVotes, setOcrRawDetail, showToast } = useApp();
+  const { ollamaHost, ollamaModel, currentUser, setCurrentVotes, setOcrVotes, setOcrRawDetail, showToast } = useApp();
   const [isProcessing, setIsProcessing] = useState(false);
   const [ocrProgress, setOcrProgress] = useState({ show: false, percentage: 0, status: '' });
 
@@ -18,9 +18,12 @@ export const useOcr = () => {
 
       for (let i = 0; i < imgList.length; i++) {
         const step = Math.round(((i + 1) / imgList.length) * 80);
-        setOcrProgress({ show: true, percentage: 10 + step, status: `Analizando imagen ${i + 1}/${imgList.length}...` });
+        setOcrProgress({ show: true, percentage: 10 + step, status: `Analizando con Ollama Local imagen ${i + 1}/${imgList.length}...` });
 
-        const result = await ocrPipeline.processActaImage(imgList[i], geminiApiKey, userDist);
+        const result = await ocrPipeline.processActaImage(imgList[i], userDist, {
+          ollamaHost,
+          ollamaModel
+        });
         combinedRawText += (combinedRawText ? '\n\n' : '') + result.rawText;
       }
 

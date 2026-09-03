@@ -8,6 +8,10 @@ const configController = require('../controllers/ConfigController');
 router.get('/config', (req, res) => configController.getConfig(req, res));
 router.post('/save-config', (req, res) => configController.saveConfig(req, res));
 router.get('/config-ocr', (req, res) => configController.getOcrConfig(req, res));
+router.get('/ocr/models', (req, res) => configController.getOllamaModels(req, res));
+router.post('/ocr/models', (req, res) => configController.getOllamaModels(req, res));
+router.get('/ocr/test', (req, res) => configController.testOllama(req, res));
+router.post('/ocr/test', (req, res) => configController.testOllama(req, res));
 router.post('/ocr/process', (req, res) => configController.processOcr(req, res));
 
 // 2. Endpoints REST específicos (PostgreSQL 16)
@@ -122,7 +126,12 @@ router.all('/voto-real', async (req, res) => {
       case 'read_reporte':
         return res.json(await postgresRepo.obtenerReporte());
       case 'obtener_config_ocr':
-        return res.json(await postgresRepo.obtenerConfigOcr());
+        return configController.getOcrConfig(req, res);
+      case 'obtener_modelos_ollama':
+        return configController.getOllamaModels(req, res);
+      case 'probar_ollama':
+      case 'test_ollama':
+        return configController.testOllama(req, res);
       case 'procesar_acta_ocr':
         return configController.processOcr(req, res);
       default:

@@ -177,45 +177,46 @@ export function procesarTextoOCR(text, currentDistrict = 'ATE') {
     if (!str) return null;
     const s = norm(str).toUpperCase();
 
-    if (s.includes('IMPUGNAD')) return 'IMPUGNADOS';
-    if (s.includes('VACIO') || s.includes('BLANCO') || s.includes('EN BLANCO')) return 'BLANCO';
-    if (s.includes('NULO') || s.includes('ANULADO')) return 'NULOS';
-
+    // 1. Partidos Políticos Primero (Evitar que "RENOVACION" coincida con "VACIO")
     if (s.includes('RENOVACION') || s.includes('LOPEZ ALIAGA') || s.includes('ACOSTA CAJALEON')) return 'RENOVACION';
     if (s.includes('AHORA NACION') || s.includes('SUSEL') || s.includes('CABELLO ACOSTA')) return 'AHORA NACION';
     if (s.includes('AVANZA') || s.includes('ALLISON') || s.includes('COMBINA') || s.includes('CASAS')) return 'AVANZA PAIS';
     if (s.includes('PODEMOS') || s.includes('URRESTI') || s.includes('AMAYA')) return 'PODEMOS';
     if (s.includes('OBRAS') || s.includes('BELMONT')) return 'OBRAS';
-    if (s.includes('ACCION POPULAR') || s.includes('TEJADA') || s.includes('CHACON') || s.includes('ARANA')) return 'ACCION POPULAR';
+    if (s.includes('ACCION POPULAR') || s.includes('ACCION') || s.includes('TEJADA') || s.includes('CHACON') || s.includes('ARANA')) return 'ACCION POPULAR';
     if (s.includes('ESPERANZA') || s.includes('LEON CHINCHAY') || s.includes('SILVA MONTERO')) return 'ESPERANZA';
     if (s.includes('VENCEREMOS') || s.includes('ALVARADO')) return 'VENCEREMOS';
     if (s.includes('VISION') || s.includes('ABARCA') || s.includes('CAVERO')) return 'VISION PERU';
     if (s.includes('APRA') || s.includes('APRISTA') || s.includes('YAYA') || s.includes('MUNOZ')) return 'APRA';
-    if (s.includes('PPC') || s.includes('CRISTIANO') || s.includes('DE POMAR') || s.includes('GARCIA DURANTE')) return 'PPC';
+    if (s.includes('PPC') || s.includes('CRISTIANO') || s.includes('DE POMAR') || s.includes('GARCIA DURANTE') || s.includes('POPULAR CRISTIANO')) return 'PPC';
     if (s.includes('PROGRESEMOS') || s.includes('LLANOS')) return 'PROGRESEMOS';
     if (s.includes('BUEN GOBIERNO') || s.includes('GALLARDO')) return 'BUEN GOBIERNO';
     if (s.includes('PERU LIBRE') || s.includes('RAMIREZ MATEO')) return 'PERU LIBRE';
     if (s.includes('TIERRA VERDE') || s.includes('YEHUDE') || s.includes('SIMON')) return 'TIERRA VERDE';
     if (s.includes('PUEBLO CONSCIENTE') || s.includes('HUETTE')) return 'PUEBLO CONSCIENTE';
-    if (s.includes('PATRIOTICO') || s.includes('CALLER')) return 'PPP';
+    if (s.includes('PATRIOTICO') || s.includes('CALLER') || /\bPPP\b/.test(s)) return 'PPP';
     if (s.includes('INTEGRIDAD') || s.includes('LINARES')) return 'INTEGRIDAD';
     if (s.includes('FUERZA CIUDADANA') || s.includes('BONILLA')) return 'FUERZA CIUDADANA';
     if (s.includes('BATALLA') || s.includes('QUISPE CABALLERO')) return 'BATALLA PERU';
-    if (s.includes('ALIANZA PARA EL PROGRESO') || s.includes('BENEL') || s.includes('APP')) return 'APP';
+    if (s.includes('ALIANZA PARA EL PROGRESO') || s.includes('BENEL') || /\bAPP\b/.test(s)) return 'APP';
     if (s.includes('ALIANZA REGIONAL') || s.includes('MANCHEGO')) return 'ALIANZA REGIONAL';
 
-    const firstWord = s.split(/[\s|,\t\-:]+/)[0];
-    if (firstWord === 'FP' || s.startsWith('FP ') || s.includes('FUERZA POPULAR') || s.startsWith('FUERZA') || s.includes('DAZA')) return 'FP';
-    if (firstWord === 'JP' || s.startsWith('JP ') || s.includes('JUNTOS POR EL PERU') || s.startsWith('JUNTOS') || s.includes('VARGAS CUELLAR')) return 'JP';
-    if (firstWord === 'SP' || s.includes('SOMOS') || s.startsWith('SP ') || s.includes('BRUCE') || s.includes('LEGUIA') || s.includes('BAZAN')) return 'SOMOS PERU';
+    if (s.includes('FUERZA POPULAR') || /\bFP\b/.test(s) || s.startsWith('FUERZA') || s.includes('DAZA') || s.includes('KEIKO')) return 'FP';
+    if (s.includes('JUNTOS POR EL PERU') || /\bJP\b/.test(s) || s.startsWith('JUNTOS') || s.includes('VARGAS CUELLAR')) return 'JP';
+    if (s.includes('SOMOS PERU') || /\bSP\b/.test(s) || s.includes('SOMOS') || s.includes('BRUCE') || s.includes('LEGUIA') || s.includes('BAZAN')) return 'SOMOS PERU';
     if (s.includes('FREPAP') || s.includes('AGRICOLA') || s.includes('VALDEZ')) return 'FREPAP';
-    if (s.includes('DEMOCRATA VERDE') || s.includes('HURTADO')) return 'VERDE';
-    if (s.includes('MORADO') || s.includes('PARTIDO MORADO') || s.includes('LA CRUZ') || s.includes('RUIZ GUTIERREZ')) return 'MORADO';
+    if (s.includes('DEMOCRATA VERDE') || s.includes('PARTIDO VERDE') || /\bVERDE\b/.test(s) || s.includes('HURTADO')) return 'VERDE';
+    if (s.includes('PARTIDO MORADO') || /\bMORADO\b/.test(s) || s.includes('LA CRUZ') || s.includes('RUIZ GUTIERREZ')) return 'MORADO';
+
+    // 2. Votos especiales
+    if (s.includes('IMPUGNAD')) return 'IMPUGNADOS';
+    if (s.includes('BLANCO') || s.includes('EN BLANCO') || /\bVACIO\b/.test(s) || /\bVACIOS\b/.test(s)) return 'BLANCO';
+    if (s.includes('NULO') || s.includes('ANULADO') || s.includes('NULOS')) return 'NULOS';
 
     return null;
   };
 
-  // 1. Si el texto viene como JSON estructurado de Gemini
+  // 1. Si el texto viene como JSON estructurado de Ollama / IA
   const parsedDirectJson = extractJsonFromString(text);
   if (parsedDirectJson && typeof parsedDirectJson === 'object') {
     // A. Si tiene tabla_completa / table / filas
@@ -325,6 +326,9 @@ export function procesarTextoOCR(text, currentDistrict = 'ATE') {
 
   // Procesar filas de datos
   lines.forEach(line => {
+    // Ignorar líneas de totalización / cabeceras
+    if (norm(line).startsWith('total') || norm(line).startsWith('emitidos') || norm(line).startsWith('---')) return;
+
     const pKey = matchPartyKey(line);
     if (!pKey) return;
 
@@ -371,37 +375,39 @@ export function procesarTextoOCR(text, currentDistrict = 'ATE') {
       }
     } else if (numTokens.length === 1) {
       const isProv = norm(line).includes('lima') || norm(line).includes('prov');
+      const isDist = norm(line).includes(userDistNorm) || norm(line).includes('dist');
       if (isProv) {
         detected.provincial[pKey] = numTokens[0];
+      } else if (isDist) {
+        detected.distrital[pKey] = numTokens[0];
       } else {
+        // Asignar a ambas secciones si la lista es de columna única
+        detected.provincial[pKey] = numTokens[0];
         detected.distrital[pKey] = numTokens[0];
       }
     }
   });
 
+  const totalProv = Object.values(detected.provincial).reduce((a, b) => a + b, 0);
+  const totalDist = Object.values(detected.distrital).reduce((a, b) => a + b, 0);
+  if (totalProv > 0 && totalDist === 0) {
+    detected.distrital = { ...detected.provincial };
+  } else if (totalDist > 0 && totalProv === 0) {
+    detected.provincial = { ...detected.distrital };
+  }
+
   return detected;
 }
 
-export async function analizarImagenGemini(imageSrc, apiKey, currentDistrict = 'Lima') {
-  const effectiveKey = apiKey || 
-    (typeof localStorage !== 'undefined' ? localStorage.getItem('votoReal_geminiApiKey') : '') || 
-    (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_GEMINI_API_KEY : '') || 
-    '';
+export async function analizarImagenOllama(imageSrc, options = {}) {
+  const host = (options.ollamaHost || (typeof localStorage !== 'undefined' ? localStorage.getItem('votoReal_ollamaHost') : '') || 'http://127.0.0.1:11434').replace(/\/$/, '');
+  const model = (options.ollamaModel || (typeof localStorage !== 'undefined' ? localStorage.getItem('votoReal_ollamaModel') : '') || 'moondream:latest').trim();
+  const currentDistrict = options.currentDistrict || 'Lima';
 
   const base64Image = imageSrc.includes(',') ? imageSrc.split(',')[1] : imageSrc;
   const mimeType = imageSrc.includes(';') ? (imageSrc.split(';')[0].split(':')[1] || 'image/jpeg') : 'image/jpeg';
 
-  const candidatosProvinciales = obtenerCandidatosPorUbicacion("Lima");
-  const candidatosDistritales = obtenerCandidatosPorUbicacion(currentDistrict);
-
-  const candidatosProvContext = Object.entries(candidatosProvinciales)
-    .map(([p, n]) => `  - ${p} (${PARTIDO_NOMBRES_LARGOS[p] || p}): ${n}`)
-    .join('\n');
-  const candidatosDistContext = Object.entries(candidatosDistritales)
-    .map(([p, n]) => `  - ${p} (${PARTIDO_NOMBRES_LARGOS[p] || p}): ${n}`)
-    .join('\n');
-
-  const prompt = `Eres un sistema experto de conteo electoral peruano. Analiza esta imagen con máxima precisión y extrae los votos exactos por partido.
+  const prompt = `Eres un sistema experto de conteo electoral peruano (ONPE / JNE). Analiza esta imagen con máxima precisión y extrae los votos exactos por organización política.
 
 ESTRUCTURA DE LA TABLA O ACTA ELECTORAL:
 1. Partidos válidos (usa exactamente estas claves):
@@ -411,41 +417,27 @@ ESTRUCTURA DE LA TABLA O ACTA ELECTORAL:
    - FREPAP = Frepap
    - VERDE = Partido Demócrata Verde / Verde
    - MORADO = Partido Morado
+   - RENOVACION = Renovación Popular
+   - AHORA NACION = Ahora Nación
+   - AVANZA PAIS = Avanza País
+   - PODEMOS = Podemos Perú
+   - APRA = Partido Aprista Peruano
+   - PPC = Partido Popular Cristiano
    - NULOS = Votos Nulos
    - BLANCO = Votos en Blanco
    - IMPUGNADOS = Votos Impugnados
 
 2. Mapeo de Columnas:
-   - La columna "LIMA" (o "PROVINCIAL") corresponde a la sección Provincial.
+   - La columna "LIMA" (o "PROVINCIAL" / "METROPOLITANA") corresponde a la sección Provincial.
    - La columna con el distrito "${currentDistrict}" (ej. BREÑA, ATE, LURÍN, etc.) o "DISTRITAL" corresponde a la sección Distrital.
-   - Si la imagen muestra una matriz de múltiples columnas (ej. BREÑA, LIMA, ATE, LURIN), lee cada valor numérico en su intersección fila/columna.
+   - Si la imagen muestra una matriz de múltiples columnas, lee cada valor numérico en su intersección fila/columna.
 
 Devuelve ÚNICAMENTE un JSON válido sin Markdown ni explicaciones:
 {
   "tipoDocumento": "acta_electoral",
   "votos": {
-    "provincial": {
-      "FP": 0,
-      "JP": 0,
-      "SOMOS PERU": 0,
-      "FREPAP": 0,
-      "VERDE": 0,
-      "MORADO": 0,
-      "BLANCO": 0,
-      "NULOS": 0,
-      "IMPUGNADOS": 0
-    },
-    "distrital": {
-      "FP": 0,
-      "JP": 0,
-      "SOMOS PERU": 0,
-      "FREPAP": 0,
-      "VERDE": 0,
-      "MORADO": 0,
-      "BLANCO": 0,
-      "NULOS": 0,
-      "IMPUGNADOS": 0
-    }
+    "provincial": { "FP": 0, "JP": 0, "SOMOS PERU": 0, "FREPAP": 0, "VERDE": 0, "MORADO": 0, "BLANCO": 0, "NULOS": 0, "IMPUGNADOS": 0 },
+    "distrital": { "FP": 0, "JP": 0, "SOMOS PERU": 0, "FREPAP": 0, "VERDE": 0, "MORADO": 0, "BLANCO": 0, "NULOS": 0, "IMPUGNADOS": 0 }
   },
   "tabla_completa": {
     "columnas": ["PARTIDO", "LIMA", "${currentDistrict}"],
@@ -455,88 +447,16 @@ Devuelve ÚNICAMENTE un JSON válido sin Markdown ni explicaciones:
   }
 }`;
 
-  // 1. Si hay effectiveKey, intentar llamada directa a Gemini desde el cliente
-  if (effectiveKey) {
-    const modelsToTry = [
-      "gemini-2.5-flash",
-      "gemini-2.0-flash",
-      "gemini-1.5-flash",
-      "gemini-1.5-flash-latest"
-    ];
-
-    for (const modelName of modelsToTry) {
-      const endpointUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${effectiveKey}`;
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 12000);
-
-        const response = await fetch(endpointUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          signal: controller.signal,
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  { text: prompt },
-                  { inlineData: { mimeType, data: base64Image } }
-                ]
-              }
-            ]
-          })
-        });
-
-        clearTimeout(timeoutId);
-
-        if (response.ok) {
-          const result = await response.json();
-          const rawText = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-          const parsedJson = extractJsonFromString(rawText);
-
-          if (parsedJson) {
-            const structuredResult = parsedJson.tipoDocumento ? parsedJson : {
-              tipoDocumento: autoDetectTipoDocumento(JSON.stringify(parsedJson)),
-              ...parsedJson
-            };
-            return {
-              rawText: JSON.stringify(structuredResult, null, 2),
-              preprocessedDataUrl: imageSrc
-            };
-          }
-
-          const parsedTables = parseMarkdownTableToJSON(rawText);
-          if (parsedTables && parsedTables.length > 0) {
-            return {
-              rawText: JSON.stringify({
-                tipoDocumento: "tabla",
-                columnas: parsedTables[0].columnas,
-                filas: parsedTables[0].filas
-              }, null, 2),
-              preprocessedDataUrl: imageSrc
-            };
-          }
-
-          return {
-            rawText: JSON.stringify({
-              tipoDocumento: autoDetectTipoDocumento(rawText),
-              textoExtraido: rawText
-            }, null, 2),
-            preprocessedDataUrl: imageSrc
-          };
-        }
-      } catch (err) {
-        console.warn(`[analizarImagenGemini] Error o timeout con modelo ${modelName}:`, err.message);
-      }
-    }
-  }
-
-  // 2. Fallback a través del servidor backend (/api/voto-real con action: procesar_acta_ocr)
+  // 1. Canal Primario: Backend Proxy Express (1 sola petición limpia, sin problemas de CORS)
   try {
     const backendRes = await fetch('/api/voto-real', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'procesar_acta_ocr',
+        provider: 'ollama',
+        ollamaHost: host,
+        ollamaModel: model,
         imageBase64: base64Image,
         mimeType: mimeType,
         prompt: prompt,
@@ -550,21 +470,86 @@ Devuelve ÚNICAMENTE un JSON válido sin Markdown ni explicaciones:
         const parsedJson = extractJsonFromString(serverData.rawText);
         return {
           rawText: parsedJson ? JSON.stringify(parsedJson, null, 2) : serverData.rawText,
-          preprocessedDataUrl: imageSrc
+          preprocessedDataUrl: imageSrc,
+          provider: 'ollama',
+          model: serverData.model || model
         };
       }
     }
   } catch (backendErr) {
-    console.warn('[analizarImagenGemini] Error en backend proxy OCR:', backendErr.message);
+    console.warn('[analizarImagenOllama] Error en backend proxy, intentando conexión directa:', backendErr.message);
   }
 
-  const errorFallback = {
-    tipoDocumento: "error_temporal",
-    mensaje: "No se pudo conectar con la API de Gemini o el acta no fue nítida. Por favor, verifica tu API Key de Gemini en Configuración o ingresa los votos manualmente."
-  };
+  // 2. Canal Secundario: Intento directo a Ollama local con modelo configurado y fallbacks
+  const candidateModels = Array.from(new Set([
+    model,
+    model.includes(':') ? model.split(':')[0] : `${model}:latest`,
+    'moondream:latest',
+    'moondream',
+    'llama3.2-vision:latest',
+    'llama3.2-vision',
+    'llava:latest',
+    'llava'
+  ])).filter(Boolean);
+
+  for (const targetModel of candidateModels) {
+    try {
+      const timeoutMs = targetModel.includes('vision') ? 60000 : 35000;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+      const ollamaRes = await fetch(`${host}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: targetModel,
+          prompt: prompt,
+          images: [base64Image],
+          stream: false,
+          format: 'json',
+          options: {
+            temperature: 0.1
+          }
+        })
+      });
+
+      clearTimeout(timeoutId);
+
+      if (ollamaRes.ok) {
+        const data = await ollamaRes.json();
+        const rawText = data?.response?.trim() || '';
+        const parsedJson = extractJsonFromString(rawText);
+
+        if (parsedJson) {
+          const structuredResult = parsedJson.tipoDocumento ? parsedJson : {
+            tipoDocumento: autoDetectTipoDocumento(JSON.stringify(parsedJson)),
+            ...parsedJson
+          };
+          return {
+            rawText: JSON.stringify(structuredResult, null, 2),
+            preprocessedDataUrl: imageSrc,
+            provider: 'ollama',
+            model: targetModel
+          };
+        }
+      }
+    } catch (err) {
+      console.warn(`[analizarImagenOllama] Intento directo con ${targetModel} falló:`, err.message);
+    }
+  }
 
   return {
-    rawText: JSON.stringify(errorFallback, null, 2),
+    rawText: JSON.stringify({
+      tipoDocumento: "error_temporal",
+      mensaje: `No se pudo conectar con Ollama (${host}). Asegúrate de que Ollama esté ejecutándose o ingresa los votos manualmente.`
+    }, null, 2),
     preprocessedDataUrl: imageSrc
   };
 }
+
+export async function analizarImagenActa(imageSrc, options = {}) {
+  return await analizarImagenOllama(imageSrc, options);
+}
+
+

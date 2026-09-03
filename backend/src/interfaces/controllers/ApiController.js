@@ -41,7 +41,8 @@ class ApiController {
   getConfig(req, res) {
     const configPath = path.resolve(__dirname, '../../../config.json');
     let cfg = {
-      geminiApiKey: env.GEMINI_API_KEY
+      ollamaHost: env.OLLAMA_HOST || 'http://127.0.0.1:11434',
+      ollamaModel: env.OLLAMA_MODEL || 'llama3.2-vision'
     };
 
     if (fs.existsSync(configPath)) {

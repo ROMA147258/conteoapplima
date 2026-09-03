@@ -15,14 +15,15 @@ import {
   Sparkles,
   Table
 } from 'lucide-react';
-import { analizarImagenGemini, procesarTextoOCR } from '../../services/ocrPipeline';
+import { analizarImagenActa, procesarTextoOCR } from '../../services/ocrPipeline';
 import { extractJsonFromString } from '../../utils/helpers';
 
 export const ScannerModal = () => {
   const { 
     isScannerModalOpen, 
     setIsScannerModalOpen, 
-    geminiApiKey, 
+    ollamaHost,
+    ollamaModel,
     currentUser, 
     setCurrentVotes, 
     setOcrVotes, 
@@ -104,9 +105,13 @@ export const ScannerModal = () => {
 
       for (let i = 0; i < imgList.length; i++) {
         const step = Math.round(((i + 1) / imgList.length) * 75);
-        setProgress({ show: true, percentage: 15 + step, status: `Analizando con IA imagen ${i + 1}/${imgList.length}...` });
+        setProgress({ show: true, percentage: 15 + step, status: `Analizando con Ollama Local imagen ${i + 1}/${imgList.length}...` });
         
-        const result = await analizarImagenGemini(imgList[i], geminiApiKey, userDist);
+        const result = await analizarImagenActa(imgList[i], {
+          ollamaHost,
+          ollamaModel,
+          currentDistrict: userDist
+        });
         combinedRawText += (combinedRawText ? '\n\n' : '') + result.rawText;
       }
 
