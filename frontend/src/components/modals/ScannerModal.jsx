@@ -24,6 +24,7 @@ export const ScannerModal = () => {
     setIsScannerModalOpen, 
     currentUser, 
     setCurrentVotes, 
+    ocrVotes,
     setOcrVotes, 
     setOcrRawDetail, 
     showToast 
@@ -312,17 +313,17 @@ export const ScannerModal = () => {
                   background: 'rgba(16, 185, 129, 0.12)',
                   border: '1px solid rgba(16, 185, 129, 0.4)',
                   borderRadius: '12px',
-                  padding: '12px 14px',
+                  padding: '14px 16px',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '4px'
+                  gap: '6px'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981', fontWeight: 800, fontSize: '0.9rem' }}>
-                    <CheckCircle2 size={18} />
-                    <span>✓ Votos de Lima Metropolitana Confirmados</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981', fontWeight: 800, fontSize: '0.92rem' }}>
+                    <CheckCircle2 size={20} />
+                    <span>✓ Votos de Lima Metropolitana Confirmados y Guardados</span>
                   </div>
-                  <p style={{ margin: 0, fontSize: '0.76rem', color: '#a7f3d0' }}>
-                    🔒 Hoja 1 confirmada. No se permite volver a tomar ni enviar otra foto.
+                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#a7f3d0' }}>
+                    🔒 Ya confirmaste esta hoja. La opción de volver a tomar o mandar foto está bloqueada para preservar la integridad de los datos.
                   </p>
                 </div>
               ) : (
@@ -385,176 +386,178 @@ export const ScannerModal = () => {
               )}
 
               {/* TABLA DE VERIFICACIÓN DE LIMA METROPOLITANA */}
-              <div style={{
-                background: 'rgba(15, 23, 42, 0.85)',
-                border: '1px solid rgba(56, 189, 248, 0.3)',
-                borderRadius: '14px',
-                padding: '14px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '10px'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Table size={16} color="#38bdf8" /> {isProvConfirmed ? 'Votos Confirmados: Lima Metropolitana' : 'Verificación de Votos: Lima Metropolitana'}
-                  </span>
-                  <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#f8fafc' }}>
-                    Total: <strong style={{ color: '#38bdf8' }}>{totalProv} votos</strong>
-                  </span>
-                </div>
+              {Object.keys(provVotes).length > 0 && (
+                <div style={{
+                  background: 'rgba(15, 23, 42, 0.85)',
+                  border: '1px solid rgba(56, 189, 248, 0.3)',
+                  borderRadius: '14px',
+                  padding: '14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Table size={16} color="#38bdf8" /> {isProvConfirmed ? 'Votos Confirmados: Lima Metropolitana' : 'Verificación de Votos: Lima Metropolitana'}
+                    </span>
+                    <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#f8fafc' }}>
+                      Total: <strong style={{ color: '#38bdf8' }}>{totalProv} votos</strong>
+                    </span>
+                  </div>
 
-                {/* Lista de Filas */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '260px', overflowY: 'auto', paddingRight: '4px' }}>
-                  {provincialCandidates.map(c => {
-                    const val = provVotes[c.key] ?? 0;
-                    const hasV = Number(val) > 0;
-                    return (
-                      <div
-                        key={`prov-row-${c.key}`}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '6px 10px',
-                          background: hasV ? 'rgba(56, 189, 248, 0.12)' : 'rgba(15, 23, 42, 0.6)',
-                          border: hasV ? '1px solid rgba(56, 189, 248, 0.35)' : '1px solid rgba(255, 255, 255, 0.05)',
-                          borderRadius: '8px',
-                          gap: '8px'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-                          <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', width: '22px' }}>
-                            #{c.num}
-                          </span>
-                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {c.candidato}
-                            </span>
-                            <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#38bdf8' }}>
-                              {c.partyLong || c.organizacion}
-                            </span>
-                          </div>
-                        </div>
-
-                        <input
-                          type="number"
-                          min="0"
-                          max="999"
-                          value={val}
-                          disabled={isProvConfirmed || isLocked}
-                          readOnly={isProvConfirmed || isLocked}
-                          onChange={(e) => handleProvVoteChange(c.key, e.target.value)}
+                  {/* Lista de Filas */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '260px', overflowY: 'auto', paddingRight: '4px' }}>
+                    {provincialCandidates.map(c => {
+                      const val = provVotes[c.key] ?? 0;
+                      const hasV = Number(val) > 0;
+                      return (
+                        <div
+                          key={`prov-row-${c.key}`}
                           style={{
-                            width: '58px',
-                            textAlign: 'center',
-                            padding: '4px 6px',
-                            fontSize: '0.88rem',
-                            fontWeight: 800,
-                            borderRadius: '6px',
-                            border: hasV ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.15)',
-                            background: (isProvConfirmed || isLocked) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a',
-                            color: hasV ? '#38bdf8' : '#94a3b8',
-                            cursor: (isProvConfirmed || isLocked) ? 'not-allowed' : 'text'
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '6px 10px',
+                            background: hasV ? 'rgba(56, 189, 248, 0.12)' : 'rgba(15, 23, 42, 0.6)',
+                            border: hasV ? '1px solid rgba(56, 189, 248, 0.35)' : '1px solid rgba(255, 255, 255, 0.05)',
+                            borderRadius: '8px',
+                            gap: '8px'
                           }}
-                        />
-                      </div>
-                    );
-                  })}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', width: '22px' }}>
+                              #{c.num}
+                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {c.candidato}
+                              </span>
+                              <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#38bdf8' }}>
+                                {c.partyLong || c.organizacion}
+                              </span>
+                            </div>
+                          </div>
 
-                  {/* Votos Nulos */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '8px' }}>
-                    <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#fca5a5' }}>❌ VOTOS NULOS:</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max="999"
-                      value={provVotes.NULOS ?? 0}
-                      disabled={isProvConfirmed || isLocked}
-                      readOnly={isProvConfirmed || isLocked}
-                      onChange={(e) => handleProvVoteChange('NULOS', e.target.value)}
-                      style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #ef4444', background: (isProvConfirmed || isLocked) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#fca5a5', cursor: (isProvConfirmed || isLocked) ? 'not-allowed' : 'text' }}
-                    />
+                          <input
+                            type="number"
+                            min="0"
+                            max="999"
+                            value={val}
+                            disabled={isProvConfirmed || isLocked}
+                            readOnly={isProvConfirmed || isLocked}
+                            onChange={(e) => handleProvVoteChange(c.key, e.target.value)}
+                            style={{
+                              width: '58px',
+                              textAlign: 'center',
+                              padding: '4px 6px',
+                              fontSize: '0.88rem',
+                              fontWeight: 800,
+                              borderRadius: '6px',
+                              border: hasV ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.15)',
+                              background: (isProvConfirmed || isLocked) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a',
+                              color: hasV ? '#38bdf8' : '#94a3b8',
+                              cursor: (isProvConfirmed || isLocked) ? 'not-allowed' : 'text'
+                            }}
+                          />
+                        </div>
+                      );
+                    })}
+
+                    {/* Votos Nulos */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '8px' }}>
+                      <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#fca5a5' }}>❌ VOTOS NULOS:</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="999"
+                        value={provVotes.NULOS ?? 0}
+                        disabled={isProvConfirmed || isLocked}
+                        readOnly={isProvConfirmed || isLocked}
+                        onChange={(e) => handleProvVoteChange('NULOS', e.target.value)}
+                        style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #ef4444', background: (isProvConfirmed || isLocked) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#fca5a5', cursor: (isProvConfirmed || isLocked) ? 'not-allowed' : 'text' }}
+                      />
+                    </div>
+
+                    {/* Votos en Blanco */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.12)', borderRadius: '8px' }}>
+                      <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#cbd5e1' }}>⚪ VOTOS EN BLANCO:</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="999"
+                        value={provVotes.BLANCO ?? 0}
+                        disabled={isProvConfirmed || isLocked}
+                        readOnly={isProvConfirmed || isLocked}
+                        onChange={(e) => handleProvVoteChange('BLANCO', e.target.value)}
+                        style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #94a3b8', background: (isProvConfirmed || isLocked) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#ffffff', cursor: (isProvConfirmed || isLocked) ? 'not-allowed' : 'text' }}
+                      />
+                    </div>
+
+                    {/* Votos Impugnados */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '8px' }}>
+                      <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#fcd34d' }}>⚠️ VOTOS IMPUGNADOS:</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="999"
+                        value={provVotes.IMPUGNADOS ?? 0}
+                        disabled={isProvConfirmed || isLocked}
+                        readOnly={isProvConfirmed || isLocked}
+                        onChange={(e) => handleProvVoteChange('IMPUGNADOS', e.target.value)}
+                        style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #f59e0b', background: (isProvConfirmed || isLocked) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#fcd34d', cursor: (isProvConfirmed || isLocked) ? 'not-allowed' : 'text' }}
+                      />
+                    </div>
                   </div>
 
-                  {/* Votos en Blanco */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.12)', borderRadius: '8px' }}>
-                    <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#cbd5e1' }}>⚪ VOTOS EN BLANCO:</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max="999"
-                      value={provVotes.BLANCO ?? 0}
-                      disabled={isProvConfirmed || isLocked}
-                      readOnly={isProvConfirmed || isLocked}
-                      onChange={(e) => handleProvVoteChange('BLANCO', e.target.value)}
-                      style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #94a3b8', background: (isProvConfirmed || isLocked) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#ffffff', cursor: (isProvConfirmed || isLocked) ? 'not-allowed' : 'text' }}
-                    />
-                  </div>
-
-                  {/* Votos Impugnados */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '8px' }}>
-                    <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#fcd34d' }}>⚠️ VOTOS IMPUGNADOS:</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max="999"
-                      value={provVotes.IMPUGNADOS ?? 0}
-                      disabled={isProvConfirmed || isLocked}
-                      readOnly={isProvConfirmed || isLocked}
-                      onChange={(e) => handleProvVoteChange('IMPUGNADOS', e.target.value)}
-                      style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #f59e0b', background: (isProvConfirmed || isLocked) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#fcd34d', cursor: (isProvConfirmed || isLocked) ? 'not-allowed' : 'text' }}
-                    />
-                  </div>
+                  {/* Botón de Confirmación Foto 1 */}
+                  {isProvConfirmed ? (
+                    <div
+                      style={{
+                        marginTop: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        width: '100%',
+                        padding: '11px',
+                        borderRadius: '8px',
+                        background: 'rgba(16, 185, 129, 0.2)',
+                        border: '1px solid #10b981',
+                        color: '#86efac',
+                        fontSize: '0.86rem',
+                        fontWeight: 800
+                      }}
+                    >
+                      <CheckCircle2 size={18} color="#10b981" />
+                      <span>✓ Votos de Lima Metropolitana Confirmados ({totalProv} total)</span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleConfirmProvincial}
+                      style={{
+                        marginTop: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        width: '100%',
+                        padding: '11px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        background: 'linear-gradient(135deg, #0284c7, #2563eb)',
+                        color: '#ffffff',
+                        fontSize: '0.86rem',
+                        fontWeight: 800,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <CheckCircle2 size={18} />
+                      <span>Confirmar Votos de Lima Metropolitana ({totalProv} total)</span>
+                    </button>
+                  )}
                 </div>
-
-                {/* Botón de Confirmación Foto 1 */}
-                {isProvConfirmed ? (
-                  <div
-                    style={{
-                      marginTop: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      width: '100%',
-                      padding: '11px',
-                      borderRadius: '8px',
-                      background: 'rgba(16, 185, 129, 0.2)',
-                      border: '1px solid #10b981',
-                      color: '#86efac',
-                      fontSize: '0.86rem',
-                      fontWeight: 800
-                    }}
-                  >
-                    <CheckCircle2 size={18} color="#10b981" />
-                    <span>✓ Votos de Lima Metropolitana Confirmados ({totalProv} total)</span>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleConfirmProvincial}
-                    style={{
-                      marginTop: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      width: '100%',
-                      padding: '11px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      background: 'linear-gradient(135deg, #0284c7, #2563eb)',
-                      color: '#ffffff',
-                      fontSize: '0.86rem',
-                      fontWeight: 800,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <CheckCircle2 size={18} />
-                    <span>Confirmar Votos de Lima Metropolitana ({totalProv} total)</span>
-                  </button>
-                )}
-              </div>
+              )}
             </div>
           )}
 
@@ -570,17 +573,17 @@ export const ScannerModal = () => {
                   background: 'rgba(16, 185, 129, 0.12)',
                   border: '1px solid rgba(16, 185, 129, 0.4)',
                   borderRadius: '12px',
-                  padding: '12px 14px',
+                  padding: '14px 16px',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '4px'
+                  gap: '6px'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981', fontWeight: 800, fontSize: '0.9rem' }}>
-                    <CheckCircle2 size={18} />
-                    <span>✓ Votos Distritales ({userDistrict}) Confirmados</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981', fontWeight: 800, fontSize: '0.92rem' }}>
+                    <CheckCircle2 size={20} />
+                    <span>✓ Votos Distritales ({userDistrict}) Confirmados y Guardados</span>
                   </div>
-                  <p style={{ margin: 0, fontSize: '0.76rem', color: '#a7f3d0' }}>
-                    🔒 Hoja 2 confirmada. No se permite volver a tomar ni enviar otra foto.
+                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#a7f3d0' }}>
+                    🔒 Ya confirmaste esta hoja. La opción de volver a tomar o mandar foto está bloqueada para preservar la integridad de los datos.
                   </p>
                 </div>
               ) : (
@@ -643,176 +646,178 @@ export const ScannerModal = () => {
               )}
 
               {/* TABLA DE VERIFICACIÓN DISTRITAL */}
-              <div style={{
-                background: 'rgba(15, 23, 42, 0.85)',
-                border: '1px solid rgba(168, 85, 247, 0.3)',
-                borderRadius: '14px',
-                padding: '14px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '10px'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#c084fc', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Table size={16} color="#c084fc" /> {isDistConfirmed ? `Votos Confirmados: ${userDistrict}` : `Verificación de Votos: ${userDistrict}`}
-                  </span>
-                  <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#f8fafc' }}>
-                    Total: <strong style={{ color: '#c084fc' }}>{totalDist} votos</strong>
-                  </span>
-                </div>
+              {Object.keys(distVotes).length > 0 && (
+                <div style={{
+                  background: 'rgba(15, 23, 42, 0.85)',
+                  border: '1px solid rgba(168, 85, 247, 0.3)',
+                  borderRadius: '14px',
+                  padding: '14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#c084fc', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Table size={16} color="#c084fc" /> {isDistConfirmed ? `Votos Confirmados: ${userDistrict}` : `Verificación de Votos: ${userDistrict}`}
+                    </span>
+                    <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#f8fafc' }}>
+                      Total: <strong style={{ color: '#c084fc' }}>{totalDist} votos</strong>
+                    </span>
+                  </div>
 
-                {/* Lista de Filas */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '260px', overflowY: 'auto', paddingRight: '4px' }}>
-                  {distritalCandidates.map(c => {
-                    const val = distVotes[c.key] ?? 0;
-                    const hasV = Number(val) > 0;
-                    return (
-                      <div
-                        key={`dist-row-${c.key}`}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '6px 10px',
-                          background: hasV ? 'rgba(168, 85, 247, 0.12)' : 'rgba(15, 23, 42, 0.6)',
-                          border: hasV ? '1px solid rgba(168, 85, 247, 0.35)' : '1px solid rgba(255, 255, 255, 0.05)',
-                          borderRadius: '8px',
-                          gap: '8px'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-                          <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', width: '22px' }}>
-                            #{c.num}
-                          </span>
-                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {c.candidato}
-                            </span>
-                            <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#c084fc' }}>
-                              {c.partyLong || c.organizacion}
-                            </span>
-                          </div>
-                        </div>
-
-                        <input
-                          type="number"
-                          min="0"
-                          max="999"
-                          value={val}
-                          disabled={isDistConfirmed || isLocked}
-                          readOnly={isDistConfirmed || isLocked}
-                          onChange={(e) => handleDistVoteChange(c.key, e.target.value)}
+                  {/* Lista de Filas */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '260px', overflowY: 'auto', paddingRight: '4px' }}>
+                    {distritalCandidates.map(c => {
+                      const val = distVotes[c.key] ?? 0;
+                      const hasV = Number(val) > 0;
+                      return (
+                        <div
+                          key={`dist-row-${c.key}`}
                           style={{
-                            width: '58px',
-                            textAlign: 'center',
-                            padding: '4px 6px',
-                            fontSize: '0.88rem',
-                            fontWeight: 800,
-                            borderRadius: '6px',
-                            border: hasV ? '1px solid #c084fc' : '1px solid rgba(255,255,255,0.15)',
-                            background: (isDistConfirmed || isLocked) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a',
-                            color: hasV ? '#c084fc' : '#94a3b8',
-                            cursor: (isDistConfirmed || isLocked) ? 'not-allowed' : 'text'
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '6px 10px',
+                            background: hasV ? 'rgba(168, 85, 247, 0.12)' : 'rgba(15, 23, 42, 0.6)',
+                            border: hasV ? '1px solid rgba(168, 85, 247, 0.35)' : '1px solid rgba(255, 255, 255, 0.05)',
+                            borderRadius: '8px',
+                            gap: '8px'
                           }}
-                        />
-                      </div>
-                    );
-                  })}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', width: '22px' }}>
+                              #{c.num}
+                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {c.candidato}
+                              </span>
+                              <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#c084fc' }}>
+                                {c.partyLong || c.organizacion}
+                              </span>
+                            </div>
+                          </div>
 
-                  {/* Votos Nulos */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '8px' }}>
-                    <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#fca5a5' }}>❌ VOTOS NULOS:</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max="999"
-                      value={distVotes.NULOS ?? 0}
-                      disabled={isDistConfirmed || isLocked}
-                      readOnly={isDistConfirmed || isLocked}
-                      onChange={(e) => handleDistVoteChange('NULOS', e.target.value)}
-                      style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #ef4444', background: (isDistConfirmed || isLocked) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#fca5a5', cursor: (isDistConfirmed || isLocked) ? 'not-allowed' : 'text' }}
-                    />
+                          <input
+                            type="number"
+                            min="0"
+                            max="999"
+                            value={val}
+                            disabled={isDistConfirmed || isLocked}
+                            readOnly={isDistConfirmed || isLocked}
+                            onChange={(e) => handleDistVoteChange(c.key, e.target.value)}
+                            style={{
+                              width: '58px',
+                              textAlign: 'center',
+                              padding: '4px 6px',
+                              fontSize: '0.88rem',
+                              fontWeight: 800,
+                              borderRadius: '6px',
+                              border: hasV ? '1px solid #c084fc' : '1px solid rgba(255,255,255,0.15)',
+                              background: (isDistConfirmed || isLocked) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a',
+                              color: hasV ? '#c084fc' : '#94a3b8',
+                              cursor: (isDistConfirmed || isLocked) ? 'not-allowed' : 'text'
+                            }}
+                          />
+                        </div>
+                      );
+                    })}
+
+                    {/* Votos Nulos */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '8px' }}>
+                      <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#fca5a5' }}>❌ VOTOS NULOS:</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="999"
+                        value={distVotes.NULOS ?? 0}
+                        disabled={isDistConfirmed || isLocked}
+                        readOnly={isDistConfirmed || isLocked}
+                        onChange={(e) => handleDistVoteChange('NULOS', e.target.value)}
+                        style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #ef4444', background: (isDistConfirmed || isLocked) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#fca5a5', cursor: (isDistConfirmed || isLocked) ? 'not-allowed' : 'text' }}
+                      />
+                    </div>
+
+                    {/* Votos en Blanco */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.12)', borderRadius: '8px' }}>
+                      <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#cbd5e1' }}>⚪ VOTOS EN BLANCO:</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="999"
+                        value={distVotes.BLANCO ?? 0}
+                        disabled={isDistConfirmed || isLocked}
+                        readOnly={isDistConfirmed || isLocked}
+                        onChange={(e) => handleDistVoteChange('BLANCO', e.target.value)}
+                        style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #94a3b8', background: (isDistConfirmed || isLocked) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#ffffff', cursor: (isDistConfirmed || isLocked) ? 'not-allowed' : 'text' }}
+                      />
+                    </div>
+
+                    {/* Votos Impugnados */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '8px' }}>
+                      <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#fcd34d' }}>⚠️ VOTOS IMPUGNADOS:</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="999"
+                        value={distVotes.IMPUGNADOS ?? 0}
+                        disabled={isDistConfirmed || isLocked}
+                        readOnly={isDistConfirmed || isLocked}
+                        onChange={(e) => handleDistVoteChange('IMPUGNADOS', e.target.value)}
+                        style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #f59e0b', background: (isDistConfirmed || isLocked) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#fcd34d', cursor: (isDistConfirmed || isLocked) ? 'not-allowed' : 'text' }}
+                      />
+                    </div>
                   </div>
 
-                  {/* Votos en Blanco */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.12)', borderRadius: '8px' }}>
-                    <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#cbd5e1' }}>⚪ VOTOS EN BLANCO:</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max="999"
-                      value={distVotes.BLANCO ?? 0}
-                      disabled={isDistConfirmed || isLocked}
-                      readOnly={isDistConfirmed || isLocked}
-                      onChange={(e) => handleDistVoteChange('BLANCO', e.target.value)}
-                      style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #94a3b8', background: (isDistConfirmed || isLocked) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#ffffff', cursor: (isDistConfirmed || isLocked) ? 'not-allowed' : 'text' }}
-                    />
-                  </div>
-
-                  {/* Votos Impugnados */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '8px' }}>
-                    <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#fcd34d' }}>⚠️ VOTOS IMPUGNADOS:</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max="999"
-                      value={distVotes.IMPUGNADOS ?? 0}
-                      disabled={isDistConfirmed || isLocked}
-                      readOnly={isDistConfirmed || isLocked}
-                      onChange={(e) => handleDistVoteChange('IMPUGNADOS', e.target.value)}
-                      style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #f59e0b', background: (isDistConfirmed || isLocked) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#fcd34d', cursor: (isDistConfirmed || isLocked) ? 'not-allowed' : 'text' }}
-                    />
-                  </div>
+                  {/* Botón de Confirmación Foto 2 */}
+                  {isDistConfirmed ? (
+                    <div
+                      style={{
+                        marginTop: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        width: '100%',
+                        padding: '11px',
+                        borderRadius: '8px',
+                        background: 'rgba(16, 185, 129, 0.2)',
+                        border: '1px solid #10b981',
+                        color: '#86efac',
+                        fontSize: '0.86rem',
+                        fontWeight: 800
+                      }}
+                    >
+                      <CheckCircle2 size={18} color="#10b981" />
+                      <span>✓ Votos Distritales ({userDistrict}) Confirmados ({totalDist} total)</span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleConfirmDistrital}
+                      style={{
+                        marginTop: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        width: '100%',
+                        padding: '11px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        background: 'linear-gradient(135deg, #7c3aed, #9333ea)',
+                        color: '#ffffff',
+                        fontSize: '0.86rem',
+                        fontWeight: 800,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <CheckCircle2 size={18} />
+                      <span>Confirmar Votos Distritales ({totalDist} total)</span>
+                    </button>
+                  )}
                 </div>
-
-                {/* Botón de Confirmación Foto 2 */}
-                {isDistConfirmed ? (
-                  <div
-                    style={{
-                      marginTop: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      width: '100%',
-                      padding: '11px',
-                      borderRadius: '8px',
-                      background: 'rgba(16, 185, 129, 0.2)',
-                      border: '1px solid #10b981',
-                      color: '#86efac',
-                      fontSize: '0.86rem',
-                      fontWeight: 800
-                    }}
-                  >
-                    <CheckCircle2 size={18} color="#10b981" />
-                    <span>✓ Votos Distritales ({userDistrict}) Confirmados ({totalDist} total)</span>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleConfirmDistrital}
-                    style={{
-                      marginTop: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      width: '100%',
-                      padding: '11px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      background: 'linear-gradient(135deg, #7c3aed, #9333ea)',
-                      color: '#ffffff',
-                      fontSize: '0.86rem',
-                      fontWeight: 800,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <CheckCircle2 size={18} />
-                    <span>Confirmar Votos Distritales ({totalDist} total)</span>
-                  </button>
-                )}
-              </div>
+              )}
             </div>
           )}
         </div>
