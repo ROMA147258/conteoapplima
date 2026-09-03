@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { analizarImagenActa, procesarTextoOCR } from '../../services/ocrPipeline';
 import { extractJsonFromString } from '../../utils/helpers';
-import { DISTRITOS_LIMA } from '../../constants/distritos';
 
 export const ScannerModal = () => {
   const { 
@@ -402,26 +401,18 @@ export const ScannerModal = () => {
           {selectedSection === 'DISTRITAL' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               
-              {/* Selector de Distrito */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(15, 23, 42, 0.7)', padding: '8px 12px', borderRadius: '10px', border: '1px solid rgba(168, 85, 247, 0.25)' }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#c084fc' }}>Distrito a Escanear:</span>
-                <select
-                  value={selectedDistrict}
-                  onChange={(e) => setSelectedDistrict(e.target.value)}
-                  style={{
-                    background: 'rgba(30, 41, 59, 0.9)',
-                    color: '#f8fafc',
-                    border: '1px solid #a855f7',
-                    borderRadius: '6px',
-                    padding: '4px 8px',
-                    fontSize: '0.8rem',
-                    fontWeight: 700
-                  }}
-                >
-                  {DISTRITOS_LIMA.map((d, idx) => (
-                    <option key={idx} value={d}>{d}</option>
-                  ))}
-                </select>
+              {/* Distrito Asignado (Fijo / Bloqueado al del Personero) */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(15, 23, 42, 0.7)', padding: '10px 14px', borderRadius: '10px', border: '1px solid rgba(168, 85, 247, 0.3)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <MapPin size={18} color="#c084fc" />
+                  <div>
+                    <span style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'block' }}>Jurisdicción Distrital Asignada:</span>
+                    <strong style={{ fontSize: '0.92rem', color: '#c084fc' }}>{selectedDistrict}</strong>
+                  </div>
+                </div>
+                <span style={{ fontSize: '0.7rem', background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(168, 85, 247, 0.3)', fontWeight: 700 }}>
+                  Asignado
+                </span>
               </div>
 
               {/* Zona de subida Foto Distrital */}
