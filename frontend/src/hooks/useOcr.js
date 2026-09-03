@@ -48,24 +48,8 @@ export const useOcr = () => {
 
   const applyOcrVotes = (parsedVotes) => {
     if (!parsedVotes) return;
-
-    setCurrentVotes(prev => {
-      const updated = JSON.parse(JSON.stringify(prev));
-      Object.keys(parsedVotes.provincial || {}).forEach(k => {
-        if (parsedVotes.provincial[k] !== undefined) {
-          updated.provincial[k] = parsedVotes.provincial[k];
-        }
-      });
-      Object.keys(parsedVotes.distrital || {}).forEach(k => {
-        if (parsedVotes.distrital[k] !== undefined) {
-          updated.distrital[k] = parsedVotes.distrital[k];
-        }
-      });
-      return updated;
-    });
-
     setOcrVotes(parsedVotes);
-    showToast('Votos del escaneo aplicados exitosamente a la mesa.', 'success');
+    showToast('Votos del escaneo aplicados exitosamente a Conteo por Imagen.', 'success');
   };
 
   return {

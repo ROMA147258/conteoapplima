@@ -141,20 +141,16 @@ export const ScannerModal = () => {
     setDistVotes(prev => ({ ...prev, [key]: num }));
   };
 
-  // Confirmar y aplicar Lima Metropolitana
+  // Confirmar y aplicar Lima Metropolitana (Solo para Conteo por Imagen)
   const handleConfirmProvincial = () => {
     if (Object.keys(provVotes).length === 0) {
       showToast('No hay votos detectados para Lima Metropolitana.', 'warning');
       return;
     }
 
-    setCurrentVotes(prev => ({
-      ...prev,
-      provincial: { ...(prev.provincial || {}), ...provVotes }
-    }));
     setOcrVotes(prev => ({ ...(prev || {}), provincial: provVotes }));
     setIsProvConfirmed(true);
-    showToast('✅ Votos de Lima Metropolitana confirmados y plasmados en la mesa.', 'success');
+    showToast('✅ Votos de Lima Metropolitana confirmados para Conteo por Imagen.', 'success');
 
     // Pasar automáticamente a la foto distrital si no está confirmada
     if (!isDistConfirmed) {
@@ -162,20 +158,16 @@ export const ScannerModal = () => {
     }
   };
 
-  // Confirmar y aplicar Distrital
+  // Confirmar y aplicar Distrital (Solo para Conteo por Imagen)
   const handleConfirmDistrital = () => {
     if (Object.keys(distVotes).length === 0) {
       showToast(`No hay votos detectados para ${userDistrict}.`, 'warning');
       return;
     }
 
-    setCurrentVotes(prev => ({
-      ...prev,
-      distrital: { ...(prev.distrital || {}), ...distVotes }
-    }));
     setOcrVotes(prev => ({ ...(prev || {}), distrital: distVotes }));
     setIsDistConfirmed(true);
-    showToast(`✅ Votos Distritales (${userDistrict}) confirmados y plasmados en la mesa.`, 'success');
+    showToast(`✅ Votos Distritales (${userDistrict}) confirmados para Conteo por Imagen.`, 'success');
   };
 
   // Cerrar y finalizar todo
