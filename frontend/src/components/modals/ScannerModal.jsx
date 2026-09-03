@@ -30,6 +30,7 @@ export const ScannerModal = () => {
   } = useApp();
 
   const userDistrict = currentUser?.ubicacion || 'BREÑA';
+  const isLocked = Boolean(currentUser?.voto_imagen_enviado || (typeof localStorage !== 'undefined' && localStorage.getItem(`votoReal_ocrLocked_${currentUser?.dni}`) === 'true'));
 
   // Pestaña activa: 'PROVINCIAL' (Foto 1) o 'DISTRITAL' (Foto 2)
   const [activeStep, setActiveStep] = useState('PROVINCIAL');
@@ -206,6 +207,13 @@ export const ScannerModal = () => {
 
         <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px', overflowY: 'auto', flex: 1, paddingRight: '4px' }}>
           
+          {/* Banner de Bloqueo si ya fue transmitido */}
+          {isLocked && (
+            <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', borderRadius: '10px', padding: '10px 14px', color: '#fca5a5', fontSize: '0.82rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>🔒 <strong>ACTA BLOQUEADA:</strong> Los votos de esta mesa ya fueron transmitidos. No se permite reenviar ni modificar.</span>
+            </div>
+          )}
+
           {/* PESTAÑAS SEPARADAS: FOTO 1 VS FOTO 2 */}
           <div style={{ display: 'flex', background: 'rgba(15, 23, 42, 0.8)', padding: '4px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.08)', gap: '6px' }}>
             
