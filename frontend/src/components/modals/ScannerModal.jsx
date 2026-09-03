@@ -197,7 +197,13 @@ export const ScannerModal = () => {
               </span>
             </div>
           </div>
-          <button id="btn-close-scanner" className="btn-icon-close" onClick={() => setIsScannerModalOpen(false)}>
+          <button 
+            id="btn-close-scanner" 
+            className="btn-icon-close" 
+            disabled={isProcessing}
+            onClick={() => !isProcessing && setIsScannerModalOpen(false)}
+            style={{ opacity: isProcessing ? 0.4 : 1, cursor: isProcessing ? 'not-allowed' : 'pointer' }}
+          >
             &times;
           </button>
         </div>
@@ -217,7 +223,8 @@ export const ScannerModal = () => {
             {/* Botón Pestaña 1: Lima */}
             <button
               type="button"
-              onClick={() => setActiveStep('PROVINCIAL')}
+              disabled={isProcessing}
+              onClick={() => !isProcessing && setActiveStep('PROVINCIAL')}
               style={{
                 flex: 1,
                 display: 'flex',
@@ -231,7 +238,8 @@ export const ScannerModal = () => {
                 color: activeStep === 'PROVINCIAL' ? '#ffffff' : '#94a3b8',
                 fontWeight: 700,
                 fontSize: '0.84rem',
-                cursor: 'pointer',
+                cursor: isProcessing ? 'not-allowed' : 'pointer',
+                opacity: isProcessing ? 0.6 : 1,
                 transition: 'all 0.2s ease'
               }}
             >
@@ -251,7 +259,8 @@ export const ScannerModal = () => {
             {/* Botón Pestaña 2: Distrital */}
             <button
               type="button"
-              onClick={() => setActiveStep('DISTRITAL')}
+              disabled={isProcessing}
+              onClick={() => !isProcessing && setActiveStep('DISTRITAL')}
               style={{
                 flex: 1,
                 display: 'flex',
@@ -265,7 +274,8 @@ export const ScannerModal = () => {
                 color: activeStep === 'DISTRITAL' ? '#ffffff' : '#94a3b8',
                 fontWeight: 700,
                 fontSize: '0.84rem',
-                cursor: 'pointer',
+                cursor: isProcessing ? 'not-allowed' : 'pointer',
+                opacity: isProcessing ? 0.6 : 1,
                 transition: 'all 0.2s ease'
               }}
             >
@@ -336,8 +346,9 @@ export const ScannerModal = () => {
                     {provImage && !isProvConfirmed && (
                       <button
                         type="button"
+                        disabled={isProcessing}
                         onClick={() => { setProvImage(null); setProvVotes({}); }}
-                        style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer' }}
+                        style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: isProcessing ? 'not-allowed' : 'pointer' }}
                         title="Eliminar foto"
                       >
                         <Trash2 size={15} />
@@ -346,9 +357,11 @@ export const ScannerModal = () => {
                   </div>
 
                   <label
-                    htmlFor="prov-file-input"
+                    htmlFor={isProcessing ? "" : "prov-file-input"}
                     style={{
                       cursor: isProcessing ? 'not-allowed' : 'pointer',
+                      pointerEvents: isProcessing ? 'none' : 'auto',
+                      opacity: isProcessing ? 0.45 : 1,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -435,8 +448,8 @@ export const ScannerModal = () => {
                             min="0"
                             max="999"
                             value={val}
-                            disabled={isProvConfirmed || isLocked}
-                            readOnly={isProvConfirmed || isLocked}
+                            disabled={isProvConfirmed || isLocked || isProcessing}
+                            readOnly={isProvConfirmed || isLocked || isProcessing}
                             onChange={(e) => handleProvVoteChange(c.key, e.target.value)}
                             style={{
                               width: '58px',
@@ -446,9 +459,9 @@ export const ScannerModal = () => {
                               fontWeight: 800,
                               borderRadius: '6px',
                               border: hasV ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.15)',
-                              background: (isProvConfirmed || isLocked) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a',
+                              background: (isProvConfirmed || isLocked || isProcessing) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a',
                               color: hasV ? '#38bdf8' : '#94a3b8',
-                              cursor: (isProvConfirmed || isLocked) ? 'not-allowed' : 'text'
+                              cursor: (isProvConfirmed || isLocked || isProcessing) ? 'not-allowed' : 'text'
                             }}
                           />
                         </div>
@@ -463,10 +476,10 @@ export const ScannerModal = () => {
                         min="0"
                         max="999"
                         value={provVotes.NULOS ?? 0}
-                        disabled={isProvConfirmed || isLocked}
-                        readOnly={isProvConfirmed || isLocked}
+                        disabled={isProvConfirmed || isLocked || isProcessing}
+                        readOnly={isProvConfirmed || isLocked || isProcessing}
                         onChange={(e) => handleProvVoteChange('NULOS', e.target.value)}
-                        style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #ef4444', background: (isProvConfirmed || isLocked) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#fca5a5', cursor: (isProvConfirmed || isLocked) ? 'not-allowed' : 'text' }}
+                        style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #ef4444', background: (isProvConfirmed || isLocked || isProcessing) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#fca5a5', cursor: (isProvConfirmed || isLocked || isProcessing) ? 'not-allowed' : 'text' }}
                       />
                     </div>
 
@@ -478,10 +491,10 @@ export const ScannerModal = () => {
                         min="0"
                         max="999"
                         value={provVotes.BLANCO ?? 0}
-                        disabled={isProvConfirmed || isLocked}
-                        readOnly={isProvConfirmed || isLocked}
+                        disabled={isProvConfirmed || isLocked || isProcessing}
+                        readOnly={isProvConfirmed || isLocked || isProcessing}
                         onChange={(e) => handleProvVoteChange('BLANCO', e.target.value)}
-                        style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #94a3b8', background: (isProvConfirmed || isLocked) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#ffffff', cursor: (isProvConfirmed || isLocked) ? 'not-allowed' : 'text' }}
+                        style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #94a3b8', background: (isProvConfirmed || isLocked || isProcessing) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#ffffff', cursor: (isProvConfirmed || isLocked || isProcessing) ? 'not-allowed' : 'text' }}
                       />
                     </div>
 
@@ -493,10 +506,10 @@ export const ScannerModal = () => {
                         min="0"
                         max="999"
                         value={provVotes.IMPUGNADOS ?? 0}
-                        disabled={isProvConfirmed || isLocked}
-                        readOnly={isProvConfirmed || isLocked}
+                        disabled={isProvConfirmed || isLocked || isProcessing}
+                        readOnly={isProvConfirmed || isLocked || isProcessing}
                         onChange={(e) => handleProvVoteChange('IMPUGNADOS', e.target.value)}
-                        style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #f59e0b', background: (isProvConfirmed || isLocked) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#fcd34d', cursor: (isProvConfirmed || isLocked) ? 'not-allowed' : 'text' }}
+                        style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #f59e0b', background: (isProvConfirmed || isLocked || isProcessing) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#fcd34d', cursor: (isProvConfirmed || isLocked || isProcessing) ? 'not-allowed' : 'text' }}
                       />
                     </div>
                   </div>
@@ -526,6 +539,7 @@ export const ScannerModal = () => {
                   ) : (
                     <button
                       type="button"
+                      disabled={isProcessing}
                       onClick={handleConfirmProvincial}
                       style={{
                         marginTop: '8px',
@@ -541,7 +555,8 @@ export const ScannerModal = () => {
                         color: '#ffffff',
                         fontSize: '0.86rem',
                         fontWeight: 800,
-                        cursor: 'pointer'
+                        cursor: isProcessing ? 'not-allowed' : 'pointer',
+                        opacity: isProcessing ? 0.6 : 1
                       }}
                     >
                       <CheckCircle2 size={18} />
@@ -596,8 +611,9 @@ export const ScannerModal = () => {
                     {distImage && !isDistConfirmed && (
                       <button
                         type="button"
+                        disabled={isProcessing}
                         onClick={() => { setDistImage(null); setDistVotes({}); }}
-                        style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer' }}
+                        style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: isProcessing ? 'not-allowed' : 'pointer' }}
                         title="Eliminar foto"
                       >
                         <Trash2 size={15} />
@@ -606,9 +622,11 @@ export const ScannerModal = () => {
                   </div>
 
                   <label
-                    htmlFor="dist-file-input"
+                    htmlFor={isProcessing ? "" : "dist-file-input"}
                     style={{
                       cursor: isProcessing ? 'not-allowed' : 'pointer',
+                      pointerEvents: isProcessing ? 'none' : 'auto',
+                      opacity: isProcessing ? 0.45 : 1,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -695,8 +713,8 @@ export const ScannerModal = () => {
                             min="0"
                             max="999"
                             value={val}
-                            disabled={isDistConfirmed || isLocked}
-                            readOnly={isDistConfirmed || isLocked}
+                            disabled={isDistConfirmed || isLocked || isProcessing}
+                            readOnly={isDistConfirmed || isLocked || isProcessing}
                             onChange={(e) => handleDistVoteChange(c.key, e.target.value)}
                             style={{
                               width: '58px',
@@ -706,9 +724,9 @@ export const ScannerModal = () => {
                               fontWeight: 800,
                               borderRadius: '6px',
                               border: hasV ? '1px solid #c084fc' : '1px solid rgba(255,255,255,0.15)',
-                              background: (isDistConfirmed || isLocked) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a',
+                              background: (isDistConfirmed || isLocked || isProcessing) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a',
                               color: hasV ? '#c084fc' : '#94a3b8',
-                              cursor: (isDistConfirmed || isLocked) ? 'not-allowed' : 'text'
+                              cursor: (isDistConfirmed || isLocked || isProcessing) ? 'not-allowed' : 'text'
                             }}
                           />
                         </div>
@@ -723,10 +741,10 @@ export const ScannerModal = () => {
                         min="0"
                         max="999"
                         value={distVotes.NULOS ?? 0}
-                        disabled={isDistConfirmed || isLocked}
-                        readOnly={isDistConfirmed || isLocked}
+                        disabled={isDistConfirmed || isLocked || isProcessing}
+                        readOnly={isDistConfirmed || isLocked || isProcessing}
                         onChange={(e) => handleDistVoteChange('NULOS', e.target.value)}
-                        style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #ef4444', background: (isDistConfirmed || isLocked) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#fca5a5', cursor: (isDistConfirmed || isLocked) ? 'not-allowed' : 'text' }}
+                        style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #ef4444', background: (isDistConfirmed || isLocked || isProcessing) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#fca5a5', cursor: (isDistConfirmed || isLocked || isProcessing) ? 'not-allowed' : 'text' }}
                       />
                     </div>
 
@@ -738,10 +756,10 @@ export const ScannerModal = () => {
                         min="0"
                         max="999"
                         value={distVotes.BLANCO ?? 0}
-                        disabled={isDistConfirmed || isLocked}
-                        readOnly={isDistConfirmed || isLocked}
+                        disabled={isDistConfirmed || isLocked || isProcessing}
+                        readOnly={isDistConfirmed || isLocked || isProcessing}
                         onChange={(e) => handleDistVoteChange('BLANCO', e.target.value)}
-                        style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #94a3b8', background: (isDistConfirmed || isLocked) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#ffffff', cursor: (isDistConfirmed || isLocked) ? 'not-allowed' : 'text' }}
+                        style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #94a3b8', background: (isDistConfirmed || isLocked || isProcessing) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#ffffff', cursor: (isDistConfirmed || isLocked || isProcessing) ? 'not-allowed' : 'text' }}
                       />
                     </div>
 
@@ -753,10 +771,10 @@ export const ScannerModal = () => {
                         min="0"
                         max="999"
                         value={distVotes.IMPUGNADOS ?? 0}
-                        disabled={isDistConfirmed || isLocked}
-                        readOnly={isDistConfirmed || isLocked}
+                        disabled={isDistConfirmed || isLocked || isProcessing}
+                        readOnly={isDistConfirmed || isLocked || isProcessing}
                         onChange={(e) => handleDistVoteChange('IMPUGNADOS', e.target.value)}
-                        style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #f59e0b', background: (isDistConfirmed || isLocked) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#fcd34d', cursor: (isDistConfirmed || isLocked) ? 'not-allowed' : 'text' }}
+                        style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #f59e0b', background: (isDistConfirmed || isLocked || isProcessing) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#fcd34d', cursor: (isDistConfirmed || isLocked || isProcessing) ? 'not-allowed' : 'text' }}
                       />
                     </div>
                   </div>
@@ -786,6 +804,7 @@ export const ScannerModal = () => {
                   ) : (
                     <button
                       type="button"
+                      disabled={isProcessing}
                       onClick={handleConfirmDistrital}
                       style={{
                         marginTop: '8px',
@@ -801,7 +820,8 @@ export const ScannerModal = () => {
                         color: '#ffffff',
                         fontSize: '0.86rem',
                         fontWeight: 800,
-                        cursor: 'pointer'
+                        cursor: isProcessing ? 'not-allowed' : 'pointer',
+                        opacity: isProcessing ? 0.6 : 1
                       }}
                     >
                       <CheckCircle2 size={18} />
@@ -819,15 +839,17 @@ export const ScannerModal = () => {
           <button
             type="button"
             className="btn btn-secondary"
-            onClick={() => setIsScannerModalOpen(false)}
-            style={{ flex: 1, padding: '10px', fontSize: '0.84rem' }}
+            disabled={isProcessing}
+            onClick={() => !isProcessing && setIsScannerModalOpen(false)}
+            style={{ flex: 1, padding: '10px', fontSize: '0.84rem', opacity: isProcessing ? 0.5 : 1, cursor: isProcessing ? 'not-allowed' : 'pointer' }}
           >
             Cerrar
           </button>
           <button
             type="button"
             className="btn btn-primary"
-            onClick={handleFinalizar}
+            disabled={isProcessing}
+            onClick={() => !isProcessing && handleFinalizar()}
             style={{
               flex: 2,
               display: 'flex',
