@@ -403,6 +403,8 @@ export async function analizarImagenActa(imageSrc, options = {}) {
   const cleanBase64 = imageSrc.includes(',') ? imageSrc.split(',')[1] : imageSrc;
   const mimeType = imageSrc.includes(';') ? (imageSrc.split(';')[0].split(':')[1] || 'image/jpeg') : 'image/jpeg';
   const currentDistrict = options.currentDistrict || 'Lima';
+  const seccion = options.seccion || 'ambos';
+  const geminiApiKey = options.geminiApiKey || (typeof localStorage !== 'undefined' ? localStorage.getItem('votoReal_geminiApiKey') : '') || '';
 
   try {
     const backendRes = await fetch('/api/voto-real', {
@@ -413,7 +415,9 @@ export async function analizarImagenActa(imageSrc, options = {}) {
         provider: 'gemini',
         imageBase64: cleanBase64,
         mimeType: mimeType,
-        distrito: currentDistrict
+        distrito: currentDistrict,
+        seccion: seccion,
+        geminiApiKey: geminiApiKey
       })
     });
 
@@ -425,7 +429,8 @@ export async function analizarImagenActa(imageSrc, options = {}) {
           rawText: parsedJson ? JSON.stringify(parsedJson, null, 2) : serverData.rawText,
           preprocessedDataUrl: imageSrc,
           provider: 'gemini',
-          model: serverData.model || 'gemini-2.5-flash'
+          model: serverData.model || 'gemini-2.5-flash',
+          parsedJson: parsedJson
         };
       }
     }

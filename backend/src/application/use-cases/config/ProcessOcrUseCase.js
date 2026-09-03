@@ -64,41 +64,125 @@ class ProcessOcrUseCase {
     return null;
   }
 
-  async execute({ imageBase64, mimeType = 'image/jpeg', prompt, distrito = 'Lima', provider, apiKey, geminiApiKey }) {
+  async execute({ imageBase64, mimeType = 'image/jpeg', prompt, distrito = 'Lima', seccion = 'ambos', provider, apiKey, geminiApiKey }) {
     const cleanBase64 = (imageBase64 || '').includes(',') ? imageBase64.split(',')[1] : imageBase64;
+    const resolvedKey = geminiApiKey || apiKey || env.GEMINI_API_KEY || (sqlConfigRepo.getConfig()?.geminiApiKey) || '';
 
-    const defaultJsonPrompt = prompt || `Eres un sistema experto de conteo electoral peruano (ONPE / JNE). Analiza esta imagen con máxima precisión y extrae los votos exactos por organización política.
+    const defaultJsonPrompt = prompt || `Eres un perito experto en escaneo de actas electorales peruanas (ONPE / JNE). Analiza esta imagen con precisión absoluta y extrae cada uno de los votos manuscritos o impresos para cada organización política.
 
-ESTRUCTURA DE LA TABLA O ACTA ELECTORAL:
-1. Partidos y Claves Válidas:
-   - FP = Fuerza Popular
-   - JP = Juntos por el Perú
-   - SOMOS PERU = Somos Perú
-   - FREPAP = Frepap
-   - VERDE = Partido Demócrata Verde / Verde
-   - MORADO = Partido Morado
-   - RENOVACION = Renovación Popular
-   - AHORA NACION = Ahora Nación
-   - AVANZA PAIS = Avanza País
-   - PODEMOS = Podemos Perú
-   - APRA = Partido Aprista Peruano
-   - PPC = Partido Popular Cristiano
-   - NULOS = Votos Nulos
-   - BLANCO = Votos en Blanco
-   - IMPUGNADOS = Votos Impugnados
+REGLAS CRÍTICAS DE EXTRACCIÓN:
+1. Extrae TODOS los partidos que figuren en la tabla o lista del acta. No omitas ninguno.
+2. Si un partido no tiene votos visibles o está en blanco, asígnale 0.
+3. Claves de Partidos oficiales que debes usar:
+   - SOMOS PERU (Somos Perú / Carlos Bruce)
+   - RENOVACION (Renovación Popular / Rafael López Aliaga)
+   - AHORA NACION (Ahora Nación / Susel Paredes)
+   - AVANZA PAIS (Avanza País / Francis Allison)
+   - PODEMOS (Podemos Perú / Daniel Urresti)
+   - JP (Juntos por el Perú / Oswaldo Vargas)
+   - OBRAS (Partido Cívico Obras / Ricardo Belmont)
+   - FREPAP (FREPAP / Segundo Valdez)
+   - ACCION POPULAR (Acción Popular / Carlos Tejada)
+   - ESPERANZA (Frente de la Esperanza / Elizabeth León)
+   - VENCEREMOS (Alianza Electoral Venceremos / Juan Alvarado)
+   - VISION PERU (Visión Perú / Santiago Abarca)
+   - APRA (Partido Aprista Peruano / Mónica Yaya)
+   - FP (Fuerza Popular / Samuel Daza)
+   - PPC (Partido Popular Cristiano / Edgardo de Pomar)
+   - PROGRESEMOS (Progresemos / Luis Miguel Llanos)
+   - MORADO (Partido Morado / Victoria La Cruz)
+   - BUEN GOBIERNO (Partido del Buen Gobierno / Carlos Gallardo)
+   - VERDE (Partido Demócrata Verde / Flor de María Hurtado)
+   - PERU LIBRE (Perú Libre)
+   - TIERRA VERDE (Tierra Verde)
+   - PUEBLO CONSCIENTE (Pueblo Consciente)
+   - PPP (Partido Patriótico del Perú)
+   - INTEGRIDAD (Integridad Democrática)
+   - FUERZA CIUDADANA (Fuerza Ciudadana)
+   - BATALLA PERU (Batalla Perú)
+   - APP (Alianza para el Progreso)
+   - ALIANZA REGIONAL (Alianza Regional por el Perú)
+   - BLANCO (Votos en Blanco)
+   - NULOS (Votos Nulos)
+   - IMPUGNADOS (Votos Impugnados)
 
-2. Mapeo de Columnas:
-   - Columna "LIMA" / "PROVINCIAL" / "METROPOLITANA": Corresponde a la sección Provincial.
-   - Columna con el distrito "${distrito}" / "DISTRITAL": Corresponde a la sección Distrital.
-   - Lee minuciosamente los números de cada casilla.
+4. Si el acta contiene 2 columnas (LIMA / PROVINCIAL y ${distrito} / DISTRITAL), extrae ambas en sus respectivos campos.
+5. Si el acta es de una sola columna para ${seccion === 'distrital' ? 'DISTRITAL (' + distrito + ')' : 'LIMA METROPOLITANA (PROVINCIAL)'}, llena los votos en la sección correspondiente.
 
-Devuelve ÚNICAMENTE un JSON válido sin texto adicional ni markdown:
+Devuelve ÚNICAMENTE un JSON válido con esta estructura:
 {
   "tipoDocumento": "acta_electoral",
+  "seccion": "${seccion}",
   "votos": {
-    "provincial": { "FP": 0, "JP": 0, "SOMOS PERU": 0, "FREPAP": 0, "VERDE": 0, "MORADO": 0, "BLANCO": 0, "NULOS": 0, "IMPUGNADOS": 0 },
-    "distrital": { "FP": 0, "JP": 0, "SOMOS PERU": 0, "FREPAP": 0, "VERDE": 0, "MORADO": 0, "BLANCO": 0, "NULOS": 0, "IMPUGNADOS": 0 }
-  }
+    "provincial": {
+      "SOMOS PERU": 0,
+      "RENOVACION": 0,
+      "AHORA NACION": 0,
+      "AVANZA PAIS": 0,
+      "PODEMOS": 0,
+      "JP": 0,
+      "OBRAS": 0,
+      "FREPAP": 0,
+      "ACCION POPULAR": 0,
+      "ESPERANZA": 0,
+      "VENCEREMOS": 0,
+      "VISION PERU": 0,
+      "APRA": 0,
+      "FP": 0,
+      "PPC": 0,
+      "PROGRESEMOS": 0,
+      "MORADO": 0,
+      "BUEN GOBIERNO": 0,
+      "VERDE": 0,
+      "PERU LIBRE": 0,
+      "TIERRA VERDE": 0,
+      "PUEBLO CONSCIENTE": 0,
+      "PPP": 0,
+      "INTEGRIDAD": 0,
+      "FUERZA CIUDADANA": 0,
+      "BATALLA PERU": 0,
+      "APP": 0,
+      "ALIANZA REGIONAL": 0,
+      "BLANCO": 0,
+      "NULOS": 0,
+      "IMPUGNADOS": 0
+    },
+    "distrital": {
+      "SOMOS PERU": 0,
+      "RENOVACION": 0,
+      "AHORA NACION": 0,
+      "AVANZA PAIS": 0,
+      "PODEMOS": 0,
+      "JP": 0,
+      "OBRAS": 0,
+      "FREPAP": 0,
+      "ACCION POPULAR": 0,
+      "ESPERANZA": 0,
+      "VENCEREMOS": 0,
+      "VISION PERU": 0,
+      "APRA": 0,
+      "FP": 0,
+      "PPC": 0,
+      "PROGRESEMOS": 0,
+      "MORADO": 0,
+      "BUEN GOBIERNO": 0,
+      "VERDE": 0,
+      "PERU LIBRE": 0,
+      "TIERRA VERDE": 0,
+      "PUEBLO CONSCIENTE": 0,
+      "PPP": 0,
+      "INTEGRIDAD": 0,
+      "FUERZA CIUDADANA": 0,
+      "BATALLA PERU": 0,
+      "APP": 0,
+      "ALIANZA REGIONAL": 0,
+      "BLANCO": 0,
+      "NULOS": 0,
+      "IMPUGNADOS": 0
+    }
+  },
+  "total_provincial": 0,
+  "total_distrital": 0
 }`;
 
     // 1. Intentar con Google Gemini Vision (gemini-2.5-flash)
@@ -106,7 +190,7 @@ Devuelve ÚNICAMENTE un JSON válido sin texto adicional ni markdown:
       imageBase64: cleanBase64,
       mimeType,
       prompt: defaultJsonPrompt,
-      apiKey: geminiApiKey || apiKey || env.GEMINI_API_KEY
+      apiKey: resolvedKey
     });
 
     if (geminiRes && geminiRes.success) {
@@ -117,7 +201,7 @@ Devuelve ÚNICAMENTE un JSON válido sin texto adicional ni markdown:
       success: false,
       rawText: JSON.stringify({
         tipoDocumento: "error_temporal",
-        mensaje: "No se pudo procesar la imagen con Gemini. Verifica la conexión o ingresa los votos manualmente."
+        mensaje: "No se pudo procesar el acta con Gemini Vision. Por favor verifica que la variable GEMINI_API_KEY esté configurada en el servidor (.env o variables de entorno del hosting) o ingresa la clave en Configuración."
       }, null, 2)
     };
   }
