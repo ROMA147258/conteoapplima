@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useApp } from '../../context/AppContext';
 import { 
@@ -50,6 +50,14 @@ export const ScannerModal = () => {
   const [distVotes, setDistVotes] = useState(() => (hasSavedDist ? { ...ocrVotes.distrital } : {}));
   const [isDistConfirmed, setIsDistConfirmed] = useState(() => Boolean(isLocked || hasSavedDist));
 
+  // Sincronizar estado local al abrir el modal (sin sobrescribir hasta presionar Listo)
+  useEffect(() => {
+    if (isScannerModalOpen) {
+      setProvVotes(ocrVotes?.provincial ? { ...ocrVotes.provincial } : {});
+      setDistVotes(ocrVotes?.distrital ? { ...ocrVotes.distrital } : {});
+    }
+  }, [isScannerModalOpen]);
+
   // Estado de escaneo
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingMsg, setProcessingMsg] = useState('');
@@ -90,7 +98,7 @@ export const ScannerModal = () => {
     reader.readAsDataURL(file);
   };
 
-  // Escaneo instantáneo con Gemini Vision
+  // Escaneo con Gemini Vision (Se mantiene en estado local del modal)
   const scanImage = async (imgBase64, seccion) => {
     setIsProcessing(true);
     const isProv = seccion === 'provincial';
@@ -110,7 +118,6 @@ export const ScannerModal = () => {
           ? parsed.provincial
           : parsed.distrital || {};
         setProvVotes(detected);
-        setOcrVotes(prev => ({ ...(prev || {}), provincial: detected }));
         setIsProvConfirmed(true);
         setOcrRawDetail(prev => (prev ? prev + '\n\n' : '') + `=== PROVINCIAL ===\n` + result.rawText);
       } else {
@@ -118,12 +125,11 @@ export const ScannerModal = () => {
           ? parsed.distrital
           : parsed.provincial || {};
         setDistVotes(detected);
-        setOcrVotes(prev => ({ ...(prev || {}), distrital: detected }));
         setIsDistConfirmed(true);
         setOcrRawDetail(prev => (prev ? prev + '\n\n' : '') + `=== DISTRITAL (${userDistrict}) ===\n` + result.rawText);
       }
 
-      showToast(`¡Votos de ${label} detectados y plasmados automáticamente en la tabla!`, 'success');
+      showToast(`¡Votos de ${label} detectados! Para aceptarlos presiona "Listo / Volver a la Mesa".`, 'success');
     } catch (err) {
       console.error(err);
       showToast(`Error al escanear acta de ${label}.`, 'error');
@@ -133,45 +139,45 @@ export const ScannerModal = () => {
     }
   };
 
-  // Editar voto provincial (se sincroniza inmediatamente)
+  // Editar voto provincial en el modal
   const handleProvVoteChange = (key, val) => {
     const num = Math.max(0, parseInt(val, 10) || 0);
-    setProvVotes(prev => {
-      const updated = { ...prev, [key]: num };
-      setOcrVotes(curr => ({ ...(curr || {}), provincial: updated }));
-      return updated;
-    });
+    setProvVotes(prev => ({ ...prev, [key]: num }));
   };
 
-  // Editar voto distrital (se sincroniza inmediatamente)
+  // Editar voto distrital en el modal
   const handleDistVoteChange = (key, val) => {
     const num = Math.max(0, parseInt(val, 10) || 0);
-    setDistVotes(prev => {
-      const updated = { ...prev, [key]: num };
-      setOcrVotes(curr => ({ ...(curr || {}), distrital: updated }));
-      return updated;
-    });
+    setDistVotes(prev => ({ ...prev, [key]: num }));
   };
 
-  // Confirmar manual (opcional, ya se aplica automáticamente)
+  // Pasar a la siguiente foto
   const handleConfirmProvincial = () => {
-    setOcrVotes(prev => ({ ...(prev || {}), provincial: provVotes }));
     setIsProvConfirmed(true);
-    showToast('✅ Votos de Lima Metropolitana guardados.', 'success');
+    showToast('✓ Votos de Lima Metropolitana revisados.', 'success');
     if (!isDistConfirmed) {
       setActiveStep('DISTRITAL');
     }
   };
 
-  // Confirmar manual (opcional, ya se aplica automáticamente)
   const handleConfirmDistrital = () => {
-    setOcrVotes(prev => ({ ...(prev || {}), distrital: distVotes }));
     setIsDistConfirmed(true);
-    showToast(`✅ Votos Distritales (${userDistrict}) guardados.`, 'success');
+    showToast(`✓ Votos Distritales (${userDistrict}) revisados.`, 'success');
   };
 
-  // Cerrar y finalizar todo
+  // CERRAR SIN ACEPTAR: No modifica ocrVotes
+  const handleClose = () => {
+    setIsScannerModalOpen(false);
+  };
+
+  // LISTO / VOLVER A LA MESA: Acepta y plasma los votos en la mesa
   const handleFinalizar = () => {
+    setOcrVotes(prev => ({
+      ...(prev || {}),
+      provincial: { ...provVotes },
+      distrital: { ...distVotes }
+    }));
+    showToast('✅ Votos de la foto aceptados y plasmados en la mesa.', 'success');
     setIsScannerModalOpen(false);
   };
 
