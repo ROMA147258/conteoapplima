@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useVotes } from '../../hooks/useVotes';
 import { useAttendance } from '../../hooks/useAttendance';
-import { obtenerCandidatosPorUbicacion, obtenerAlcaldeActual } from '../../constants/distritos';
+import { DISTRITOS_LIMA, obtenerCandidatosPorUbicacion, obtenerAlcaldeActual } from '../../constants/distritos';
 import { buscarColegioPorMesa } from '../../constants/data';
 import { esCoordinador } from '../../constants/usuarios';
 import { UserInfoBar } from './components/UserInfoBar';
@@ -11,6 +11,7 @@ import { CountingTabs } from './components/CountingTabs';
 import { MesaCard } from './components/MesaCard';
 import { ManualCounting } from './Manual/ManualCounting';
 import { OcrCounting } from './OCR/OcrCounting';
+import { MapPin } from 'lucide-react';
 
 export const CountingView = () => {
   const {
@@ -159,6 +160,54 @@ export const CountingView = () => {
         onOpenConfig={() => setIsConfigModalOpen(true)}
         onLogout={logout}
       />
+
+      {isSuperAdmin && (
+        <div
+          id="district-selector-container"
+          className="glass"
+          style={{
+            marginTop: '-8px',
+            marginBottom: '16px',
+            padding: '10px',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <label
+            htmlFor="app-district-select"
+            style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--text-muted)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}
+          >
+            <MapPin size={14} /> Distrito:
+          </label>
+          <select
+            id="app-district-select"
+            className="select-field"
+            value={ubicacion}
+            onChange={(e) => {
+              const newDist = e.target.value;
+              const updated = { ...currentUser, ubicacion: newDist };
+              setCurrentUser(updated);
+              sessionStorage.setItem('votoReal_user', JSON.stringify(updated));
+            }}
+            style={{
+              margin: 0,
+              padding: '6px 12px',
+              fontSize: '0.85rem',
+              flex: 1,
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '4px',
+              background: 'rgba(0,0,0,0.2)',
+              color: 'white'
+            }}
+          >
+            {DISTRITOS_LIMA.map(dist => (
+              <option key={dist} value={dist}>{dist}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <SyncStatusBar isOnline={isOnline} />
 
