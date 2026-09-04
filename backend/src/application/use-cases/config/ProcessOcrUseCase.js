@@ -16,7 +16,7 @@ class ProcessOcrUseCase {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20000);
+        const timeoutId = setTimeout(() => controller.abort(), 40000);
 
         const response = await fetch(url, {
           method: 'POST',
