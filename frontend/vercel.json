@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/voto-real",
+      "destination": "/api/voto-real"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "/api/voto-real"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

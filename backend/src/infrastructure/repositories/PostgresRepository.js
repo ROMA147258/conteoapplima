@@ -451,7 +451,7 @@ class PostgresRepository {
         $118, $119, $120, $121, $122, $123, $124, $125,
         $126, $127, $128, $129, $130, $131, CURRENT_TIMESTAMP
       )
-      ON CONFLICT (numero_mesa, origen) DO UPDATE SET
+      ON CONFLICT (dni, origen) DO UPDATE SET
         personero = EXCLUDED.personero,
         dni = EXCLUDED.dni,
         departamento = EXCLUDED.departamento,
@@ -521,8 +521,14 @@ class PostgresRepository {
     `;
 
     const params = [
-      data.brigadista || '', data.dni || '', data.departamento || 'Lima', data.provincia || 'Lima',
-      data.ubicacion || '', data.colegio || '', mesaStr, origenStr,
+      data.brigadista || data.personero || data.nombre || '', 
+      data.dni || '', 
+      data.departamento || 'Lima', 
+      data.provincia || 'Lima',
+      data.ubicacion || data.distrito || '', 
+      data.colegio || data.local || '', 
+      mesaStr, 
+      origenStr,
       // Provincial candidates
       extractCand(prov["SOMOS PERU"] || prov.SP), p_sp_v,
       extractCand(prov.RENOVACION || prov["RENOVACION POPULAR"] || prov.RP), p_rp_v,
