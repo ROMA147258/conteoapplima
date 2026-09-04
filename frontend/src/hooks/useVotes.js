@@ -170,13 +170,15 @@ export const useVotes = () => {
 
     const payload = {
       action: 'registrar_votos',
-      brigadista: currentUser?.nombre,
-      dni: currentUser?.dni,
+      brigadista: currentUser?.nombre || '',
+      personero: currentUser?.nombre || '',
+      dni: currentUser?.dni || '',
       departamento: 'Lima',
       provincia: 'Lima',
-      ubicacion: ubicacion,
-      colegio: colegioInput,
-      mesa: mesa,
+      ubicacion: ubicacion || currentUser?.ubicacion || 'Lima',
+      distrito: ubicacion || currentUser?.ubicacion || 'Lima',
+      colegio: colegioInput || currentUser?.colegio || '',
+      mesa: mesa || currentUser?.mesa || '',
       origen: origen,
       votos: {
         provincial: formattedProv,
