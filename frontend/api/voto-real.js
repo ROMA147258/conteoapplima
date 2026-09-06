@@ -426,12 +426,12 @@ export default async function handler(req, res) {
         const p_alianza_regional_v = extractVote(prov["ALIANZA REGIONAL"] || prov.ARP);
 
         const p_nulos = parseInt(payload.votos_nulos ?? prov.NULOS ?? 0, 10) || 0;
-        const p_blanco = parseInt(payload.votos_blancos ?? payload.votos_vacios ?? prov.BLANCO ?? prov.VACIOS ?? 0, 10) || 0;
+        const p_blanco = parseInt(payload.votos_blancos ?? prov.BLANCO ?? 0, 10) || 0;
         const p_impugnados = parseInt(payload.votos_impugnados ?? prov.IMPUGNADOS ?? 0, 10) || 0;
 
         let p_cands_sum = 0;
         Object.keys(prov).forEach(k => {
-          if (!['NULOS', 'BLANCO', 'VACIOS', 'IMPUGNADOS'].includes(k.toUpperCase())) {
+          if (!['NULOS', 'BLANCO', 'IMPUGNADOS'].includes(k.toUpperCase())) {
             p_cands_sum += extractVote(prov[k]);
           }
         });
@@ -468,12 +468,12 @@ export default async function handler(req, res) {
         const d_alianza_regional_v = extractVote(dist["ALIANZA REGIONAL"] || dist.ARP);
 
         const d_nulos = parseInt(payload.votos_dist_nulos ?? dist.NULOS ?? 0, 10) || 0;
-        const d_blanco = parseInt(payload.votos_dist_blancos ?? payload.votos_dist_vacios ?? dist.BLANCO ?? dist.VACIOS ?? 0, 10) || 0;
+        const d_blanco = parseInt(payload.votos_dist_blancos ?? dist.BLANCO ?? 0, 10) || 0;
         const d_impugnados = parseInt(payload.votos_dist_impugnados ?? dist.IMPUGNADOS ?? 0, 10) || 0;
 
         let d_cands_sum = 0;
         Object.keys(dist).forEach(k => {
-          if (!['NULOS', 'BLANCO', 'VACIOS', 'IMPUGNADOS'].includes(k.toUpperCase())) {
+          if (!['NULOS', 'BLANCO', 'IMPUGNADOS'].includes(k.toUpperCase())) {
             d_cands_sum += extractVote(dist[k]);
           }
         });
@@ -494,7 +494,7 @@ export default async function handler(req, res) {
             p_pueblo_consciente_candidato, p_pueblo_consciente_votos, p_ppp_candidato, p_ppp_votos, p_integridad_candidato, p_integridad_votos,
             p_fuerza_ciudadana_candidato, p_fuerza_ciudadana_votos, p_batalla_candidato, p_batalla_votos, p_app_candidato, p_app_votos,
             p_alianza_regional_candidato, p_alianza_regional_votos,
-            p_nulos, p_vacios, p_blanco, p_impugnados, p_total_votos,
+            p_nulos, p_blanco, p_impugnados, p_total_votos,
             d_sp_candidato, d_sp_votos, d_rp_candidato, d_rp_votos, d_an_candidato, d_an_votos,
             d_avanza_candidato, d_avanza_votos, d_podemos_candidato, d_podemos_votos, d_jp_candidato, d_jp_votos,
             d_obras_candidato, d_obras_votos, d_frepap_candidato, d_frepap_votos, d_ap_candidato, d_ap_votos,
@@ -505,7 +505,7 @@ export default async function handler(req, res) {
             d_pueblo_consciente_candidato, d_pueblo_consciente_votos, d_ppp_candidato, d_ppp_votos, d_integridad_candidato, d_integridad_votos,
             d_fuerza_ciudadana_candidato, d_fuerza_ciudadana_votos, d_batalla_candidato, d_batalla_votos, d_app_candidato, d_app_votos,
             d_alianza_regional_candidato, d_alianza_regional_votos,
-            d_nulos, d_vacios, d_blanco, d_impugnados, d_total_votos, votos_json, fecha_hora
+            d_nulos, d_blanco, d_impugnados, d_total_votos, votos_json, fecha_hora
           )
           VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8,
@@ -514,13 +514,13 @@ export default async function handler(req, res) {
             $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44,
             $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56,
             $57, $58, $59, $60, $61, $62, $63, $64,
-            $65, $66, $67, $68, $69,
-            $70, $71, $72, $73, $74, $75, $76, $77, $78, $79, $80, $81,
-            $82, $83, $84, $85, $86, $87, $88, $89, $90, $91, $92, $93,
-            $94, $95, $96, $97, $98, $99, $100, $101, $102, $103, $104, $105,
-            $106, $107, $108, $109, $110, $111, $112, $113, $114, $115, $116, $117,
-            $118, $119, $120, $121, $122, $123, $124, $125,
-            $126, $127, $128, $129, $130, $131, CURRENT_TIMESTAMP
+            $65, $66, $67, $68,
+            $69, $70, $71, $72, $73, $74, $75, $76, $77, $78, $79, $80,
+            $81, $82, $83, $84, $85, $86, $87, $88, $89, $90, $91, $92,
+            $93, $94, $95, $96, $97, $98, $99, $100, $101, $102, $103, $104,
+            $105, $106, $107, $108, $109, $110, $111, $112, $113, $114, $115, $116,
+            $117, $118, $119, $120, $121, $122, $123, $124,
+            $125, $126, $127, $128, $129, CURRENT_TIMESTAMP
           )
           ON CONFLICT (dni, origen) DO UPDATE SET
             personero = EXCLUDED.personero,
@@ -557,7 +557,7 @@ export default async function handler(req, res) {
             p_batalla_candidato = EXCLUDED.p_batalla_candidato, p_batalla_votos = EXCLUDED.p_batalla_votos,
             p_app_candidato = EXCLUDED.p_app_candidato, p_app_votos = EXCLUDED.p_app_votos,
             p_alianza_regional_candidato = EXCLUDED.p_alianza_regional_candidato, p_alianza_regional_votos = EXCLUDED.p_alianza_regional_votos,
-            p_nulos = EXCLUDED.p_nulos, p_vacios = EXCLUDED.p_vacios, p_blanco = EXCLUDED.p_blanco, p_impugnados = EXCLUDED.p_impugnados, p_total_votos = EXCLUDED.p_total_votos,
+            p_nulos = EXCLUDED.p_nulos, p_blanco = EXCLUDED.p_blanco, p_impugnados = EXCLUDED.p_impugnados, p_total_votos = EXCLUDED.p_total_votos,
             d_sp_candidato = EXCLUDED.d_sp_candidato, d_sp_votos = EXCLUDED.d_sp_votos,
             d_rp_candidato = EXCLUDED.d_rp_candidato, d_rp_votos = EXCLUDED.d_rp_votos,
             d_an_candidato = EXCLUDED.d_an_candidato, d_an_votos = EXCLUDED.d_an_votos,
@@ -586,7 +586,7 @@ export default async function handler(req, res) {
             d_batalla_candidato = EXCLUDED.d_batalla_candidato, d_batalla_votos = EXCLUDED.d_batalla_votos,
             d_app_candidato = EXCLUDED.d_app_candidato, d_app_votos = EXCLUDED.d_app_votos,
             d_alianza_regional_candidato = EXCLUDED.d_alianza_regional_candidato, d_alianza_regional_votos = EXCLUDED.d_alianza_regional_votos,
-            d_nulos = EXCLUDED.d_nulos, d_vacios = EXCLUDED.d_vacios, d_blanco = EXCLUDED.d_blanco, d_impugnados = EXCLUDED.d_impugnados, d_total_votos = EXCLUDED.d_total_votos,
+            d_nulos = EXCLUDED.d_nulos, d_blanco = EXCLUDED.d_blanco, d_impugnados = EXCLUDED.d_impugnados, d_total_votos = EXCLUDED.d_total_votos,
             votos_json = EXCLUDED.votos_json,
             fecha_hora = CURRENT_TIMESTAMP
         `;
@@ -621,7 +621,7 @@ export default async function handler(req, res) {
           extractCand(prov["BATALLA PERU"] || prov.BP, "BATALLA PERU", "PROVINCIAL"), p_batalla_v,
           extractCand(prov.APP || prov["ALIANZA PARA EL PROGRESO"], "APP", "PROVINCIAL"), p_app_v,
           extractCand(prov["ALIANZA REGIONAL"] || prov.ARP || prov["ALIANZA REGIONAL POR EL PERU"], "ALIANZA REGIONAL", "PROVINCIAL"), p_alianza_regional_v,
-          p_nulos, p_blanco, p_blanco, p_impugnados, p_tot,
+          p_nulos, p_blanco, p_impugnados, p_tot,
           extractCand(dist["SOMOS PERU"] || dist.SP, "SOMOS PERU", "DISTRITAL"), d_sp_v,
           extractCand(dist.RENOVACION || dist["RENOVACION POPULAR"] || dist.RP, "RENOVACION", "DISTRITAL"), d_rp_v,
           extractCand(dist["AHORA NACION"] || dist.AN, "AHORA NACION", "DISTRITAL"), d_an_v,
@@ -650,7 +650,7 @@ export default async function handler(req, res) {
           extractCand(dist["BATALLA PERU"] || dist.BP, "BATALLA PERU", "DISTRITAL"), d_batalla_v,
           extractCand(dist.APP || dist["ALIANZA PARA EL PROGRESO"], "APP", "DISTRITAL"), d_app_v,
           extractCand(dist["ALIANZA REGIONAL"] || dist.ARP || dist["ALIANZA REGIONAL POR EL PERU"], "ALIANZA REGIONAL", "DISTRITAL"), d_alianza_regional_v,
-          d_nulos, d_blanco, d_blanco, d_impugnados, d_tot,
+          d_nulos, d_blanco, d_impugnados, d_tot,
           votosJson
         ];
 

@@ -84,22 +84,17 @@ export const DistrictTable = ({
         <div className="vote-count-container">
           {isReadOnly ? (
             <div className="vote-badge-readonly">
-              {votes.BLANCO ?? votes.VACIOS ?? 0}
+              {votes.BLANCO ?? 0}
             </div>
           ) : (
             <input
               type="number"
               id="votos-dist-blanco"
               className="vote-input-symmetric"
-              value={votes.BLANCO ?? votes.VACIOS ?? 0}
+              value={votes.BLANCO ?? 0}
               min="0"
               max="999"
-              onChange={(e) => {
-                if (onVoteChange) {
-                  onVoteChange('distrital', 'BLANCO', e.target.value);
-                  onVoteChange('distrital', 'VACIOS', e.target.value);
-                }
-              }}
+              onChange={(e) => onVoteChange && onVoteChange('distrital', 'BLANCO', e.target.value)}
               onFocus={(e) => e.target.select()}
               placeholder="0"
             />

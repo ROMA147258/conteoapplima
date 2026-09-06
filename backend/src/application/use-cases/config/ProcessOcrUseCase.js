@@ -1,22 +1,26 @@
+const dns = require('dns');
+if (typeof dns.setDefaultResultOrder === 'function') {
+  dns.setDefaultResultOrder('ipv4first');
+}
 const env = require('../../../config/env');
 const sqlConfigRepo = require('../../../infrastructure/repositories/SqlConfigRepository');
 
 class ProcessOcrUseCase {
   /**
-   * Procesa la imagen utilizando Google Gemini Vision (gemini-2.5-flash)
+   * Procesa la imagen utilizando Google Gemini Vision
    */
   async processWithGemini({ imageBase64, mimeType = 'image/jpeg', prompt, apiKey }) {
     const key = apiKey || env.GEMINI_API_KEY || (sqlConfigRepo.getConfig()?.geminiApiKey);
     if (!key) return null;
 
     const cleanBase64 = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
-    const modelsToTry = ['gemini-2.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash'];
+    const modelsToTry = ['gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-2.5-flash'];
 
     for (const model of modelsToTry) {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 40000);
+        const timeoutId = setTimeout(() => controller.abort(), 20000);
 
         const response = await fetch(url, {
           method: 'POST',
@@ -58,7 +62,7 @@ class ProcessOcrUseCase {
           }
         }
       } catch (e) {
-        console.warn(`[ProcessOcrUseCase] Error en Gemini Vision con modelo ${model}:`, e.message);
+        console.warn(`[ProcessOcrUseCase] Intento fallido con modelo ${model}:`, e.message);
       }
     }
     return null;

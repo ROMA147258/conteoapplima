@@ -158,8 +158,8 @@ export function procesarTextoOCR(text, currentDistrict = 'ATE') {
   const userDistNorm = norm(currentDistrict || 'ATE');
 
   const detected = {
-    provincial: { "FP": 0, "JP": 0, "SOMOS PERU": 0, "FREPAP": 0, "VERDE": 0, "MORADO": 0, "RENOVACION": 0, "AHORA NACION": 0, "AVANZA PAIS": 0, "PODEMOS": 0, "OBRAS": 0, "ACCION POPULAR": 0, "ESPERANZA": 0, "VENCEREMOS": 0, "VISION PERU": 0, "APRA": 0, "PPC": 0, "PROGRESEMOS": 0, "BUEN GOBIERNO": 0, "PERU LIBRE": 0, "TIERRA VERDE": 0, "PUEBLO CONSCIENTE": 0, "PPP": 0, "INTEGRIDAD": 0, "FUERZA CIUDADANA": 0, "BATALLA PERU": 0, "APP": 0, "ALIANZA REGIONAL": 0, "BLANCO": 0, "NULOS": 0, "IMPUGNADOS": 0, "VACIOS": 0 },
-    distrital: { "FP": 0, "JP": 0, "SOMOS PERU": 0, "FREPAP": 0, "VERDE": 0, "MORADO": 0, "RENOVACION": 0, "AHORA NACION": 0, "AVANZA PAIS": 0, "PODEMOS": 0, "OBRAS": 0, "ACCION POPULAR": 0, "ESPERANZA": 0, "VENCEREMOS": 0, "VISION PERU": 0, "APRA": 0, "PPC": 0, "PROGRESEMOS": 0, "BUEN GOBIERNO": 0, "PERU LIBRE": 0, "TIERRA VERDE": 0, "PUEBLO CONSCIENTE": 0, "PPP": 0, "INTEGRIDAD": 0, "FUERZA CIUDADANA": 0, "BATALLA PERU": 0, "APP": 0, "ALIANZA REGIONAL": 0, "BLANCO": 0, "NULOS": 0, "IMPUGNADOS": 0, "VACIOS": 0 }
+    provincial: { "SOMOS PERU": 0, "RENOVACION": 0, "AHORA NACION": 0, "AVANZA PAIS": 0, "PODEMOS": 0, "JP": 0, "OBRAS": 0, "FREPAP": 0, "ACCION POPULAR": 0, "ESPERANZA": 0, "VENCEREMOS": 0, "VISION PERU": 0, "APRA": 0, "FP": 0, "PPC": 0, "PROGRESEMOS": 0, "MORADO": 0, "BUEN GOBIERNO": 0, "VERDE": 0, "PERU LIBRE": 0, "TIERRA VERDE": 0, "PUEBLO CONSCIENTE": 0, "PPP": 0, "INTEGRIDAD": 0, "FUERZA CIUDADANA": 0, "BATALLA PERU": 0, "APP": 0, "ALIANZA REGIONAL": 0, "BLANCO": 0, "NULOS": 0, "IMPUGNADOS": 0 },
+    distrital: { "SOMOS PERU": 0, "RENOVACION": 0, "AHORA NACION": 0, "AVANZA PAIS": 0, "PODEMOS": 0, "JP": 0, "OBRAS": 0, "FREPAP": 0, "ACCION POPULAR": 0, "ESPERANZA": 0, "VENCEREMOS": 0, "VISION PERU": 0, "APRA": 0, "FP": 0, "PPC": 0, "PROGRESEMOS": 0, "MORADO": 0, "BUEN GOBIERNO": 0, "VERDE": 0, "PERU LIBRE": 0, "TIERRA VERDE": 0, "PUEBLO CONSCIENTE": 0, "PPP": 0, "INTEGRIDAD": 0, "FUERZA CIUDADANA": 0, "BATALLA PERU": 0, "APP": 0, "ALIANZA REGIONAL": 0, "BLANCO": 0, "NULOS": 0, "IMPUGNADOS": 0 }
   };
 
   if (!text) return detected;
@@ -437,7 +437,7 @@ export async function analizarImagenActa(imageSrc, options = {}) {
           rawText: parsedJson ? JSON.stringify(parsedJson, null, 2) : serverData.rawText,
           preprocessedDataUrl: imageSrc,
           provider: 'gemini',
-          model: serverData.model || 'gemini-2.5-flash',
+          model: serverData.model || 'gemini-3.5-flash-lite',
           parsedJson: parsedJson
         };
       }
@@ -446,10 +446,10 @@ export async function analizarImagenActa(imageSrc, options = {}) {
     console.warn('[analizarImagenActa] Backend local no disponible, ejecutando Gemini Vision directo:', backendErr.message);
   }
 
-  // 2. Fallback / Producción Vercel: Llamar directamente a Google Gemini 2.5 Flash Vision
+  // 2. Fallback / Producción Vercel: Llamar directamente a Google Gemini 3.5 Flash Lite Vision
   if (geminiApiKey) {
-    try {
-      const prompt = `Eres un perito experto en escaneo de actas electorales peruanas (ONPE / JNE). Analiza esta imagen con precisión absoluta y extrae cada uno de los votos manuscritos o impresos para cada organización política.
+    const fallbackModels = ['gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-2.5-flash'];
+    const prompt = `Eres un perito experto en escaneo de actas electorales peruanas (ONPE / JNE). Analiza esta imagen con precisión absoluta y extrae cada uno de los votos manuscritos o impresos para cada organización política.
 
 REGLAS CRÍTICAS DE EXTRACCIÓN:
 1. Extrae TODOS los partidos que figuren en la tabla o lista del acta. No omitas ninguno.
@@ -494,10 +494,32 @@ REGLAS CRÍTICAS DE EXTRACCIÓN:
     "provincial": {
       "SOMOS PERU": 0,
       "RENOVACION": 0,
-      "PPC": 0,
-      "FP": 0,
+      "AHORA NACION": 0,
+      "AVANZA PAIS": 0,
+      "PODEMOS": 0,
       "JP": 0,
+      "OBRAS": 0,
       "FREPAP": 0,
+      "ACCION POPULAR": 0,
+      "ESPERANZA": 0,
+      "VENCEREMOS": 0,
+      "VISION PERU": 0,
+      "APRA": 0,
+      "FP": 0,
+      "PPC": 0,
+      "PROGRESEMOS": 0,
+      "MORADO": 0,
+      "BUEN GOBIERNO": 0,
+      "VERDE": 0,
+      "PERU LIBRE": 0,
+      "TIERRA VERDE": 0,
+      "PUEBLO CONSCIENTE": 0,
+      "PPP": 0,
+      "INTEGRIDAD": 0,
+      "FUERZA CIUDADANA": 0,
+      "BATALLA PERU": 0,
+      "APP": 0,
+      "ALIANZA REGIONAL": 0,
       "BLANCO": 0,
       "NULOS": 0,
       "IMPUGNADOS": 0
@@ -505,10 +527,32 @@ REGLAS CRÍTICAS DE EXTRACCIÓN:
     "distrital": {
       "SOMOS PERU": 0,
       "RENOVACION": 0,
-      "PPC": 0,
-      "FP": 0,
+      "AHORA NACION": 0,
+      "AVANZA PAIS": 0,
+      "PODEMOS": 0,
       "JP": 0,
+      "OBRAS": 0,
       "FREPAP": 0,
+      "ACCION POPULAR": 0,
+      "ESPERANZA": 0,
+      "VENCEREMOS": 0,
+      "VISION PERU": 0,
+      "APRA": 0,
+      "FP": 0,
+      "PPC": 0,
+      "PROGRESEMOS": 0,
+      "MORADO": 0,
+      "BUEN GOBIERNO": 0,
+      "VERDE": 0,
+      "PERU LIBRE": 0,
+      "TIERRA VERDE": 0,
+      "PUEBLO CONSCIENTE": 0,
+      "PPP": 0,
+      "INTEGRIDAD": 0,
+      "FUERZA CIUDADANA": 0,
+      "BATALLA PERU": 0,
+      "APP": 0,
+      "ALIANZA REGIONAL": 0,
       "BLANCO": 0,
       "NULOS": 0,
       "IMPUGNADOS": 0
@@ -517,57 +561,56 @@ REGLAS CRÍTICAS DE EXTRACCIÓN:
 }
 Si el acta corresponde solo a Lima Metropolitana, coloca los votos en "provincial". Si corresponde al distrito de ${currentDistrict}, colócalos en "distrital". Si tiene ambas columnas, extrae ambas. Responde ÚNICAMENTE el JSON.`;
 
-      const directUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000);
+    for (const m of fallbackModels) {
+      try {
+        const directUrl = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${geminiApiKey}`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-      const response = await fetch(directUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: controller.signal,
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: prompt },
-                {
-                  inline_data: {
-                    mime_type: mimeType,
-                    data: cleanBase64
+        const response = await fetch(directUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: prompt },
+                  {
+                    inline_data: {
+                      mime_type: mimeType,
+                      data: cleanBase64
+                    }
                   }
-                }
-              ]
+                ]
+              }
+            ],
+            generationConfig: {
+              temperature: 0.1,
+              response_mime_type: "application/json"
             }
-          ],
-          generationConfig: {
-            temperature: 0.1,
-            response_mime_type: "application/json"
+          })
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          const data = await response.json();
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+          if (text) {
+            const parsedJson = extractJsonFromString(text);
+            return {
+              rawText: parsedJson ? JSON.stringify(parsedJson, null, 2) : text,
+              preprocessedDataUrl: imageSrc,
+              provider: 'gemini',
+              model: m,
+              parsedJson: parsedJson
+            };
           }
-        })
-      });
-
-      clearTimeout(timeoutId);
-
-      if (response.ok) {
-        const data = await response.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-        if (text) {
-          const parsedJson = extractJsonFromString(text);
-          return {
-            rawText: parsedJson ? JSON.stringify(parsedJson, null, 2) : text,
-            preprocessedDataUrl: imageSrc,
-            provider: 'gemini',
-            model: 'gemini-2.5-flash',
-            parsedJson: parsedJson
-          };
         }
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('[analizarImagenActa] Error de Google Gemini en Vercel:', errorData);
+      } catch (directErr) {
+        console.warn(`[analizarImagenActa] Error con modelo directo ${m}:`, directErr.message);
       }
-    } catch (directErr) {
-      console.error('[analizarImagenActa] Error en llamada directa a Gemini Vision:', directErr);
     }
   }
 

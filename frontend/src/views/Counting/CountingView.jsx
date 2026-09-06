@@ -105,13 +105,17 @@ export const CountingView = () => {
     const cleanMesa = (mesaInput || '').trim();
     if (!cleanMesa) {
       setColegioInput('');
+      localStorage.removeItem('votoReal_mesa_activa');
+      localStorage.removeItem('votoReal_colegio_activo');
       return;
     }
 
+    localStorage.setItem('votoReal_mesa_activa', cleanMesa);
     const match = buscarColegioPorMesa(cleanMesa, mesasEstructura, cachedUsers, currentUser);
 
     if (match && match.colegio) {
       setColegioInput(match.colegio);
+      localStorage.setItem('votoReal_colegio_activo', match.colegio);
       if (match.distrito && currentUser && currentUser.ubicacion !== match.distrito) {
         const updatedUser = { ...currentUser, ubicacion: match.distrito };
         setCurrentUser(updatedUser);
@@ -119,6 +123,7 @@ export const CountingView = () => {
       }
     } else {
       setColegioInput('');
+      localStorage.removeItem('votoReal_colegio_activo');
     }
   }, [mesaInput, mesasEstructura, cachedUsers, currentUser]);
 

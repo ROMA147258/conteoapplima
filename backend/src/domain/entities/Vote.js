@@ -11,11 +11,9 @@ class Vote {
     provincial = {},
     distrital = {},
     votosNulos = 0,
-    votosVacios = 0,
     votosBlancos = 0,
     votosImpugnados = 0,
     votosDistNulos = 0,
-    votosDistVacios = 0,
     votosDistBlancos = 0,
     votosDistImpugnados = 0
   }) {
@@ -30,12 +28,10 @@ class Vote {
     this.provincial = provincial;
     this.distrital = distrital;
     this.votosNulos = parseInt(votosNulos, 10) || 0;
-    this.votosBlancos = parseInt(votosBlancos || votosVacios, 10) || 0;
-    this.votosVacios = this.votosBlancos;
+    this.votosBlancos = parseInt(votosBlancos, 10) || 0;
     this.votosImpugnados = parseInt(votosImpugnados, 10) || 0;
     this.votosDistNulos = parseInt(votosDistNulos, 10) || 0;
-    this.votosDistBlancos = parseInt(votosDistBlancos || votosDistVacios, 10) || 0;
-    this.votosDistVacios = this.votosDistBlancos;
+    this.votosDistBlancos = parseInt(votosDistBlancos, 10) || 0;
     this.votosDistImpugnados = parseInt(votosDistImpugnados, 10) || 0;
   }
 

@@ -11,7 +11,7 @@ const INITIAL_KEYS = [
   "APRA", "FP", "PPC", "PROGRESEMOS", "MORADO", "BUEN GOBIERNO", "VERDE",
   "PERU LIBRE", "TIERRA VERDE", "PUEBLO CONSCIENTE", "PPP", "INTEGRIDAD",
   "FUERZA CIUDADANA", "BATALLA PERU", "APP", "ALIANZA REGIONAL",
-  "BLANCO", "NULOS", "IMPUGNADOS", "VACIOS"
+  "BLANCO", "NULOS", "IMPUGNADOS"
 ];
 
 const createInitialVotesObj = () => {
@@ -58,8 +58,29 @@ export const AppProvider = ({ children }) => {
   });
 
   // Electoral Data state
-  const [currentVotes, setCurrentVotes] = useState(JSON.parse(JSON.stringify(DEFAULT_VOTES)));
-  const [ocrVotes, setOcrVotes] = useState(JSON.parse(JSON.stringify(DEFAULT_VOTES)));
+  const [currentVotes, setCurrentVotes] = useState(() => {
+    try {
+      const userStr = sessionStorage.getItem('votoReal_user');
+      if (userStr) {
+        const u = JSON.parse(userStr);
+        const saved = localStorage.getItem(`votoReal_manualVotes_${u?.dni}`);
+        if (saved) return JSON.parse(saved);
+      }
+    } catch (e) {}
+    return JSON.parse(JSON.stringify(DEFAULT_VOTES));
+  });
+
+  const [ocrVotes, setOcrVotes] = useState(() => {
+    try {
+      const userStr = sessionStorage.getItem('votoReal_user');
+      if (userStr) {
+        const u = JSON.parse(userStr);
+        const saved = localStorage.getItem(`votoReal_ocrVotes_${u?.dni}`);
+        if (saved) return JSON.parse(saved);
+      }
+    } catch (e) {}
+    return JSON.parse(JSON.stringify(DEFAULT_VOTES));
+  });
   const [offlineVotes, setOfflineVotes] = useState(() => {
     try {
       const saved = localStorage.getItem('votoReal_offlineVotes');

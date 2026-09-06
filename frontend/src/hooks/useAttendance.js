@@ -88,22 +88,11 @@ export const useAttendance = () => {
   const validateMesaBeforeAttendance = (mesaVal) => {
     const cleanMesa = (mesaVal || '').trim();
 
-    // 1. Obtener la mesa asignada del usuario
-    let assignedMesa = currentUser?.mesa || '';
-    if (!assignedMesa && currentUser?.dni) {
-      const u = buscarBrigadista(currentUser.dni, currentUser.nombre);
-      if (u && u.mesa) assignedMesa = u.mesa;
-    }
-
-    // 2. Validación de campo vacío -> mostrar mesa asignada para guiar al usuario
+    // Solo requiere que se haya ingresado el número de mesa
     if (!cleanMesa) {
-      const msg = assignedMesa 
-        ? `Tu mesa asignada es la <strong>N° ${assignedMesa}</strong>.<br><br>Por favor, ingrésala en la casilla para poder confirmar tu asistencia.`
-        : `Por favor, ingresa tu número de mesa en la casilla antes de confirmar.`;
-
       showAlertDialog({
         title: 'Mesa Requerida',
-        message: msg,
+        message: 'Por favor, ingresa el número de mesa en la casilla para poder tomar la foto.',
         buttonText: 'Aceptar',
         type: 'warning',
         onClose: () => {
@@ -114,29 +103,6 @@ export const useAttendance = () => {
         }
       });
       return false;
-    }
-
-    // 3. Validación de coincidencia con mesa asignada
-    if (assignedMesa && !isSuperAdmin) {
-      const normInput = cleanMesa.replace(/\D/g, '').padStart(6, '0');
-      const normAssigned = assignedMesa.replace(/\D/g, '').padStart(6, '0');
-
-      if (normInput !== normAssigned) {
-        showAlertDialog({
-          title: '⚠️ Mesa Incorrecta',
-          message: `Has ingresado la mesa <strong>${cleanMesa}</strong>, pero tu mesa asignada es la <strong>${assignedMesa}</strong>.<br><br>Por favor, ingresa tu número de mesa correcto (<strong>${assignedMesa}</strong>) para poder continuar.`,
-          buttonText: 'Corregir Mesa',
-          type: 'error',
-          onClose: () => {
-            const mesaEl = document.getElementById('input-mesa');
-            if (mesaEl) {
-              mesaEl.value = '';
-              mesaEl.focus();
-            }
-          }
-        });
-        return false;
-      }
     }
 
     return true;

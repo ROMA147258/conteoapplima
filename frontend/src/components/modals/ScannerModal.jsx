@@ -1,15 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useApp } from '../../context/AppContext';
+import { useVotes } from '../../hooks/useVotes';
 import { 
   ScanLine, 
   Building, 
   MapPin, 
   Trash2,
-  CheckCircle2,
-  Loader2,
-  Table,
-  Camera,
+  CheckCircle2, 
+  Loader2, 
+  Table, 
+  Camera, 
   Check
 } from 'lucide-react';
 import { analizarImagenActa, procesarTextoOCR } from '../../services/ocrPipeline';
@@ -24,19 +25,23 @@ export const ScannerModal = () => {
     isScannerModalOpen, 
     setIsScannerModalOpen, 
     currentUser, 
-    setCurrentVotes, 
-    ocrVotes, 
     setOcrVotes, 
+    ocrVotes, 
     setOcrRawDetail, 
     showToast 
   } = useApp();
 
+  const { transmitVotes, isTransmitting, isOcrLocked: isHookOcrLocked } = useVotes();
+
   const isSuperAdmin = checkIsSuperAdmin(currentUser);
   const userDistrict = currentUser?.ubicacion || 'BREÑA';
-  const isLocked = !isSuperAdmin && Boolean(
-    currentUser?.voto_imagen_enviado !== undefined
-      ? currentUser.voto_imagen_enviado
-      : (typeof localStorage !== 'undefined' && localStorage.getItem(`votoReal_ocrLocked_${currentUser?.dni}`) === 'true')
+  const isLocked = !isSuperAdmin && (
+    isHookOcrLocked ||
+    Boolean(
+      currentUser?.voto_imagen_enviado !== undefined
+        ? currentUser.voto_imagen_enviado
+        : (typeof localStorage !== 'undefined' && localStorage.getItem(`votoReal_ocrLocked_${currentUser?.dni}`) === 'true')
+    )
   );
 
   // Pestaña activa: 'PROVINCIAL' (Foto 1) o 'DISTRITAL' (Foto 2)
@@ -180,14 +185,38 @@ export const ScannerModal = () => {
     setIsScannerModalOpen(false);
   };
 
-  // LISTO / VOLVER A LA MESA: Acepta y plasma los votos en la mesa
-  const handleFinalizar = () => {
-    setOcrVotes(prev => ({
-      ...(prev || {}),
+  // LISTO / VOLVER A LA MESA: Acepta y transmite los votos por imagen a la base de datos
+  const handleFinalizar = async () => {
+    const payloadVotes = {
       provincial: { ...provVotes },
       distrital: { ...distVotes }
-    }));
-    showToast('✅ Votos de la foto aceptados y plasmados en la mesa.', 'success');
+    };
+    setOcrVotes(payloadVotes);
+
+    const hasVotes = (totalProv + totalDist) > 0 || isProvConfirmed || isDistConfirmed;
+
+    if (hasVotes && (!isLocked || isSuperAdmin)) {
+      const targetMesa = (
+        currentUser?.mesa || 
+        (typeof localStorage !== 'undefined' ? (localStorage.getItem('votoReal_mesa_activa') || localStorage.getItem(`votoReal_attMesa_${currentUser?.dni}`)) : '') || 
+        ''
+      ).trim();
+
+      const targetColegio = (
+        currentUser?.colegio || 
+        (typeof localStorage !== 'undefined' ? (localStorage.getItem('votoReal_colegio_activo') || localStorage.getItem(`votoReal_attColegio_${currentUser?.dni}`)) : '') || 
+        ''
+      ).trim();
+
+      if (targetMesa) {
+        await transmitVotes(targetMesa, targetColegio, userDistrict, 'IMAGEN', payloadVotes);
+      } else {
+        showToast('✅ Votos de la foto aceptados y plasmados en la mesa.', 'success');
+      }
+    } else {
+      showToast('✅ Votos de la foto aceptados y plasmados en la mesa.', 'success');
+    }
+
     setIsScannerModalOpen(false);
   };
 
@@ -213,15 +242,6 @@ export const ScannerModal = () => {
               </span>
             </div>
           </div>
-          <button 
-            id="btn-close-scanner" 
-            className="btn-icon-close" 
-            disabled={isProcessing}
-            onClick={() => !isProcessing && setIsScannerModalOpen(false)}
-            style={{ opacity: isProcessing ? 0.4 : 1, cursor: isProcessing ? 'not-allowed' : 'pointer' }}
-          >
-            &times;
-          </button>
         </div>
 
         <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px', overflowY: 'auto', flex: 1, paddingRight: '4px' }}>
@@ -855,8 +875,8 @@ export const ScannerModal = () => {
           <button
             type="button"
             className="btn btn-primary"
-            disabled={isProcessing}
-            onClick={() => !isProcessing && handleFinalizar()}
+            disabled={isProcessing || isTransmitting}
+            onClick={() => !isProcessing && !isTransmitting && handleFinalizar()}
             style={{
               flex: 1,
               display: 'flex',
@@ -868,12 +888,17 @@ export const ScannerModal = () => {
               fontWeight: 800,
               borderRadius: '10px',
               background: (isProvConfirmed || isDistConfirmed) ? 'linear-gradient(135deg, #10b981, #059669)' : 'rgba(255, 255, 255, 0.1)',
-              cursor: 'pointer',
-              boxShadow: (isProvConfirmed || isDistConfirmed) ? '0 4px 15px rgba(16, 185, 129, 0.35)' : 'none'
+              cursor: (isProcessing || isTransmitting) ? 'not-allowed' : 'pointer',
+              boxShadow: (isProvConfirmed || isDistConfirmed) ? '0 4px 15px rgba(16, 185, 129, 0.35)' : 'none',
+              opacity: (isProcessing || isTransmitting) ? 0.7 : 1
             }}
           >
-            <Check size={18} />
-            <span>Listo / Volver a la Mesa</span>
+            {isTransmitting ? (
+              <Loader2 size={18} className="spin" />
+            ) : (
+              <Check size={18} />
+            )}
+            <span>{isTransmitting ? 'Guardando en Base de Datos...' : 'Listo / Volver a la Mesa'}</span>
           </button>
         </div>
       </div>

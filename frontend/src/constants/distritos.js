@@ -117,38 +117,62 @@ export const CANDIDATOS_OFICIALES_LIMA_METROPOLITANA = [
   { num: 26, key: "BATALLA PERU", shortName: "BP", partyId: "batalla", partyLong: "Batalla Perú", candidato: "Samir Frank Quispe Caballero", organizacion: "Batalla Perú" }
 ];
 
-// Helper para construir listas completas distritales
-const buildDistrictList = (overrideMap) => {
-  const defaultParties = [
-    "SOMOS PERU",
-    "RENOVACION",
-    "AVANZA PAIS",
-    "PODEMOS",
-    "ACCION POPULAR",
-    "PPC",
-    "AHORA NACION",
-    "APP",
-    "FP",
-    "JP",
-    "FREPAP",
-    "ESPERANZA",
-    "MORADO",
-    "APRA",
-    "PRIN",
-    "PAIS PARA TODOS",
-    "BUEN GOBIERNO",
-    "VERDE",
-    "PERU LIBRE",
-    "PERU PRIMERO",
-    "PERU MODERNO",
-    "LIBERTAD POPULAR",
-    "PROGRESEMOS",
-    "OBRAS",
-    "VISION PERU"
-  ];
+export const MASTER_PARTY_ORDER = [
+  "SOMOS PERU",
+  "RENOVACION",
+  "AHORA NACION",
+  "AVANZA PAIS",
+  "PODEMOS",
+  "JP",
+  "OBRAS",
+  "FREPAP",
+  "ACCION POPULAR",
+  "ESPERANZA",
+  "VENCEREMOS",
+  "VISION PERU",
+  "APRA",
+  "FP",
+  "PPC",
+  "PROGRESEMOS",
+  "MORADO",
+  "BUEN GOBIERNO",
+  "VERDE",
+  "PERU LIBRE",
+  "TIERRA VERDE",
+  "PUEBLO CONSCIENTE",
+  "PPP",
+  "INTEGRIDAD",
+  "FUERZA CIUDADANA",
+  "BATALLA PERU",
+  "APP",
+  "ALIANZA REGIONAL",
+  "PRIN",
+  "PAIS PARA TODOS",
+  "PERU PRIMERO",
+  "PERU MODERNO",
+  "LIBERTAD POPULAR",
+  "FE EN EL PERU",
+  "UNIDAD Y PAZ",
+  "SALVEMOS AL PERU",
+  "PTE PERU",
+  "ADP"
+];
 
-  // Ordenar priorizando los definidos en overrideMap
+// Helper para construir listas completas distritales
+export const buildDistrictList = (overrideMap) => {
+  const defaultParties = MASTER_PARTY_ORDER;
+
+  // Unir claves
   const allKeys = [...new Set([...Object.keys(overrideMap), ...defaultParties])];
+
+  // Ordenar con prioridad idéntica a la lista provincial de Lima Metropolitana
+  allKeys.sort((a, b) => {
+    const idxA = MASTER_PARTY_ORDER.indexOf(a);
+    const idxB = MASTER_PARTY_ORDER.indexOf(b);
+    const posA = idxA !== -1 ? idxA : 999;
+    const posB = idxB !== -1 ? idxB : 999;
+    return posA - posB;
+  });
 
   return allKeys.map((key, idx) => {
     const meta = PARTIDOS_DATA[key] || {
