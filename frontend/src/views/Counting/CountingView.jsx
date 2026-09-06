@@ -7,17 +7,26 @@ import { buscarColegioPorMesa } from '../../constants/data';
 import { esCoordinador } from '../../constants/usuarios';
 import { UserInfoBar } from './components/UserInfoBar';
 import { SyncStatusBar } from './components/SyncStatusBar';
-import { CountingTabs } from './components/CountingTabs';
 import { MesaCard } from './components/MesaCard';
-import { ManualCounting } from './Manual/ManualCounting';
-import { OcrCounting } from './OCR/OcrCounting';
-import { MapPin } from 'lucide-react';
+import { ManualCountingModal } from '../../components/modals/ManualCountingModal';
+import { OcrReviewModal } from '../../components/modals/OcrReviewModal';
+import { 
+  ClipboardList, 
+  Camera, 
+  CheckCircle2, 
+  Lock, 
+  ShieldAlert, 
+  Sparkles, 
+  ChevronRight, 
+  Eye, 
+  MapPin,
+  Layers
+} from 'lucide-react';
 
 export const CountingView = () => {
   const {
     currentUser, setCurrentUser, logout,
-    currentView, setCurrentView,
-    activeViewFilter, setActiveViewFilter,
+    setCurrentView,
     isOnline,
     setIsConfigModalOpen, setIsScannerModalOpen,
     mesasEstructura, cachedUsers
@@ -30,18 +39,32 @@ export const CountingView = () => {
     }
   }, [currentUser, setCurrentView]);
 
-  const { currentVotes, ocrVotes, handleVoteChange, transmitVotes, isTransmitting, isManualLocked, isOcrLocked } = useVotes();
+  const { 
+    currentVotes, 
+    ocrVotes, 
+    handleVoteChange, 
+    transmitVotes, 
+    isTransmitting, 
+    isManualLocked, 
+    isOcrLocked 
+  } = useVotes();
+
   const {
     isAttendanceConfirmed, isLlegadaConfirmed,
     validateMesaBeforeAttendance, verifyAttendanceGpsRange,
     processAttendancePhoto, confirmLlegadaGPS
   } = useAttendance();
 
+  // Estados de los Popups Modales
+  const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [isOcrModalOpen, setIsOcrModalOpen] = useState(false);
+
   const ubicacion = currentUser?.ubicacion || 'Lima';
   const isSuperAdmin = currentUser && (
     currentUser.dni === 'Admin#2026$Secure!VotoReal' ||
     currentUser.dni === '99999999' ||
-    (currentUser.nombre || '').toLowerCase().includes('super admin')
+    (currentUser.nombre || '').toLowerCase().includes('super admin') ||
+    (currentUser.rol || '').toLowerCase().includes('admin')
   );
 
   const [mesaInput, setMesaInput] = useState(() => {
@@ -141,8 +164,17 @@ export const CountingView = () => {
   const alcaldeProvincial = obtenerAlcaldeActual('Lima');
   const alcaldeDistrital = obtenerAlcaldeActual(ubicacion);
 
+  // Totales rápidos para los badges informativos
+  const sumProvManual = Object.values(currentVotes?.provincial || {}).reduce((acc, v) => acc + (typeof v === 'object' ? (Number(v.votos) || 0) : (Number(v) || 0)), 0);
+  const sumDistManual = Object.values(currentVotes?.distrital || {}).reduce((acc, v) => acc + (typeof v === 'object' ? (Number(v.votos) || 0) : (Number(v) || 0)), 0);
+  const totalManualVotes = sumProvManual + sumDistManual;
+
+  const sumProvOcr = Object.values(ocrVotes?.provincial || {}).reduce((acc, v) => acc + (typeof v === 'object' ? (Number(v.votos) || 0) : (Number(v) || 0)), 0);
+  const sumDistOcr = Object.values(ocrVotes?.distrital || {}).reduce((acc, v) => acc + (typeof v === 'object' ? (Number(v.votos) || 0) : (Number(v) || 0)), 0);
+  const totalOcrVotes = sumProvOcr + sumDistOcr;
+
   return (
-    <section id="view-counting" className="view active" style={{ display: 'block' }}>
+    <section id="view-counting" className="view active" style={{ display: 'block', maxWidth: '780px', margin: '0 auto', padding: '10px' }}>
       <input
         type="file"
         ref={attendanceFileRef}
@@ -166,13 +198,13 @@ export const CountingView = () => {
           id="district-selector-container"
           className="glass"
           style={{
-            marginTop: '-8px',
-            marginBottom: '16px',
-            padding: '10px',
-            borderRadius: '8px',
+            marginTop: '-6px',
+            marginBottom: '12px',
+            padding: '8px 14px',
+            borderRadius: '10px',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            gap: '10px'
           }}
         >
           <label
@@ -197,8 +229,8 @@ export const CountingView = () => {
               fontSize: '0.85rem',
               flex: 1,
               border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '4px',
-              background: 'rgba(0,0,0,0.2)',
+              borderRadius: '6px',
+              background: 'rgba(0,0,0,0.25)',
               color: 'white'
             }}
           >
@@ -211,50 +243,426 @@ export const CountingView = () => {
 
       <SyncStatusBar isOnline={isOnline} />
 
-      <CountingTabs
-        activeFilter={activeViewFilter}
-        onChangeFilter={setActiveViewFilter}
-      />
-
       <form id="form-votos" className="counting-form" onSubmit={(e) => e.preventDefault()}>
         <MesaCard
           mesaInput={mesaInput}
           onMesaChange={setMesaInput}
           colegioInput={colegioInput}
+          isLlegadaConfirmed={isLlegadaConfirmed}
+          onConfirmarLlegada={() => confirmLlegadaGPS(colegioInput, ubicacion, mesaInput)}
           isAttendanceConfirmed={isAttendanceConfirmed}
           onAttendanceCheck={handleAttendanceCheck}
         />
 
-        {activeViewFilter === 'manual' && (
-          <ManualCounting
-            ubicacion={ubicacion}
-            candidatosProvincial={candidatosProvincial}
-            candidatosDistrital={candidatosDistrital}
-            alcaldeProvincial={alcaldeProvincial}
-            alcaldeDistrital={alcaldeDistrital}
-            currentVotes={currentVotes}
-            onVoteChange={handleVoteChange}
-            onTransmit={() => handleTransmit('MANUAL')}
-            isTransmitting={isTransmitting}
-            isManualLocked={isManualLocked}
-          />
-        )}
+        {/* ======================================================== */}
+        {/* PANEL PRINCIPAL COMPACTO CON BOTONES / TARJETAS POPUP    */}
+        {/* ======================================================== */}
+        <div
+          id="counting-hub-container"
+          className="glass"
+          style={{
+            marginTop: '14px',
+            padding: '16px',
+            borderRadius: '16px',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            background: 'linear-gradient(180deg, rgba(30, 41, 59, 0.45) 0%, rgba(15, 23, 42, 0.7) 100%)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', paddingBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Layers size={18} color="#38bdf8" />
+              <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f1f5f9' }}>
+                Módulos de Conteo y Transmisión
+              </span>
+            </div>
+            <span style={{ fontSize: '0.72rem', color: '#94a3b8', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '10px' }}>
+              Mesa {mesaInput || '---'}
+            </span>
+          </div>
 
-        {activeViewFilter === 'ocr' && (
-          <OcrCounting
-            ubicacion={ubicacion}
-            candidatosProvincial={candidatosProvincial}
-            candidatosDistrital={candidatosDistrital}
-            alcaldeProvincial={alcaldeProvincial}
-            alcaldeDistrital={alcaldeDistrital}
-            ocrVotes={ocrVotes}
-            onOpenScanner={() => setIsScannerModalOpen(true)}
-            onTransmit={() => handleTransmit('IMAGEN')}
-            isTransmitting={isTransmitting}
-            isOcrLocked={isOcrLocked}
-          />
-        )}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+              gap: '12px'
+            }}
+          >
+            {/* 1. BOTÓN / TARJETA POPUP CONTEO MANUAL */}
+            <div
+              className="glass"
+              style={{
+                padding: '14px',
+                borderRadius: '12px',
+                border: isManualLocked
+                  ? '1px solid rgba(34, 197, 94, 0.35)'
+                  : '1px solid rgba(56, 189, 248, 0.3)',
+                background: isManualLocked
+                  ? 'linear-gradient(145deg, rgba(34, 197, 94, 0.08) 0%, rgba(15, 23, 42, 0.4) 100%)'
+                  : 'linear-gradient(145deg, rgba(56, 189, 248, 0.08) 0%, rgba(15, 23, 42, 0.4) 100%)',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                gap: '10px'
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <div
+                    style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '10px',
+                      background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(37, 99, 235, 0.3))',
+                      border: '1px solid rgba(56, 189, 248, 0.4)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#38bdf8'
+                    }}
+                  >
+                    <ClipboardList size={20} />
+                  </div>
+
+                  {/* Estado */}
+                  {isManualLocked ? (
+                    isSuperAdmin ? (
+                      <span
+                        style={{
+                          fontSize: '0.68rem',
+                          fontWeight: 700,
+                          color: '#fef08a',
+                          background: 'rgba(234, 179, 8, 0.2)',
+                          padding: '2px 8px',
+                          borderRadius: '10px',
+                          border: '1px solid rgba(234, 179, 8, 0.4)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <ShieldAlert size={12} /> Modificar (Superadmin)
+                      </span>
+                    ) : (
+                      <span
+                        style={{
+                          fontSize: '0.68rem',
+                          fontWeight: 700,
+                          color: '#86efac',
+                          background: 'rgba(34, 197, 94, 0.2)',
+                          padding: '2px 8px',
+                          borderRadius: '10px',
+                          border: '1px solid rgba(34, 197, 94, 0.4)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <CheckCircle2 size={12} /> Transmitido
+                      </span>
+                    )
+                  ) : (
+                    <span
+                      style={{
+                        fontSize: '0.68rem',
+                        fontWeight: 600,
+                        color: '#94a3b8',
+                        background: 'rgba(255, 255, 255, 0.06)',
+                        padding: '2px 8px',
+                        borderRadius: '10px',
+                        border: '1px solid rgba(255, 255, 255, 0.1)'
+                      }}
+                    >
+                      Pendiente
+                    </span>
+                  )}
+                </div>
+
+                <h4 style={{ margin: '0 0 2px 0', fontSize: '0.96rem', fontWeight: 700, color: '#f8fafc' }}>
+                  Conteo Manual
+                </h4>
+                <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8', lineHeight: 1.3 }}>
+                  Ingreso casilla por casilla para candidatos y actas.
+                </p>
+
+                {totalManualVotes > 0 && (
+                  <div style={{ marginTop: '6px', fontSize: '0.74rem', color: '#38bdf8', fontWeight: 600 }}>
+                    📊 Votos registrados: {totalManualVotes}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  id="btn-open-manual-modal"
+                  className="btn btn-primary"
+                  onClick={() => setIsManualModalOpen(true)}
+                  disabled={isManualLocked && !isSuperAdmin}
+                  style={{
+                    flex: 1,
+                    background: isManualLocked && !isSuperAdmin
+                      ? 'rgba(255, 255, 255, 0.05)'
+                      : 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                    borderColor: isManualLocked && !isSuperAdmin ? 'rgba(255,255,255,0.1)' : '#38bdf8',
+                    color: isManualLocked && !isSuperAdmin ? '#94a3b8' : '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '5px',
+                    padding: '10px 8px',
+                    fontWeight: 700,
+                    fontSize: '0.84rem',
+                    borderRadius: '8px',
+                    cursor: isManualLocked && !isSuperAdmin ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)'
+                  }}
+                >
+                  {isManualLocked && !isSuperAdmin ? <Lock size={15} /> : <ClipboardList size={15} />}
+                  <span>{isSuperAdmin && isManualLocked ? 'Modificar' : isManualLocked ? 'Transmitido' : 'Conteo Manual'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  id="btn-view-manual-modal"
+                  className="btn"
+                  onClick={() => setIsManualModalOpen(true)}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#e2e8f0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                    padding: '10px 14px',
+                    fontSize: '0.84rem',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: 600
+                  }}
+                  title="Ver tabla de votos manuales"
+                >
+                  <Eye size={15} />
+                  <span>Ver</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 2. BOTÓN / TARJETA POPUP CONTEO POR IMAGEN (OCR) */}
+            <div
+              className="glass"
+              style={{
+                padding: '14px',
+                borderRadius: '12px',
+                border: isOcrLocked
+                  ? '1px solid rgba(168, 85, 247, 0.4)'
+                  : '1px solid rgba(168, 85, 247, 0.3)',
+                background: isOcrLocked
+                  ? 'linear-gradient(145deg, rgba(168, 85, 247, 0.08) 0%, rgba(15, 23, 42, 0.4) 100%)'
+                  : 'linear-gradient(145deg, rgba(168, 85, 247, 0.08) 0%, rgba(15, 23, 42, 0.4) 100%)',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                gap: '10px'
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <div
+                    style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '10px',
+                      background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(124, 58, 237, 0.35))',
+                      border: '1px solid rgba(168, 85, 247, 0.4)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#c084fc'
+                    }}
+                  >
+                    <Camera size={20} />
+                  </div>
+
+                  {/* Estado */}
+                  {isOcrLocked ? (
+                    isSuperAdmin ? (
+                      <span
+                        style={{
+                          fontSize: '0.68rem',
+                          fontWeight: 700,
+                          color: '#fef08a',
+                          background: 'rgba(234, 179, 8, 0.2)',
+                          padding: '2px 8px',
+                          borderRadius: '10px',
+                          border: '1px solid rgba(234, 179, 8, 0.4)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <ShieldAlert size={12} /> Reescanear (Superadmin)
+                      </span>
+                    ) : (
+                      <span
+                        style={{
+                          fontSize: '0.68rem',
+                          fontWeight: 700,
+                          color: '#4ade80',
+                          background: 'rgba(16, 185, 129, 0.2)',
+                          padding: '2px 8px',
+                          borderRadius: '10px',
+                          border: '1px solid rgba(16, 185, 129, 0.4)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <CheckCircle2 size={12} /> Transmitido
+                      </span>
+                    )
+                  ) : (
+                    <span
+                      style={{
+                        fontSize: '0.68rem',
+                        fontWeight: 600,
+                        color: '#c084fc',
+                        background: 'rgba(168, 85, 247, 0.12)',
+                        padding: '2px 8px',
+                        borderRadius: '10px',
+                        border: '1px solid rgba(168, 85, 247, 0.3)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <Sparkles size={11} /> Con IA
+                    </span>
+                  )}
+                </div>
+
+                <h4 style={{ margin: '0 0 2px 0', fontSize: '0.96rem', fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  Conteo por Imagen (OCR)
+                </h4>
+                <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8', lineHeight: 1.3 }}>
+                  Escaneo inteligente de actas con IA y extracción de votos.
+                </p>
+
+                {totalOcrVotes > 0 && (
+                  <div style={{ marginTop: '6px', fontSize: '0.74rem', color: '#c084fc', fontWeight: 600 }}>
+                    📷 Votos de acta detectados: {totalOcrVotes}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  id="btn-scan-camera-direct"
+                  className="btn btn-secondary"
+                  onClick={() => setIsScannerModalOpen(true)}
+                  disabled={isOcrLocked && !isSuperAdmin}
+                  style={{
+                    flex: 1,
+                    background: isOcrLocked && !isSuperAdmin
+                      ? 'rgba(255, 255, 255, 0.05)'
+                      : 'linear-gradient(135deg, #9333ea 0%, #7e22ce 100%)',
+                    borderColor: isOcrLocked && !isSuperAdmin ? 'rgba(255,255,255,0.1)' : '#a855f7',
+                    color: isOcrLocked && !isSuperAdmin ? '#94a3b8' : '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '5px',
+                    padding: '10px 8px',
+                    fontWeight: 700,
+                    fontSize: '0.84rem',
+                    borderRadius: '8px',
+                    cursor: isOcrLocked && !isSuperAdmin ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 12px rgba(147, 51, 234, 0.25)'
+                  }}
+                >
+                  {isOcrLocked && !isSuperAdmin ? <Lock size={15} /> : <Camera size={15} />}
+                  <span>{isSuperAdmin && isOcrLocked ? 'Reescanear' : isOcrLocked ? 'Escaneado' : 'Escanear Acta'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  id="btn-open-ocr-review"
+                  className="btn"
+                  onClick={() => setIsOcrModalOpen(true)}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#e2e8f0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                    padding: '10px 14px',
+                    fontSize: '0.84rem',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: 600
+                  }}
+                  title="Ver tabla de votos OCR"
+                >
+                  <Eye size={15} />
+                  <span>Ver</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </form>
+
+      {/* ======================================================== */}
+      {/* POPUP / MODAL DE CONTEO MANUAL                           */}
+      {/* ======================================================== */}
+      <ManualCountingModal
+        isOpen={isManualModalOpen}
+        onClose={() => setIsManualModalOpen(false)}
+        mesaInput={mesaInput}
+        ubicacion={ubicacion}
+        candidatosProvincial={candidatosProvincial}
+        candidatosDistrital={candidatosDistrital}
+        alcaldeProvincial={alcaldeProvincial}
+        alcaldeDistrital={alcaldeDistrital}
+        currentVotes={currentVotes}
+        onVoteChange={handleVoteChange}
+        onTransmit={() => {
+          handleTransmit('MANUAL');
+        }}
+        isTransmitting={isTransmitting}
+        isManualLocked={isManualLocked}
+        isSuperAdmin={Boolean(isSuperAdmin)}
+      />
+
+      {/* ======================================================== */}
+      {/* POPUP / MODAL DE CONTEO POR IMAGEN (OCR)                 */}
+      {/* ======================================================== */}
+      <OcrReviewModal
+        isOpen={isOcrModalOpen}
+        onClose={() => setIsOcrModalOpen(false)}
+        mesaInput={mesaInput}
+        ubicacion={ubicacion}
+        candidatosProvincial={candidatosProvincial}
+        candidatosDistrital={candidatosDistrital}
+        alcaldeProvincial={alcaldeProvincial}
+        alcaldeDistrital={alcaldeDistrital}
+        ocrVotes={ocrVotes}
+        onOpenScanner={() => {
+          setIsScannerModalOpen(true);
+        }}
+        onTransmit={() => {
+          handleTransmit('IMAGEN');
+        }}
+        isTransmitting={isTransmitting}
+        isOcrLocked={isOcrLocked}
+        isSuperAdmin={Boolean(isSuperAdmin)}
+      />
     </section>
   );
 };

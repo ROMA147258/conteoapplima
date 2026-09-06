@@ -1,4 +1,5 @@
 const { getPool, query } = require('../database/connection');
+const { getOfficialCandidate } = require('../../constants/candidatesData');
 const env = require('../../config/env');
 const path = require('path');
 const fs = require('fs');
@@ -278,6 +279,20 @@ class PostgresRepository {
         u.voto_manual_enviado = false;
       }
 
+      // 4. Votos Imagen / OCR
+      try {
+        const vImgCheck = await query(`
+          SELECT numero_mesa, origen, p_total_votos
+          FROM votos_detalle
+          WHERE (TRIM(dni) = $1 OR (numero_mesa = $2 AND $2 != '')) AND origen = 'IMAGEN'
+          LIMIT 1
+        `, [dniTrim, mesaTrim]);
+        u.voto_imagen_enviado = Boolean(vImgCheck && vImgCheck.rows && vImgCheck.rows.length > 0);
+        u.voto_imagen_data = vImgCheck.rows[0] || null;
+      } catch (e) {
+        u.voto_imagen_enviado = false;
+      }
+
       return u;
     };
 
@@ -319,11 +334,19 @@ class PostgresRepository {
       return parseInt(item, 10) || 0;
     };
 
-    const extractCand = (item, fallback = '') => {
+    const extractCand = (item, partyKey, tipoEleccion) => {
       if (item && typeof item === 'object' && item.candidato) {
-        return item.candidato;
+        const c = (item.candidato || '').toString().trim();
+        if (c && !c.toLowerCase().startsWith('candidato ')) {
+          return c;
+        }
+      } else if (typeof item === 'string') {
+        const c = item.trim();
+        if (c && !c.toLowerCase().startsWith('candidato ')) {
+          return c;
+        }
       }
-      return fallback;
+      return getOfficialCandidate(tipoEleccion, data.ubicacion || data.distrito || '', partyKey);
     };
 
     const p_sp_v = extractVote(prov["SOMOS PERU"] || prov.SP);
@@ -530,65 +553,65 @@ class PostgresRepository {
       mesaStr, 
       origenStr,
       // Provincial candidates
-      extractCand(prov["SOMOS PERU"] || prov.SP), p_sp_v,
-      extractCand(prov.RENOVACION || prov["RENOVACION POPULAR"] || prov.RP), p_rp_v,
-      extractCand(prov["AHORA NACION"] || prov.AN), p_an_v,
-      extractCand(prov["AVANZA PAIS"] || prov.AVANZA), p_avanza_v,
-      extractCand(prov.PODEMOS || prov["PODEMOS PERU"]), p_podemos_v,
-      extractCand(prov.JP || prov["JUNTOS POR EL PERU"]), p_jp_v,
-      extractCand(prov.OBRAS || prov["PARTIDO CIVICO OBRAS"]), p_obras_v,
-      extractCand(prov.FREPAP), p_frepap_v,
-      extractCand(prov["ACCION POPULAR"] || prov.AP), p_ap_v,
-      extractCand(prov.ESPERANZA || prov.FE || prov["FRENTE DE LA ESPERANZA"]), p_esperanza_v,
-      extractCand(prov.VENCEREMOS || prov.AEV || prov["ALIANZA ELECTORAL VENCEREMOS"]), p_venceremos_v,
-      extractCand(prov["VISION PERU"] || prov.VP || prov.VISION), p_vision_v,
-      extractCand(prov.APRA || prov["PARTIDO APRISTA PERUANO"]), p_apra_v,
-      extractCand(prov.FP || prov["FUERZA POPULAR"]), p_fp_v,
-      extractCand(prov.PPC || prov["PARTIDO POPULAR CRISTIANO"]), p_ppc_v,
-      extractCand(prov.PROGRESEMOS || prov.PROG), p_progresemos_v,
-      extractCand(prov.MORADO || prov.PM || prov["PARTIDO MORADO"]), p_morado_v,
-      extractCand(prov["BUEN GOBIERNO"] || prov.PBG || prov["PARTIDO DEL BUEN GOBIERNO"]), p_buen_gobierno_v,
-      extractCand(prov.VERDE || prov.PDV || prov["PARTIDO DEMOCRATA VERDE"]), p_verde_v,
-      extractCand(prov["PERU LIBRE"] || prov.PL), p_peru_libre_v,
-      extractCand(prov["TIERRA VERDE"] || prov.CTTV), p_tierra_verde_v,
-      extractCand(prov["PUEBLO CONSCIENTE"] || prov.PC), p_pueblo_consciente_v,
-      extractCand(prov.PPP || prov["PARTIDO PATRIOTICO DEL PERU"]), p_ppp_v,
-      extractCand(prov.INTEGRIDAD || prov.ID || prov["INTEGRIDAD DEMOCRATICA"]), p_integridad_v,
-      extractCand(prov["FUERZA CIUDADANA"] || prov.FC), p_fuerza_ciudadana_v,
-      extractCand(prov["BATALLA PERU"] || prov.BP), p_batalla_v,
-      extractCand(prov.APP || prov["ALIANZA PARA EL PROGRESO"]), p_app_v,
-      extractCand(prov["ALIANZA REGIONAL"] || prov.ARP || prov["ALIANZA REGIONAL POR EL PERU"]), p_alianza_regional_v,
+      extractCand(prov["SOMOS PERU"] || prov.SP, "SOMOS PERU", "PROVINCIAL"), p_sp_v,
+      extractCand(prov.RENOVACION || prov["RENOVACION POPULAR"] || prov.RP, "RENOVACION", "PROVINCIAL"), p_rp_v,
+      extractCand(prov["AHORA NACION"] || prov.AN, "AHORA NACION", "PROVINCIAL"), p_an_v,
+      extractCand(prov["AVANZA PAIS"] || prov.AVANZA, "AVANZA PAIS", "PROVINCIAL"), p_avanza_v,
+      extractCand(prov.PODEMOS || prov["PODEMOS PERU"], "PODEMOS", "PROVINCIAL"), p_podemos_v,
+      extractCand(prov.JP || prov["JUNTOS POR EL PERU"], "JP", "PROVINCIAL"), p_jp_v,
+      extractCand(prov.OBRAS || prov["PARTIDO CIVICO OBRAS"], "OBRAS", "PROVINCIAL"), p_obras_v,
+      extractCand(prov.FREPAP, "FREPAP", "PROVINCIAL"), p_frepap_v,
+      extractCand(prov["ACCION POPULAR"] || prov.AP, "ACCION POPULAR", "PROVINCIAL"), p_ap_v,
+      extractCand(prov.ESPERANZA || prov.FE || prov["FRENTE DE LA ESPERANZA"], "ESPERANZA", "PROVINCIAL"), p_esperanza_v,
+      extractCand(prov.VENCEREMOS || prov.AEV || prov["ALIANZA ELECTORAL VENCEREMOS"], "VENCEREMOS", "PROVINCIAL"), p_venceremos_v,
+      extractCand(prov["VISION PERU"] || prov.VP || prov.VISION, "VISION PERU", "PROVINCIAL"), p_vision_v,
+      extractCand(prov.APRA || prov["PARTIDO APRISTA PERUANO"], "APRA", "PROVINCIAL"), p_apra_v,
+      extractCand(prov.FP || prov["FUERZA POPULAR"], "FP", "PROVINCIAL"), p_fp_v,
+      extractCand(prov.PPC || prov["PARTIDO POPULAR CRISTIANO"], "PPC", "PROVINCIAL"), p_ppc_v,
+      extractCand(prov.PROGRESEMOS || prov.PROG, "PROGRESEMOS", "PROVINCIAL"), p_progresemos_v,
+      extractCand(prov.MORADO || prov.PM || prov["PARTIDO MORADO"], "MORADO", "PROVINCIAL"), p_morado_v,
+      extractCand(prov["BUEN GOBIERNO"] || prov.PBG || prov["PARTIDO DEL BUEN GOBIERNO"], "BUEN GOBIERNO", "PROVINCIAL"), p_buen_gobierno_v,
+      extractCand(prov.VERDE || prov.PDV || prov["PARTIDO DEMOCRATA VERDE"], "VERDE", "PROVINCIAL"), p_verde_v,
+      extractCand(prov["PERU LIBRE"] || prov.PL, "PERU LIBRE", "PROVINCIAL"), p_peru_libre_v,
+      extractCand(prov["TIERRA VERDE"] || prov.CTTV, "TIERRA VERDE", "PROVINCIAL"), p_tierra_verde_v,
+      extractCand(prov["PUEBLO CONSCIENTE"] || prov.PC, "PUEBLO CONSCIENTE", "PROVINCIAL"), p_pueblo_consciente_v,
+      extractCand(prov.PPP || prov["PARTIDO PATRIOTICO DEL PERU"], "PPP", "PROVINCIAL"), p_ppp_v,
+      extractCand(prov.INTEGRIDAD || prov.ID || prov["INTEGRIDAD DEMOCRATICA"], "INTEGRIDAD", "PROVINCIAL"), p_integridad_v,
+      extractCand(prov["FUERZA CIUDADANA"] || prov.FC, "FUERZA CIUDADANA", "PROVINCIAL"), p_fuerza_ciudadana_v,
+      extractCand(prov["BATALLA PERU"] || prov.BP, "BATALLA PERU", "PROVINCIAL"), p_batalla_v,
+      extractCand(prov.APP || prov["ALIANZA PARA EL PROGRESO"], "APP", "PROVINCIAL"), p_app_v,
+      extractCand(prov["ALIANZA REGIONAL"] || prov.ARP || prov["ALIANZA REGIONAL POR EL PERU"], "ALIANZA REGIONAL", "PROVINCIAL"), p_alianza_regional_v,
       // Provincial Metrics
       p_nulos, p_blanco, p_blanco, p_impugnados, p_tot,
       // Distrital candidates
-      extractCand(dist["SOMOS PERU"] || dist.SP), d_sp_v,
-      extractCand(dist.RENOVACION || dist["RENOVACION POPULAR"] || dist.RP), d_rp_v,
-      extractCand(dist["AHORA NACION"] || dist.AN), d_an_v,
-      extractCand(dist["AVANZA PAIS"] || dist.AVANZA), d_avanza_v,
-      extractCand(dist.PODEMOS || dist["PODEMOS PERU"]), d_podemos_v,
-      extractCand(dist.JP || dist["JUNTOS POR EL PERU"]), d_jp_v,
-      extractCand(dist.OBRAS || dist["PARTIDO CIVICO OBRAS"]), d_obras_v,
-      extractCand(dist.FREPAP), d_frepap_v,
-      extractCand(dist["ACCION POPULAR"] || dist.AP), d_ap_v,
-      extractCand(dist.ESPERANZA || dist.FE || dist["FRENTE DE LA ESPERANZA"]), d_esperanza_v,
-      extractCand(dist.VENCEREMOS || dist.AEV || dist["ALIANZA ELECTORAL VENCEREMOS"]), d_venceremos_v,
-      extractCand(dist["VISION PERU"] || dist.VP || dist.VISION), d_vision_v,
-      extractCand(dist.APRA || dist["PARTIDO APRISTA PERUANO"]), d_apra_v,
-      extractCand(dist.FP || dist["FUERZA POPULAR"]), d_fp_v,
-      extractCand(dist.PPC || dist["PARTIDO POPULAR CRISTIANO"]), d_ppc_v,
-      extractCand(dist.PROGRESEMOS || dist.PROG), d_progresemos_v,
-      extractCand(dist.MORADO || dist.PM || dist["PARTIDO MORADO"]), d_morado_v,
-      extractCand(dist["BUEN GOBIERNO"] || dist.PBG || dist["PARTIDO DEL BUEN GOBIERNO"]), d_buen_gobierno_v,
-      extractCand(dist.VERDE || dist.PDV || dist["PARTIDO DEMOCRATA VERDE"]), d_verde_v,
-      extractCand(dist["PERU LIBRE"] || dist.PL), d_peru_libre_v,
-      extractCand(dist["TIERRA VERDE"] || dist.CTTV), d_tierra_verde_v,
-      extractCand(dist["PUEBLO CONSCIENTE"] || dist.PC), d_pueblo_consciente_v,
-      extractCand(dist.PPP || dist["PARTIDO PATRIOTICO DEL PERU"]), d_ppp_v,
-      extractCand(dist.INTEGRIDAD || dist.ID || dist["INTEGRIDAD DEMOCRATICA"]), d_integridad_v,
-      extractCand(dist["FUERZA CIUDADANA"] || dist.FC), d_fuerza_ciudadana_v,
-      extractCand(dist["BATALLA PERU"] || dist.BP), d_batalla_v,
-      extractCand(dist.APP || dist["ALIANZA PARA EL PROGRESO"]), d_app_v,
-      extractCand(dist["ALIANZA REGIONAL"] || dist.ARP || dist["ALIANZA REGIONAL POR EL PERU"]), d_alianza_regional_v,
+      extractCand(dist["SOMOS PERU"] || dist.SP, "SOMOS PERU", "DISTRITAL"), d_sp_v,
+      extractCand(dist.RENOVACION || dist["RENOVACION POPULAR"] || dist.RP, "RENOVACION", "DISTRITAL"), d_rp_v,
+      extractCand(dist["AHORA NACION"] || dist.AN, "AHORA NACION", "DISTRITAL"), d_an_v,
+      extractCand(dist["AVANZA PAIS"] || dist.AVANZA, "AVANZA PAIS", "DISTRITAL"), d_avanza_v,
+      extractCand(dist.PODEMOS || dist["PODEMOS PERU"], "PODEMOS", "DISTRITAL"), d_podemos_v,
+      extractCand(dist.JP || dist["JUNTOS POR EL PERU"], "JP", "DISTRITAL"), d_jp_v,
+      extractCand(dist.OBRAS || dist["PARTIDO CIVICO OBRAS"], "OBRAS", "DISTRITAL"), d_obras_v,
+      extractCand(dist.FREPAP, "FREPAP", "DISTRITAL"), d_frepap_v,
+      extractCand(dist["ACCION POPULAR"] || dist.AP, "ACCION POPULAR", "DISTRITAL"), d_ap_v,
+      extractCand(dist.ESPERANZA || dist.FE || dist["FRENTE DE LA ESPERANZA"], "ESPERANZA", "DISTRITAL"), d_esperanza_v,
+      extractCand(dist.VENCEREMOS || dist.AEV || dist["ALIANZA ELECTORAL VENCEREMOS"], "VENCEREMOS", "DISTRITAL"), d_venceremos_v,
+      extractCand(dist["VISION PERU"] || dist.VP || dist.VISION, "VISION PERU", "DISTRITAL"), d_vision_v,
+      extractCand(dist.APRA || dist["PARTIDO APRISTA PERUANO"], "APRA", "DISTRITAL"), d_apra_v,
+      extractCand(dist.FP || dist["FUERZA POPULAR"], "FP", "DISTRITAL"), d_fp_v,
+      extractCand(dist.PPC || dist["PARTIDO POPULAR CRISTIANO"], "PPC", "DISTRITAL"), d_ppc_v,
+      extractCand(dist.PROGRESEMOS || dist.PROG, "PROGRESEMOS", "DISTRITAL"), d_progresemos_v,
+      extractCand(dist.MORADO || dist.PM || dist["PARTIDO MORADO"], "MORADO", "DISTRITAL"), d_morado_v,
+      extractCand(dist["BUEN GOBIERNO"] || dist.PBG || dist["PARTIDO DEL BUEN GOBIERNO"], "BUEN GOBIERNO", "DISTRITAL"), d_buen_gobierno_v,
+      extractCand(dist.VERDE || dist.PDV || dist["PARTIDO DEMOCRATA VERDE"], "VERDE", "DISTRITAL"), d_verde_v,
+      extractCand(dist["PERU LIBRE"] || dist.PL, "PERU LIBRE", "DISTRITAL"), d_peru_libre_v,
+      extractCand(dist["TIERRA VERDE"] || dist.CTTV, "TIERRA VERDE", "DISTRITAL"), d_tierra_verde_v,
+      extractCand(dist["PUEBLO CONSCIENTE"] || dist.PC, "PUEBLO CONSCIENTE", "DISTRITAL"), d_pueblo_consciente_v,
+      extractCand(dist.PPP || dist["PARTIDO PATRIOTICO DEL PERU"], "PPP", "DISTRITAL"), d_ppp_v,
+      extractCand(dist.INTEGRIDAD || dist.ID || dist["INTEGRIDAD DEMOCRATICA"], "INTEGRIDAD", "DISTRITAL"), d_integridad_v,
+      extractCand(dist["FUERZA CIUDADANA"] || dist.FC, "FUERZA CIUDADANA", "DISTRITAL"), d_fuerza_ciudadana_v,
+      extractCand(dist["BATALLA PERU"] || dist.BP, "BATALLA PERU", "DISTRITAL"), d_batalla_v,
+      extractCand(dist.APP || dist["ALIANZA PARA EL PROGRESO"], "APP", "DISTRITAL"), d_app_v,
+      extractCand(dist["ALIANZA REGIONAL"] || dist.ARP || dist["ALIANZA REGIONAL POR EL PERU"], "ALIANZA REGIONAL", "DISTRITAL"), d_alianza_regional_v,
       // Distrital Metrics
       d_nulos, d_blanco, d_blanco, d_impugnados, d_tot,
       votosJson

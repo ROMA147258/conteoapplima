@@ -23,17 +23,6 @@ export const UserInfoBar = ({
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <button
-          id="btn-confirm-llegada"
-          className={`btn-llegada-header ${isLlegadaConfirmed ? 'confirmed-btn-llegada' : ''}`}
-          type="button"
-          onClick={onConfirmarLlegada}
-          title={isLlegadaConfirmed ? 'Llegada confirmada por GPS' : 'Confirmar Llegada por GPS'}
-        >
-          <MapPin size={16} />
-          <span>{isLlegadaConfirmed ? 'Llegada OK' : 'Confirmar Llegada'}</span>
-        </button>
-
         {isSuperAdmin && (
           <button
             id="btn-open-config"

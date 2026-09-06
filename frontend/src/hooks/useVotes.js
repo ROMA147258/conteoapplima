@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { apiPost } from '../services/api/apiClient';
 import { offlineQueue } from '../services/sync/offlineQueue';
-import { isCountingTimeEnabled } from '../utils/helpers';
+import { isCountingTimeEnabled, checkIsSuperAdmin } from '../utils/helpers';
 import {
   obtenerCandidatosPorUbicacion,
   obtenerListaCandidatosProvincial,
@@ -12,15 +12,16 @@ import {
 
 export const useVotes = () => {
   const {
-    currentUser, currentVotes, setCurrentVotes,
+    currentUser, setCurrentUser, currentVotes, setCurrentVotes,
     ocrVotes, setOcrVotes, isOnline,
     apiUrl, showToast, showAlertDialog,
     mesasEstructura, setMesas
   } = useApp();
 
+  const isSuperAdmin = checkIsSuperAdmin(currentUser);
   const [isTransmitting, setIsTransmitting] = useState(false);
 
-  // Bloqueo de Conteo Manual (solo 1 vez)
+  // Bloqueo de Conteo Manual (solo 1 vez para usuarios normales)
   const [isManualLocked, setIsManualLocked] = useState(() => {
     if (currentUser?.dni) {
       if (currentUser?.voto_manual_enviado !== undefined) {
@@ -32,7 +33,7 @@ export const useVotes = () => {
     return false;
   });
 
-  // Bloqueo de Conteo por Imagen / OCR (solo 1 vez)
+  // Bloqueo de Conteo por Imagen / OCR (solo 1 vez para usuarios normales)
   const [isOcrLocked, setIsOcrLocked] = useState(() => {
     if (currentUser?.dni) {
       if (currentUser?.voto_imagen_enviado !== undefined) {
@@ -60,6 +61,7 @@ export const useVotes = () => {
             localStorage.setItem(`votoReal_manualLocked_${currentUser.dni}`, 'true');
           } else {
             localStorage.removeItem(`votoReal_manualLocked_${currentUser.dni}`);
+            if (currentUser.mesa) localStorage.removeItem(`votoReal_manualLocked_${currentUser.dni}_${currentUser.mesa}`);
           }
 
           // 2. Voto Imagen / OCR
@@ -69,7 +71,23 @@ export const useVotes = () => {
             localStorage.setItem(`votoReal_ocrLocked_${currentUser.dni}`, 'true');
           } else {
             localStorage.removeItem(`votoReal_ocrLocked_${currentUser.dni}`);
+            if (currentUser.mesa) localStorage.removeItem(`votoReal_ocrLocked_${currentUser.dni}_${currentUser.mesa}`);
           }
+
+          // Sincronizar currentUser y sessionStorage si cambió el estado
+          setCurrentUser(prev => {
+            if (!prev) return prev;
+            if (prev.voto_manual_enviado === dbVotoManual && prev.voto_imagen_enviado === dbVotoImagen) {
+              return prev;
+            }
+            const updated = {
+              ...prev,
+              voto_manual_enviado: dbVotoManual,
+              voto_imagen_enviado: dbVotoImagen
+            };
+            sessionStorage.setItem('votoReal_user', JSON.stringify(updated));
+            return updated;
+          });
         }
       } catch (e) {
         console.warn('[useVotes] Error sincronizando estado de votos desde BD:', e);
@@ -78,10 +96,11 @@ export const useVotes = () => {
 
     syncVoteStatusFromDb();
     return () => { isMounted = false; };
-  }, [currentUser?.dni, apiUrl]);
+  }, [currentUser?.dni, currentUser?.mesa, apiUrl, setCurrentUser]);
 
   const handleVoteChange = (scope, key, val) => {
-    if (isManualLocked) return;
+    // Si está bloqueado y NO es superadmin, no permitir edición
+    if (isManualLocked && !isSuperAdmin) return;
     const intVal = parseInt(val, 10);
     const safeVal = isNaN(intVal) || intVal < 0 ? 0 : intVal > 999 ? 999 : intVal;
 
@@ -97,15 +116,17 @@ export const useVotes = () => {
   const transmitVotes = async (mesaVal, colegioInput, ubicacion, origen = 'MANUAL') => {
     if (isTransmitting) return;
 
-    // Validación de Bloqueo Único
-    if (origen === 'MANUAL' && isManualLocked) {
-      showToast('El conteo manual ya fue transmitido y se encuentra bloqueado (solo 1 envío permitido).', 'warning');
-      return;
-    }
+    // Validación de Bloqueo Único para personeros normales (Superadmin tiene permiso de modificación)
+    if (!isSuperAdmin) {
+      if (origen === 'MANUAL' && isManualLocked) {
+        showToast('El conteo manual ya fue transmitido y se encuentra bloqueado (solo 1 envío permitido).', 'warning');
+        return;
+      }
 
-    if (origen === 'IMAGEN' && isOcrLocked) {
-      showToast('El conteo por imagen ya fue transmitido y se encuentra bloqueado (solo 1 envío permitido).', 'warning');
-      return;
+      if (origen === 'IMAGEN' && isOcrLocked) {
+        showToast('El conteo por imagen ya fue transmitido y se encuentra bloqueado (solo 1 envío permitido).', 'warning');
+        return;
+      }
     }
 
     if (!isCountingTimeEnabled(currentUser)) {
@@ -170,15 +191,13 @@ export const useVotes = () => {
 
     const payload = {
       action: 'registrar_votos',
-      brigadista: currentUser?.nombre || '',
-      personero: currentUser?.nombre || '',
-      dni: currentUser?.dni || '',
+      brigadista: currentUser?.nombre,
+      dni: currentUser?.dni,
       departamento: 'Lima',
       provincia: 'Lima',
-      ubicacion: ubicacion || currentUser?.ubicacion || 'Lima',
-      distrito: ubicacion || currentUser?.ubicacion || 'Lima',
-      colegio: colegioInput || currentUser?.colegio || '',
-      mesa: mesa || currentUser?.mesa || '',
+      ubicacion: ubicacion,
+      colegio: colegioInput,
+      mesa: mesa,
       origen: origen,
       votos: {
         provincial: formattedProv,
@@ -201,7 +220,12 @@ export const useVotes = () => {
       } else {
         const res = await apiPost(payload, apiUrl);
         if (res && res.success) {
-          showToast(`¡Votos de ${origen === 'IMAGEN' ? 'Imagen' : 'Manual'} registrados y transmitidos con éxito!`, 'success');
+          const isModifying = isSuperAdmin && (origen === 'MANUAL' ? isManualLocked : isOcrLocked);
+          if (isModifying) {
+            showToast(`¡Modificación de votos (${origen === 'IMAGEN' ? 'Imagen' : 'Manual'}) guardada y actualizada en la BD exitosamente!`, 'success');
+          } else {
+            showToast(`¡Votos de ${origen === 'IMAGEN' ? 'Imagen' : 'Manual'} registrados y transmitidos con éxito!`, 'success');
+          }
         } else {
           throw new Error(res?.message || 'Error en transmisión');
         }
