@@ -274,34 +274,6 @@ export const ScannerModal = () => {
     }
   };
 
-  // Manejar subida masiva / múltiple de Lima (máx 2 fotos)
-  const handleProvBatchFiles = async (e) => {
-    const fileList = Array.from(e.target.files || []);
-    if (!fileList.length) return;
-    e.target.value = '';
-
-    if (fileList.length > 2) {
-      showToast('Se seleccionaron las 2 primeras fotos (máximo 2 por sección).', 'info');
-    }
-
-    const selectedFiles = fileList.slice(0, 2);
-    const base64List = await Promise.all(selectedFiles.map(readFileAsBase64));
-
-    const updated = [...provImages];
-    if (base64List.length === 1) {
-      if (updated[0] && !updated[1]) {
-        updated[1] = base64List[0];
-      } else {
-        updated[0] = base64List[0];
-      }
-    } else {
-      updated[0] = base64List[0];
-      updated[1] = base64List[1];
-    }
-
-    setProvImages(updated);
-    await scanBatchImages(updated.filter(Boolean), 'provincial');
-  };
 
   // Manejar subida por slot individual de Lima
   const handleProvSlotFile = async (e, slotIndex) => {
@@ -339,34 +311,6 @@ export const ScannerModal = () => {
     showToast(`Foto ${index + 1} de Lima Metropolitana eliminada.`, 'info');
   };
 
-  // Manejar subida masiva / múltiple Distrital (máx 2 fotos)
-  const handleDistBatchFiles = async (e) => {
-    const fileList = Array.from(e.target.files || []);
-    if (!fileList.length) return;
-    e.target.value = '';
-
-    if (fileList.length > 2) {
-      showToast('Se seleccionaron las 2 primeras fotos (máximo 2 por sección).', 'info');
-    }
-
-    const selectedFiles = fileList.slice(0, 2);
-    const base64List = await Promise.all(selectedFiles.map(readFileAsBase64));
-
-    const updated = [...distImages];
-    if (base64List.length === 1) {
-      if (updated[0] && !updated[1]) {
-        updated[1] = base64List[0];
-      } else {
-        updated[0] = base64List[0];
-      }
-    } else {
-      updated[0] = base64List[0];
-      updated[1] = base64List[1];
-    }
-
-    setDistImages(updated);
-    await scanBatchImages(updated.filter(Boolean), 'distrital');
-  };
 
   // Manejar subida por slot individual Distrital
   const handleDistSlotFile = async (e, slotIndex) => {
@@ -683,41 +627,6 @@ export const ScannerModal = () => {
                   />
                 </div>
 
-                {/* Botón de selección rápida para subir hasta 2 fotos a la vez */}
-                {!isLocked && (
-                  <label
-                    htmlFor={isProcessing ? "" : "prov-batch-file-input"}
-                    style={{
-                      cursor: isProcessing ? 'not-allowed' : 'pointer',
-                      pointerEvents: isProcessing ? 'none' : 'auto',
-                      opacity: isProcessing ? 0.45 : 1,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      padding: '10px 12px',
-                      borderRadius: '8px',
-                      background: 'rgba(56, 189, 248, 0.12)',
-                      border: '1px dashed #38bdf8',
-                      color: '#e0f2fe',
-                      fontSize: '0.82rem',
-                      fontWeight: 700,
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    <Camera size={16} color="#38bdf8" />
-                    <span>{provCount === 0 ? '📷 Seleccionar hasta 2 fotos de Lima a la vez' : '📷 Cambiar / Reemplazar fotos de Lima (Máx. 2)'}</span>
-                    <input
-                      type="file"
-                      id="prov-batch-file-input"
-                      accept="image/*"
-                      multiple
-                      disabled={isProcessing}
-                      style={{ display: 'none' }}
-                      onChange={handleProvBatchFiles}
-                    />
-                  </label>
-                )}
               </div>
 
               {/* TABLA DE CANDIDATOS DE LIMA METROPOLITANA (SOLO LECTURA OCR) */}
@@ -873,41 +782,6 @@ export const ScannerModal = () => {
                   />
                 </div>
 
-                {/* Botón de selección rápida para subir hasta 2 fotos a la vez */}
-                {!isLocked && (
-                  <label
-                    htmlFor={isProcessing ? "" : "dist-batch-file-input"}
-                    style={{
-                      cursor: isProcessing ? 'not-allowed' : 'pointer',
-                      pointerEvents: isProcessing ? 'none' : 'auto',
-                      opacity: isProcessing ? 0.45 : 1,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      padding: '10px 12px',
-                      borderRadius: '8px',
-                      background: 'rgba(168, 85, 247, 0.12)',
-                      border: '1px dashed #c084fc',
-                      color: '#f3e8ff',
-                      fontSize: '0.82rem',
-                      fontWeight: 700,
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    <Camera size={16} color="#c084fc" />
-                    <span>{distCount === 0 ? `📷 Seleccionar hasta 2 fotos de ${userDistrict} a la vez` : `📷 Cambiar / Reemplazar fotos de ${userDistrict} (Máx. 2)`}</span>
-                    <input
-                      type="file"
-                      id="dist-batch-file-input"
-                      accept="image/*"
-                      multiple
-                      disabled={isProcessing}
-                      style={{ display: 'none' }}
-                      onChange={handleDistBatchFiles}
-                    />
-                  </label>
-                )}
               </div>
 
               {/* TABLA DE CANDIDATOS DISTRITALES (SOLO LECTURA OCR) */}
