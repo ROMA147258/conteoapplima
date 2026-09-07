@@ -178,6 +178,18 @@ export const CountingView = () => {
   const sumDistOcr = Object.values(ocrVotes?.distrital || {}).reduce((acc, v) => acc + (typeof v === 'object' ? (Number(v.votos) || 0) : (Number(v) || 0)), 0);
   const totalOcrVotes = sumProvOcr + sumDistOcr;
 
+  const isOcrEffectiveLocked = !isSuperAdmin && (
+    Boolean(isOcrLocked) ||
+    Boolean(currentUser?.voto_imagen_enviado) ||
+    (typeof localStorage !== 'undefined' && localStorage.getItem(`votoReal_ocrLocked_${currentUser?.dni}`) === 'true')
+  );
+
+  const isManualEffectiveLocked = !isSuperAdmin && (
+    Boolean(isManualLocked) ||
+    Boolean(currentUser?.voto_manual_enviado) ||
+    (typeof localStorage !== 'undefined' && localStorage.getItem(`votoReal_manualLocked_${currentUser?.dni}`) === 'true')
+  );
+
   return (
     <section id="view-counting" className="view active" style={{ display: 'block', maxWidth: '780px', margin: '0 auto', padding: '10px' }}>
       <input
@@ -405,14 +417,14 @@ export const CountingView = () => {
                   id="btn-open-manual-modal"
                   className="btn btn-primary"
                   onClick={() => setIsManualModalOpen(true)}
-                  disabled={isManualLocked && !isSuperAdmin}
+                  disabled={isManualEffectiveLocked}
                   style={{
                     flex: 1,
-                    background: isManualLocked && !isSuperAdmin
+                    background: isManualEffectiveLocked
                       ? 'rgba(255, 255, 255, 0.05)'
                       : 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-                    borderColor: isManualLocked && !isSuperAdmin ? 'rgba(255,255,255,0.1)' : '#38bdf8',
-                    color: isManualLocked && !isSuperAdmin ? '#94a3b8' : '#ffffff',
+                    borderColor: isManualEffectiveLocked ? 'rgba(255,255,255,0.1)' : '#38bdf8',
+                    color: isManualEffectiveLocked ? '#94a3b8' : '#ffffff',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -421,12 +433,14 @@ export const CountingView = () => {
                     fontWeight: 700,
                     fontSize: '0.84rem',
                     borderRadius: '8px',
-                    cursor: isManualLocked && !isSuperAdmin ? 'not-allowed' : 'pointer',
-                    boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)'
+                    cursor: isManualEffectiveLocked ? 'not-allowed' : 'pointer',
+                    boxShadow: isManualEffectiveLocked ? 'none' : '0 4px 12px rgba(2, 132, 199, 0.25)',
+                    opacity: isManualEffectiveLocked ? 0.6 : 1,
+                    pointerEvents: isManualEffectiveLocked ? 'none' : 'auto'
                   }}
                 >
-                  {isManualLocked && !isSuperAdmin ? <Lock size={15} /> : <ClipboardList size={15} />}
-                  <span>{isSuperAdmin && isManualLocked ? 'Modificar' : isManualLocked ? 'Transmitido' : 'Conteo Manual'}</span>
+                  {isManualEffectiveLocked ? <Lock size={15} /> : <ClipboardList size={15} />}
+                  <span>{isSuperAdmin && isManualLocked ? 'Modificar' : isManualEffectiveLocked ? 'Transmitido (Bloqueado)' : 'Conteo Manual'}</span>
                 </button>
 
                 <button
@@ -493,7 +507,7 @@ export const CountingView = () => {
                   </div>
 
                   {/* Estado */}
-                  {isOcrLocked ? (
+                  {isOcrEffectiveLocked ? (
                     isSuperAdmin ? (
                       <span
                         style={{
@@ -568,15 +582,15 @@ export const CountingView = () => {
                   type="button"
                   id="btn-scan-camera-direct"
                   className="btn btn-secondary"
-                  onClick={() => setIsScannerModalOpen(true)}
-                  disabled={isOcrLocked && !isSuperAdmin}
+                  onClick={() => !isOcrEffectiveLocked && setIsScannerModalOpen(true)}
+                  disabled={isOcrEffectiveLocked}
                   style={{
                     flex: 1,
-                    background: isOcrLocked && !isSuperAdmin
+                    background: isOcrEffectiveLocked
                       ? 'rgba(255, 255, 255, 0.05)'
                       : 'linear-gradient(135deg, #9333ea 0%, #7e22ce 100%)',
-                    borderColor: isOcrLocked && !isSuperAdmin ? 'rgba(255,255,255,0.1)' : '#a855f7',
-                    color: isOcrLocked && !isSuperAdmin ? '#94a3b8' : '#ffffff',
+                    borderColor: isOcrEffectiveLocked ? 'rgba(255,255,255,0.1)' : '#a855f7',
+                    color: isOcrEffectiveLocked ? '#94a3b8' : '#ffffff',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -585,12 +599,14 @@ export const CountingView = () => {
                     fontWeight: 700,
                     fontSize: '0.84rem',
                     borderRadius: '8px',
-                    cursor: isOcrLocked && !isSuperAdmin ? 'not-allowed' : 'pointer',
-                    boxShadow: '0 4px 12px rgba(147, 51, 234, 0.25)'
+                    cursor: isOcrEffectiveLocked ? 'not-allowed' : 'pointer',
+                    boxShadow: isOcrEffectiveLocked ? 'none' : '0 4px 12px rgba(147, 51, 234, 0.25)',
+                    opacity: isOcrEffectiveLocked ? 0.6 : 1,
+                    pointerEvents: isOcrEffectiveLocked ? 'none' : 'auto'
                   }}
                 >
-                  {isOcrLocked && !isSuperAdmin ? <Lock size={15} /> : <Camera size={15} />}
-                  <span>{isSuperAdmin && isOcrLocked ? 'Reescanear' : isOcrLocked ? 'Escaneado' : 'Escanear Acta'}</span>
+                  {isOcrEffectiveLocked ? <Lock size={15} /> : <Camera size={15} />}
+                  <span>{isSuperAdmin && isOcrLocked ? 'Reescanear' : isOcrEffectiveLocked ? 'Escaneado (Bloqueado)' : 'Escanear Acta'}</span>
                 </button>
 
                 <button

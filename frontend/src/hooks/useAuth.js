@@ -1,4 +1,4 @@
-import { useApp } from '../context/AppContext';
+import { useApp, DEFAULT_VOTES } from '../context/AppContext';
 import { apiPost } from '../services/api/apiClient';
 import { buscarBrigadista, esCoordinador } from '../constants/usuarios';
 
@@ -6,7 +6,8 @@ export const useAuth = () => {
   const {
     currentUser, setCurrentUser,
     setCurrentView, showToast, showAlertDialog,
-    cachedUsers, apiUrl, logout
+    cachedUsers, apiUrl, logout,
+    setCurrentVotes, setOcrVotes
   } = useApp();
 
   const login = async (nombre, dni) => {
@@ -85,9 +86,11 @@ export const useAuth = () => {
       return false;
     }
 
+    const targetDni = user.dni || user.DNI || cleanDni;
+
     const userObj = {
       nombre: user.nombre || user.Nombres_y_Apellidos || cleanNombre || 'Personero',
-      dni: user.dni || user.DNI || cleanDni,
+      dni: targetDni,
       ubicacion: user.ubicacion || user.Distrito_Asignado || user.Distrito_donde_Vota || 'Lima',
       colegio: user.colegio || user.Local_de_Votacion_Asignado || user.Local_de_Votacion || '',
       mesa: user.mesa || user.Mesa_Asignada || user.Mesa_de_Sufragio || '',
@@ -96,6 +99,18 @@ export const useAuth = () => {
       tabla_origen: user.tabla_origen || user.origenHoja || '',
       tipo_interfaz: user.tipo_interfaz || ''
     };
+
+    // Cargar votos guardados para este DNI si existen, o inicializar limpio en 0s
+    try {
+      const savedManual = localStorage.getItem(`votoReal_manualVotes_${targetDni}`);
+      setCurrentVotes(savedManual ? JSON.parse(savedManual) : JSON.parse(JSON.stringify(DEFAULT_VOTES)));
+
+      const savedOcr = localStorage.getItem(`votoReal_ocrVotes_${targetDni}`);
+      setOcrVotes(savedOcr ? JSON.parse(savedOcr) : JSON.parse(JSON.stringify(DEFAULT_VOTES)));
+    } catch (e) {
+      setCurrentVotes(JSON.parse(JSON.stringify(DEFAULT_VOTES)));
+      setOcrVotes(JSON.parse(JSON.stringify(DEFAULT_VOTES)));
+    }
 
     setCurrentUser(userObj);
     sessionStorage.setItem('votoReal_user', JSON.stringify(userObj));

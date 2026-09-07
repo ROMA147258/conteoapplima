@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useApp } from '../../context/AppContext';
 import { useVotes } from '../../hooks/useVotes';
@@ -6,12 +6,13 @@ import {
   ScanLine, 
   Building, 
   MapPin, 
-  Trash2,
-  CheckCircle2, 
+  Trash2, 
   Loader2, 
   Table, 
   Camera, 
-  Check
+  Check,
+  X,
+  Sparkles
 } from 'lucide-react';
 import { analizarImagenActa, procesarTextoOCR } from '../../services/ocrPipeline';
 import { 
@@ -19,6 +20,127 @@ import {
   obtenerListaCandidatosDistrital 
 } from '../../constants/distritos';
 import { checkIsSuperAdmin } from '../../utils/helpers';
+
+// Componente visual para cada slot de foto (Slot 1 / Slot 2)
+const PhotoSlotCard = ({
+  slotNumber,
+  title,
+  image,
+  color = '#38bdf8',
+  isProcessing,
+  isLocked,
+  inputId,
+  onFileChange,
+  onRemove
+}) => {
+  return (
+    <div
+      style={{
+        background: 'rgba(15, 23, 42, 0.75)',
+        border: image ? `1px solid ${color}` : '1px dashed rgba(255, 255, 255, 0.18)',
+        borderRadius: '10px',
+        padding: '8px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '6px',
+        position: 'relative',
+        transition: 'all 0.2s ease'
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: '0.73rem', fontWeight: 700, color: image ? color : '#94a3b8' }}>
+          {title}
+        </span>
+        {image && !isLocked && (
+          <button
+            type="button"
+            disabled={isProcessing}
+            onClick={onRemove}
+            style={{
+              background: 'rgba(239, 68, 68, 0.2)',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '3px 6px',
+              color: '#fca5a5',
+              cursor: isProcessing ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            title="Eliminar foto"
+          >
+            <Trash2 size={13} />
+          </button>
+        )}
+      </div>
+
+      {image ? (
+        <div style={{ position: 'relative', width: '100%', height: '95px', borderRadius: '8px', overflow: 'hidden', background: '#090d16' }}>
+          <img
+            src={image}
+            alt={`Foto ${slotNumber}`}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+          {!isLocked && (
+            <label
+              htmlFor={inputId}
+              style={{
+                position: 'absolute',
+                bottom: '4px',
+                right: '4px',
+                background: 'rgba(0, 0, 0, 0.85)',
+                color: '#ffffff',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '6px',
+                padding: '2px 6px',
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                cursor: isProcessing ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              <Camera size={11} /> Cambiar
+            </label>
+          )}
+        </div>
+      ) : (
+        <label
+          htmlFor={isLocked || isProcessing ? "" : inputId}
+          style={{
+            height: '95px',
+            borderRadius: '8px',
+            background: 'rgba(255, 255, 255, 0.03)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            color: '#94a3b8',
+            fontSize: '0.74rem',
+            fontWeight: 600,
+            cursor: (isLocked || isProcessing) ? 'not-allowed' : 'pointer',
+            textAlign: 'center',
+            padding: '6px'
+          }}
+        >
+          <Camera size={22} color={color} style={{ opacity: 0.8 }} />
+          <span>Tomar / Subir Foto {slotNumber}</span>
+        </label>
+      )}
+
+      <input
+        type="file"
+        id={inputId}
+        accept="image/*"
+        disabled={isLocked || isProcessing}
+        style={{ display: 'none' }}
+        onChange={onFileChange}
+      />
+    </div>
+  );
+};
 
 export const ScannerModal = () => {
   const { 
@@ -44,107 +166,105 @@ export const ScannerModal = () => {
     )
   );
 
-  // Pestaña activa: 'PROVINCIAL' (Foto 1) o 'DISTRITAL' (Foto 2)
+  // Pestaña activa: 'PROVINCIAL' (Lima) o 'DISTRITAL' (Distrito)
   const [activeStep, setActiveStep] = useState('PROVINCIAL');
 
   // Si ya se confirmaron votos previamente
   const hasSavedProv = ocrVotes?.provincial && Object.values(ocrVotes.provincial).some(v => Number(v) > 0);
   const hasSavedDist = ocrVotes?.distrital && Object.values(ocrVotes.distrital).some(v => Number(v) > 0);
 
-  // Foto 1: Lima Metropolitana
-  const [provImage, setProvImage] = useState(null);
+  // Fotos Lima Metropolitana (Hasta 2 fotos: [Foto 1, Foto 2])
+  const [provImages, setProvImages] = useState([null, null]);
   const [provVotes, setProvVotes] = useState(() => (hasSavedProv ? { ...ocrVotes.provincial } : {}));
-  const [isProvConfirmed, setIsProvConfirmed] = useState(() => Boolean(isLocked || hasSavedProv));
 
-  // Foto 2: Distrital
-  const [distImage, setDistImage] = useState(null);
+  // Fotos Distrital (Hasta 2 fotos: [Foto 1, Foto 2])
+  const [distImages, setDistImages] = useState([null, null]);
   const [distVotes, setDistVotes] = useState(() => (hasSavedDist ? { ...ocrVotes.distrital } : {}));
-  const [isDistConfirmed, setIsDistConfirmed] = useState(() => Boolean(isLocked || hasSavedDist));
 
-  // Sincronizar estado local al abrir el modal (sin sobrescribir hasta presionar Listo)
+  // Sincronizar estado local al abrir el modal (sin sobrescribir hasta presionar Finalizar)
   useEffect(() => {
     if (isScannerModalOpen) {
       setProvVotes(ocrVotes?.provincial ? { ...ocrVotes.provincial } : {});
       setDistVotes(ocrVotes?.distrital ? { ...ocrVotes.distrital } : {});
-      if (!isLocked) {
-        setIsProvConfirmed(false);
-        setIsDistConfirmed(false);
-      }
     }
-  }, [isScannerModalOpen, isLocked]);
+  }, [isScannerModalOpen, ocrVotes]);
 
   // Estado de escaneo
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingMsg, setProcessingMsg] = useState('');
-
-  const provInputRef = useRef(null);
-  const distInputRef = useRef(null);
 
   const provincialCandidates = obtenerListaCandidatosProvincial();
   const distritalCandidates = obtenerListaCandidatosDistrital(userDistrict);
 
   if (!isScannerModalOpen) return null;
 
-  // Manejar captura de Foto 1 (Lima Metropolitana)
-  const handleProvFile = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const base64 = ev.target.result;
-      setProvImage(base64);
-      setIsProvConfirmed(false);
-      await scanImage(base64, 'provincial');
-    };
-    reader.readAsDataURL(file);
+  // Helper para convertir archivo a Base64
+  const readFileAsBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = (e) => reject(e);
+      reader.readAsDataURL(file);
+    });
   };
 
-  // Manejar captura de Foto 2 (Distrital)
-  const handleDistFile = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const base64 = ev.target.result;
-      setDistImage(base64);
-      setIsDistConfirmed(false);
-      await scanImage(base64, 'distrital');
-    };
-    reader.readAsDataURL(file);
+  // Helper para combinar votos de actas de múltiples fotos
+  const mergeVotes = (currentVotes, newVotes) => {
+    const merged = { ...currentVotes };
+    for (const [key, val] of Object.entries(newVotes || {})) {
+      const num = Number(val) || 0;
+      if (num > 0 || merged[key] === undefined) {
+        merged[key] = num;
+      }
+    }
+    return merged;
   };
 
-  // Escaneo con Gemini Vision (Se mantiene en estado local del modal)
-  const scanImage = async (imgBase64, seccion) => {
-    setIsProcessing(true);
+  // Escaneo por lote con Gemini Vision - Inicia limpio desde {} para que al borrar una foto no queden votos fantasmas
+  const scanBatchImages = async (base64List, seccion) => {
+    const validImages = (base64List || []).filter(Boolean);
     const isProv = seccion === 'provincial';
     const label = isProv ? 'Lima Metropolitana' : `Distrital (${userDistrict})`;
-    setProcessingMsg(`Escaneando y detectando votos de ${label}...`);
 
+    if (validImages.length === 0) {
+      if (isProv) setProvVotes({});
+      else setDistVotes({});
+      return;
+    }
+
+    setIsProcessing(true);
     try {
-      const result = await analizarImagenActa(imgBase64, {
-        currentDistrict: userDistrict,
-        seccion: seccion
-      });
+      let freshVotes = {};
+      let fullRaw = '';
 
-      const parsed = procesarTextoOCR(result.rawText, userDistrict);
+      for (let i = 0; i < validImages.length; i++) {
+        const img = validImages[i];
+        const fotoNum = validImages.length > 1 ? `Foto ${i + 1} de ${validImages.length}` : 'Foto';
+        setProcessingMsg(`Escaneando ${fotoNum} de ${label}...`);
+        
+        const result = await analizarImagenActa(img, {
+          currentDistrict: userDistrict,
+          seccion: seccion
+        });
 
-      if (isProv) {
-        const detected = (parsed.provincial && Object.keys(parsed.provincial).length > 0)
-          ? parsed.provincial
-          : parsed.distrital || {};
-        setProvVotes(detected);
-        setIsProvConfirmed(true);
-        setOcrRawDetail(prev => (prev ? prev + '\n\n' : '') + `=== PROVINCIAL ===\n` + result.rawText);
-      } else {
-        const detected = (parsed.distrital && Object.keys(parsed.distrital).length > 0)
-          ? parsed.distrital
-          : parsed.provincial || {};
-        setDistVotes(detected);
-        setIsDistConfirmed(true);
-        setOcrRawDetail(prev => (prev ? prev + '\n\n' : '') + `=== DISTRITAL (${userDistrict}) ===\n` + result.rawText);
+        const parsed = procesarTextoOCR(result.rawText, userDistrict);
+        const detected = isProv
+          ? ((parsed.provincial && Object.keys(parsed.provincial).length > 0) ? parsed.provincial : parsed.distrital || {})
+          : ((parsed.distrital && Object.keys(parsed.distrital).length > 0) ? parsed.distrital : parsed.provincial || {});
+
+        freshVotes = mergeVotes(freshVotes, detected);
+        fullRaw += `\n=== ${isProv ? 'PROVINCIAL' : 'DISTRITAL'} (${fotoNum}) ===\n` + result.rawText;
       }
 
-      showToast(`¡Votos de ${label} detectados! Para aceptarlos presiona "Listo / Volver a la Mesa".`, 'success');
+      if (isProv) {
+        setProvVotes(freshVotes);
+        setOcrRawDetail(prev => (prev ? prev + '\n\n' : '') + fullRaw);
+      } else {
+        setDistVotes(freshVotes);
+        setOcrRawDetail(prev => (prev ? prev + '\n\n' : '') + fullRaw);
+      }
+
+      showToast(`¡Votos de ${label} extraídos por IA!`, 'success');
     } catch (err) {
       console.error(err);
       showToast(`Error al escanear acta de ${label}.`, 'error');
@@ -154,38 +274,137 @@ export const ScannerModal = () => {
     }
   };
 
-  // Editar voto provincial en el modal
-  const handleProvVoteChange = (key, val) => {
-    const num = Math.max(0, parseInt(val, 10) || 0);
-    setProvVotes(prev => ({ ...prev, [key]: num }));
-  };
+  // Manejar subida masiva / múltiple de Lima (máx 2 fotos)
+  const handleProvBatchFiles = async (e) => {
+    const fileList = Array.from(e.target.files || []);
+    if (!fileList.length) return;
+    e.target.value = '';
 
-  // Editar voto distrital en el modal
-  const handleDistVoteChange = (key, val) => {
-    const num = Math.max(0, parseInt(val, 10) || 0);
-    setDistVotes(prev => ({ ...prev, [key]: num }));
-  };
-
-  // Pasar a la siguiente foto
-  const handleConfirmProvincial = () => {
-    setIsProvConfirmed(true);
-    showToast('✓ Votos de Lima Metropolitana revisados.', 'success');
-    if (!isDistConfirmed) {
-      setActiveStep('DISTRITAL');
+    if (fileList.length > 2) {
+      showToast('Se seleccionaron las 2 primeras fotos (máximo 2 por sección).', 'info');
     }
+
+    const selectedFiles = fileList.slice(0, 2);
+    const base64List = await Promise.all(selectedFiles.map(readFileAsBase64));
+
+    const updated = [...provImages];
+    if (base64List.length === 1) {
+      if (updated[0] && !updated[1]) {
+        updated[1] = base64List[0];
+      } else {
+        updated[0] = base64List[0];
+      }
+    } else {
+      updated[0] = base64List[0];
+      updated[1] = base64List[1];
+    }
+
+    setProvImages(updated);
+    await scanBatchImages(updated.filter(Boolean), 'provincial');
   };
 
-  const handleConfirmDistrital = () => {
-    setIsDistConfirmed(true);
-    showToast(`✓ Votos Distritales (${userDistrict}) revisados.`, 'success');
+  // Manejar subida por slot individual de Lima
+  const handleProvSlotFile = async (e, slotIndex) => {
+    const fileList = Array.from(e.target.files || []);
+    if (!fileList.length) return;
+    e.target.value = '';
+
+    const selectedFiles = fileList.slice(0, 2);
+    const base64List = await Promise.all(selectedFiles.map(readFileAsBase64));
+
+    const updated = [...provImages];
+    if (base64List.length === 1) {
+      updated[slotIndex] = base64List[0];
+    } else {
+      updated[0] = base64List[0];
+      updated[1] = base64List[1];
+    }
+
+    setProvImages(updated);
+    await scanBatchImages(updated.filter(Boolean), 'provincial');
   };
 
-  // CERRAR SIN ACEPTAR: No modifica ocrVotes
-  const handleClose = () => {
-    setIsScannerModalOpen(false);
+  // Eliminar foto de Lima y reescanear fotos restantes desde cero
+  const handleRemoveProvImage = async (index) => {
+    const updated = [...provImages];
+    updated[index] = null;
+    setProvImages(updated);
+
+    const remaining = updated.filter(Boolean);
+    if (remaining.length === 0) {
+      setProvVotes({});
+    } else {
+      await scanBatchImages(remaining, 'provincial');
+    }
+    showToast(`Foto ${index + 1} de Lima Metropolitana eliminada.`, 'info');
   };
 
-  // LISTO / VOLVER A LA MESA: Acepta y transmite los votos por imagen a la base de datos
+  // Manejar subida masiva / múltiple Distrital (máx 2 fotos)
+  const handleDistBatchFiles = async (e) => {
+    const fileList = Array.from(e.target.files || []);
+    if (!fileList.length) return;
+    e.target.value = '';
+
+    if (fileList.length > 2) {
+      showToast('Se seleccionaron las 2 primeras fotos (máximo 2 por sección).', 'info');
+    }
+
+    const selectedFiles = fileList.slice(0, 2);
+    const base64List = await Promise.all(selectedFiles.map(readFileAsBase64));
+
+    const updated = [...distImages];
+    if (base64List.length === 1) {
+      if (updated[0] && !updated[1]) {
+        updated[1] = base64List[0];
+      } else {
+        updated[0] = base64List[0];
+      }
+    } else {
+      updated[0] = base64List[0];
+      updated[1] = base64List[1];
+    }
+
+    setDistImages(updated);
+    await scanBatchImages(updated.filter(Boolean), 'distrital');
+  };
+
+  // Manejar subida por slot individual Distrital
+  const handleDistSlotFile = async (e, slotIndex) => {
+    const fileList = Array.from(e.target.files || []);
+    if (!fileList.length) return;
+    e.target.value = '';
+
+    const selectedFiles = fileList.slice(0, 2);
+    const base64List = await Promise.all(selectedFiles.map(readFileAsBase64));
+
+    const updated = [...distImages];
+    if (base64List.length === 1) {
+      updated[slotIndex] = base64List[0];
+    } else {
+      updated[0] = base64List[0];
+      updated[1] = base64List[1];
+    }
+
+    setDistImages(updated);
+    await scanBatchImages(updated.filter(Boolean), 'distrital');
+  };
+
+  // Eliminar foto Distrital y reescanear fotos restantes desde cero
+  const handleRemoveDistImage = async (index) => {
+    const updated = [...distImages];
+    updated[index] = null;
+    setDistImages(updated);
+
+    const remaining = updated.filter(Boolean);
+    if (remaining.length === 0) {
+      setDistVotes({});
+    } else {
+      await scanBatchImages(remaining, 'distrital');
+    }
+    showToast(`Foto ${index + 1} de ${userDistrict} eliminada.`, 'info');
+  };
+
+  // FINALIZAR CONTEO POR IMAGEN: Transmite los votos de IA a la base de datos
   const handleFinalizar = async () => {
     const payloadVotes = {
       provincial: { ...provVotes },
@@ -193,7 +412,7 @@ export const ScannerModal = () => {
     };
     setOcrVotes(payloadVotes);
 
-    const hasVotes = (totalProv + totalDist) > 0 || isProvConfirmed || isDistConfirmed;
+    const hasVotes = (totalProv + totalDist) > 0;
 
     if (hasVotes && (!isLocked || isSuperAdmin)) {
       const targetMesa = (
@@ -211,41 +430,132 @@ export const ScannerModal = () => {
       if (targetMesa) {
         await transmitVotes(targetMesa, targetColegio, userDistrict, 'IMAGEN', payloadVotes);
       } else {
-        showToast('✅ Votos de la foto aceptados y plasmados en la mesa.', 'success');
+        showToast('✅ Conteo por imagen finalizado y guardado en la mesa.', 'success');
       }
     } else {
-      showToast('✅ Votos de la foto aceptados y plasmados en la mesa.', 'success');
+      showToast('✅ Conteo por imagen finalizado y guardado en la mesa.', 'success');
     }
 
     setIsScannerModalOpen(false);
   };
 
-  const totalProv = Object.values(provVotes).reduce((a, b) => a + (Number(b) || 0), 0);
-  const totalDist = Object.values(distVotes).reduce((a, b) => a + (Number(b) || 0), 0);
+  const provCount = provImages.filter(Boolean).length;
+  const distCount = distImages.filter(Boolean).length;
+
+  const totalProv = Object.values(provVotes).reduce((a, b) => a + (typeof b === 'object' ? (Number(b?.votos) || 0) : (Number(b) || 0)), 0);
+  const totalDist = Object.values(distVotes).reduce((a, b) => a + (typeof b === 'object' ? (Number(b?.votos) || 0) : (Number(b) || 0)), 0);
 
   return createPortal(
-    <div id="modal-scanner" className="modal active">
-      <div className="modal-content glass" style={{ maxWidth: 'min(96vw, 620px)', width: '100%', borderRadius: '18px', padding: '20px', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
-        
-        {/* Encabezado */}
-        <div className="modal-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ background: 'rgba(168, 85, 247, 0.15)', padding: '8px', borderRadius: '10px' }}>
-              <ScanLine size={22} color="#c084fc" />
+    <div
+      className="modal-portal-overlay"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(3, 7, 18, 0.88)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 999999,
+        padding: '12px',
+        animation: 'fadeIn 0.2s ease-out'
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isProcessing && !isTransmitting) {
+          setIsScannerModalOpen(false);
+        }
+      }}
+    >
+      <div
+        className="glass"
+        style={{
+          width: '100%',
+          maxWidth: '680px',
+          maxHeight: '94vh',
+          backgroundColor: '#0f172a',
+          backgroundImage: 'linear-gradient(160deg, rgba(30, 27, 46, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%)',
+          borderRadius: '18px',
+          border: '1px solid rgba(168, 85, 247, 0.3)',
+          boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 35px rgba(168, 85, 247, 0.15)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden'
+        }}
+      >
+        {/* Header del Modal */}
+        <div
+          style={{
+            padding: '14px 18px',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: 'rgba(15, 23, 42, 0.8)'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '10px',
+                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(124, 58, 237, 0.35))',
+                border: '1px solid rgba(168, 85, 247, 0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#c084fc'
+              }}
+            >
+              <ScanLine size={20} />
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#f8fafc' }}>
-                Escáner de Actas (2 Fotos por Personero)
+              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                Escáner de Actas con IA <Sparkles size={14} color="#c084fc" />
               </h3>
-              <span style={{ fontSize: '0.74rem', color: '#94a3b8' }}>
-                Foto 1: Lima Metropolitana | Foto 2: Distrital ({userDistrict})
-              </span>
+              <div style={{ fontSize: '0.76rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                <span>Lima Metropolitana (Máx. 2 fotos)</span>
+                <span>•</span>
+                <span>Distrital: {userDistrict} (Máx. 2 fotos)</span>
+              </div>
             </div>
           </div>
+
+          <button
+            type="button"
+            disabled={isProcessing || isTransmitting}
+            onClick={() => setIsScannerModalOpen(false)}
+            style={{
+              background: 'rgba(255, 255, 255, 0.06)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '8px',
+              width: '34px',
+              height: '34px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#94a3b8',
+              cursor: (isProcessing || isTransmitting) ? 'not-allowed' : 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+            title="Cerrar escáner"
+          >
+            <X size={18} />
+          </button>
         </div>
 
-        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px', overflowY: 'auto', flex: 1, paddingRight: '4px' }}>
-          
+        {/* Cuerpo del Modal con Scroll */}
+        <div
+          style={{
+            padding: '16px 18px',
+            overflowY: 'auto',
+            maxHeight: 'calc(94vh - 140px)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px'
+          }}
+        >
           {/* Banner de Bloqueo si ya fue transmitido */}
           {isLocked && (
             <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', borderRadius: '10px', padding: '10px 14px', color: '#fca5a5', fontSize: '0.82rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -253,7 +563,7 @@ export const ScannerModal = () => {
             </div>
           )}
 
-          {/* PESTAÑAS SEPARADAS: FOTO 1 VS FOTO 2 */}
+          {/* PESTAÑAS SEPARADAS: LIMA VS DISTRITAL */}
           <div style={{ display: 'flex', background: 'rgba(15, 23, 42, 0.8)', padding: '4px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.08)', gap: '6px' }}>
             
             {/* Botón Pestaña 1: Lima */}
@@ -280,16 +590,7 @@ export const ScannerModal = () => {
               }}
             >
               <Building size={16} />
-              <span>Foto 1: Lima</span>
-              {isProvConfirmed ? (
-                <span style={{ fontSize: '0.68rem', background: '#10b981', color: '#ffffff', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>
-                  ✓ Confirmado
-                </span>
-              ) : (totalProv > 0 && (
-                <span style={{ fontSize: '0.7rem', background: 'rgba(0,0,0,0.35)', padding: '2px 6px', borderRadius: '4px' }}>
-                  {totalProv} v.
-                </span>
-              ))}
+              <span>Lima Metropolitana {provCount > 0 && `(${provCount}/2)`}</span>
             </button>
 
             {/* Botón Pestaña 2: Distrital */}
@@ -316,16 +617,7 @@ export const ScannerModal = () => {
               }}
             >
               <MapPin size={16} />
-              <span>Foto 2: {userDistrict}</span>
-              {isDistConfirmed ? (
-                <span style={{ fontSize: '0.68rem', background: '#10b981', color: '#ffffff', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>
-                  ✓ Confirmado
-                </span>
-              ) : (totalDist > 0 && (
-                <span style={{ fontSize: '0.7rem', background: 'rgba(0,0,0,0.35)', padding: '2px 6px', borderRadius: '4px' }}>
-                  {totalDist} v.
-                </span>
-              ))}
+              <span>{userDistrict} {distCount > 0 && `(${distCount}/2)`}</span>
             </button>
           </div>
 
@@ -340,60 +632,61 @@ export const ScannerModal = () => {
           )}
 
           {/* ═══════════════════════════════════════════════════════════════════════ */}
-          {/* VISTA 1: FOTO Y TABLA DE LIMA METROPOLITANA (PROVINCIAL) */}
+          {/* VISTA 1: FOTOS Y TABLA DE LIMA METROPOLITANA (PROVINCIAL) */}
           {/* ═══════════════════════════════════════════════════════════════════════ */}
           {activeStep === 'PROVINCIAL' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               
-              {/* SI YA ESTÁ BLOQUEADO POR HABER SIDO TRANSMITIDO */}
-              {isLocked ? (
-                <div style={{
-                  background: 'rgba(16, 185, 129, 0.12)',
-                  border: '1px solid rgba(16, 185, 129, 0.4)',
-                  borderRadius: '12px',
-                  padding: '14px 16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981', fontWeight: 800, fontSize: '0.92rem' }}>
-                    <CheckCircle2 size={20} />
-                    <span>✓ Votos de Lima Metropolitana Transmitidos</span>
-                  </div>
-                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#a7f3d0' }}>
-                    🔒 Esta acta ya fue transmitida y guardada en el sistema.
-                  </p>
+              {/* SLOTS DE FOTO PARA LIMA */}
+              <div style={{
+                background: 'rgba(2, 132, 199, 0.06)',
+                border: '1px solid rgba(56, 189, 248, 0.3)',
+                borderRadius: '12px',
+                padding: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Building size={16} /> Actas de Lima Metropolitana (Máximo 2 fotos)
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8', background: 'rgba(56, 189, 248, 0.1)', padding: '2px 8px', borderRadius: '6px', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
+                    {provCount} / 2 fotos cargadas
+                  </span>
                 </div>
-              ) : (
-                /* SI NO ESTÁ BLOQUEADO: PERMITIR TOMAR/SUBIR FOTO */
-                <div style={{
-                  background: 'rgba(2, 132, 199, 0.06)',
-                  border: '1px solid rgba(56, 189, 248, 0.3)',
-                  borderRadius: '12px',
-                  padding: '12px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Building size={16} /> Hoja 1: Acta de Alcaldía de Lima Metropolitana
-                    </span>
-                    {provImage && !isLocked && (
-                      <button
-                        type="button"
-                        disabled={isProcessing}
-                        onClick={() => { setProvImage(null); setProvVotes({}); }}
-                        style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: isProcessing ? 'not-allowed' : 'pointer' }}
-                        title="Eliminar foto"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    )}
-                  </div>
 
+                {/* Grid de 2 Slots de Fotos */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+                  <PhotoSlotCard
+                    slotNumber={1}
+                    title="Foto 1 (Hoja 1 / Principal)"
+                    image={provImages[0]}
+                    color="#38bdf8"
+                    isProcessing={isProcessing}
+                    isLocked={isLocked}
+                    inputId="prov-slot-input-0"
+                    onFileChange={(e) => handleProvSlotFile(e, 0)}
+                    onRemove={() => handleRemoveProvImage(0)}
+                  />
+
+                  <PhotoSlotCard
+                    slotNumber={2}
+                    title="Foto 2 (Hoja 2 / Opcional)"
+                    image={provImages[1]}
+                    color="#38bdf8"
+                    isProcessing={isProcessing}
+                    isLocked={isLocked}
+                    inputId="prov-slot-input-1"
+                    onFileChange={(e) => handleProvSlotFile(e, 1)}
+                    onRemove={() => handleRemoveProvImage(1)}
+                  />
+                </div>
+
+                {/* Botón de selección rápida para subir hasta 2 fotos a la vez */}
+                {!isLocked && (
                   <label
-                    htmlFor={isProcessing ? "" : "prov-file-input"}
+                    htmlFor={isProcessing ? "" : "prov-batch-file-input"}
                     style={{
                       cursor: isProcessing ? 'not-allowed' : 'pointer',
                       pointerEvents: isProcessing ? 'none' : 'auto',
@@ -402,263 +695,188 @@ export const ScannerModal = () => {
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '8px',
-                      padding: '12px',
+                      padding: '10px 12px',
                       borderRadius: '8px',
-                      background: provImage ? 'rgba(56, 189, 248, 0.15)' : 'rgba(56, 189, 248, 0.25)',
+                      background: 'rgba(56, 189, 248, 0.12)',
                       border: '1px dashed #38bdf8',
-                      color: '#f8fafc',
-                      fontSize: '0.86rem',
-                      fontWeight: 700
+                      color: '#e0f2fe',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      transition: 'all 0.2s ease'
                     }}
                   >
-                    <Camera size={18} color="#38bdf8" />
-                    <span>{provImage ? 'Cambiar Foto de Lima Metropolitana' : '📷 Tomar / Subir Foto de Lima Metropolitana'}</span>
+                    <Camera size={16} color="#38bdf8" />
+                    <span>{provCount === 0 ? '📷 Seleccionar hasta 2 fotos de Lima a la vez' : '📷 Cambiar / Reemplazar fotos de Lima (Máx. 2)'}</span>
                     <input
                       type="file"
-                      id="prov-file-input"
-                      ref={provInputRef}
+                      id="prov-batch-file-input"
                       accept="image/*"
+                      multiple
                       disabled={isProcessing}
                       style={{ display: 'none' }}
-                      onChange={handleProvFile}
+                      onChange={handleProvBatchFiles}
                     />
                   </label>
+                )}
+              </div>
+
+              {/* TABLA DE CANDIDATOS DE LIMA METROPOLITANA (SOLO LECTURA OCR) */}
+              <div style={{
+                background: 'rgba(15, 23, 42, 0.85)',
+                border: '1px solid rgba(56, 189, 248, 0.3)',
+                borderRadius: '14px',
+                padding: '14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Table size={16} color="#38bdf8" /> Votos Extraídos por Imagen: Lima Metropolitana
+                  </span>
+                  <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#f8fafc' }}>
+                    Total: <strong style={{ color: '#38bdf8' }}>{totalProv} votos</strong>
+                  </span>
                 </div>
-              )}
 
-              {/* TABLA DE VERIFICACIÓN DE LIMA METROPOLITANA */}
-              {Object.keys(provVotes).length > 0 && (
-                <div style={{
-                  background: 'rgba(15, 23, 42, 0.85)',
-                  border: '1px solid rgba(56, 189, 248, 0.3)',
-                  borderRadius: '14px',
-                  padding: '14px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '10px'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Table size={16} color="#38bdf8" /> {isProvConfirmed ? 'Votos Confirmados: Lima Metropolitana' : 'Verificación de Votos: Lima Metropolitana'}
-                    </span>
-                    <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#f8fafc' }}>
-                      Total: <strong style={{ color: '#38bdf8' }}>{totalProv} votos</strong>
-                    </span>
-                  </div>
+                {/* Lista de Filas - Solo lectura */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '280px', overflowY: 'auto', paddingRight: '4px' }}>
+                  {provincialCandidates.map(c => {
+                    const rawVal = provVotes[c.key];
+                    const val = typeof rawVal === 'object' ? (rawVal?.votos ?? 0) : (rawVal ?? 0);
+                    const hasV = Number(val) > 0;
+                    return (
+                      <div
+                        key={`prov-row-${c.key}`}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '7px 10px',
+                          background: hasV ? 'rgba(56, 189, 248, 0.12)' : 'rgba(15, 23, 42, 0.6)',
+                          border: hasV ? '1px solid rgba(56, 189, 248, 0.35)' : '1px solid rgba(255, 255, 255, 0.05)',
+                          borderRadius: '8px',
+                          gap: '8px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', width: '22px' }}>
+                            #{c.num}
+                          </span>
+                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {c.candidato}
+                            </span>
+                            <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#38bdf8' }}>
+                              {c.partyLong || c.organizacion}
+                            </span>
+                          </div>
+                        </div>
 
-                  {/* Lista de Filas */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '260px', overflowY: 'auto', paddingRight: '4px' }}>
-                    {provincialCandidates.map(c => {
-                      const val = provVotes[c.key] ?? 0;
-                      const hasV = Number(val) > 0;
-                      return (
+                        {/* Valor de voto extraído por IA (Solo Lectura) */}
                         <div
-                          key={`prov-row-${c.key}`}
                           style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '6px 10px',
-                            background: hasV ? 'rgba(56, 189, 248, 0.12)' : 'rgba(15, 23, 42, 0.6)',
-                            border: hasV ? '1px solid rgba(56, 189, 248, 0.35)' : '1px solid rgba(255, 255, 255, 0.05)',
-                            borderRadius: '8px',
-                            gap: '8px'
+                            minWidth: '58px',
+                            textAlign: 'center',
+                            padding: '5px 8px',
+                            fontSize: '0.9rem',
+                            fontWeight: 800,
+                            borderRadius: '6px',
+                            border: hasV ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.12)',
+                            background: hasV ? 'rgba(56, 189, 248, 0.2)' : 'rgba(15, 23, 42, 0.9)',
+                            color: hasV ? '#38bdf8' : '#64748b'
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-                            <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', width: '22px' }}>
-                              #{c.num}
-                            </span>
-                            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                {c.candidato}
-                              </span>
-                              <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#38bdf8' }}>
-                                {c.partyLong || c.organizacion}
-                              </span>
-                            </div>
-                          </div>
-
-                          <input
-                            type="number"
-                            min="0"
-                            max="999"
-                            value={val}
-                            disabled={isLocked || isProcessing}
-                            readOnly={isLocked || isProcessing}
-                            onChange={(e) => handleProvVoteChange(c.key, e.target.value)}
-                            style={{
-                              width: '58px',
-                              textAlign: 'center',
-                              padding: '4px 6px',
-                              fontSize: '0.88rem',
-                              fontWeight: 800,
-                              borderRadius: '6px',
-                              border: hasV ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.15)',
-                              background: (isLocked || isProcessing) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a',
-                              color: hasV ? '#38bdf8' : '#94a3b8',
-                              cursor: (isLocked || isProcessing) ? 'not-allowed' : 'text'
-                            }}
-                          />
+                          {val}
                         </div>
-                      );
-                    })}
+                      </div>
+                    );
+                  })}
 
-                    {/* Votos Nulos */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '8px' }}>
-                      <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#fca5a5' }}>❌ VOTOS NULOS:</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="999"
-                        value={provVotes.NULOS ?? 0}
-                        disabled={isLocked || isProcessing}
-                        readOnly={isLocked || isProcessing}
-                        onChange={(e) => handleProvVoteChange('NULOS', e.target.value)}
-                        style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #ef4444', background: (isLocked || isProcessing) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#fca5a5', cursor: (isLocked || isProcessing) ? 'not-allowed' : 'text' }}
-                      />
-                    </div>
-
-                    {/* Votos en Blanco */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.12)', borderRadius: '8px' }}>
-                      <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#cbd5e1' }}>⚪ VOTOS EN BLANCO:</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="999"
-                        value={provVotes.BLANCO ?? 0}
-                        disabled={isLocked || isProcessing}
-                        readOnly={isLocked || isProcessing}
-                        onChange={(e) => handleProvVoteChange('BLANCO', e.target.value)}
-                        style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #94a3b8', background: (isLocked || isProcessing) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#ffffff', cursor: (isLocked || isProcessing) ? 'not-allowed' : 'text' }}
-                      />
-                    </div>
-
-                    {/* Votos Impugnados */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '8px' }}>
-                      <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#fcd34d' }}>⚠️ VOTOS IMPUGNADOS:</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="999"
-                        value={provVotes.IMPUGNADOS ?? 0}
-                        disabled={isLocked || isProcessing}
-                        readOnly={isLocked || isProcessing}
-                        onChange={(e) => handleProvVoteChange('IMPUGNADOS', e.target.value)}
-                        style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #f59e0b', background: (isLocked || isProcessing) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#fcd34d', cursor: (isLocked || isProcessing) ? 'not-allowed' : 'text' }}
-                      />
+                  {/* Votos Nulos */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '8px' }}>
+                    <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#fca5a5' }}>❌ VOTOS NULOS:</span>
+                    <div style={{ minWidth: '58px', textAlign: 'center', padding: '5px 8px', fontSize: '0.9rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #ef4444', background: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5' }}>
+                      {typeof provVotes.NULOS === 'object' ? (provVotes.NULOS?.votos ?? 0) : (provVotes.NULOS ?? 0)}
                     </div>
                   </div>
 
-                  {/* Botón de Confirmación Foto 1 */}
-                  {isProvConfirmed ? (
-                    <div
-                      style={{
-                        marginTop: '8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        width: '100%',
-                        padding: '11px',
-                        borderRadius: '8px',
-                        background: 'rgba(16, 185, 129, 0.2)',
-                        border: '1px solid #10b981',
-                        color: '#86efac',
-                        fontSize: '0.86rem',
-                        fontWeight: 800
-                      }}
-                    >
-                      <CheckCircle2 size={18} color="#10b981" />
-                      <span>✓ Votos de Lima Metropolitana Revisados ({totalProv} total)</span>
+                  {/* Votos en Blanco */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.12)', borderRadius: '8px' }}>
+                    <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#cbd5e1' }}>⚪ VOTOS EN BLANCO:</span>
+                    <div style={{ minWidth: '58px', textAlign: 'center', padding: '5px 8px', fontSize: '0.9rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #94a3b8', background: 'rgba(255, 255, 255, 0.1)', color: '#ffffff' }}>
+                      {typeof provVotes.BLANCO === 'object' ? (provVotes.BLANCO?.votos ?? 0) : (provVotes.BLANCO ?? 0)}
                     </div>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={isProcessing}
-                      onClick={handleConfirmProvincial}
-                      style={{
-                        marginTop: '8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        width: '100%',
-                        padding: '11px',
-                        borderRadius: '8px',
-                        border: 'none',
-                        background: 'linear-gradient(135deg, #0284c7, #2563eb)',
-                        color: '#ffffff',
-                        fontSize: '0.86rem',
-                        fontWeight: 800,
-                        cursor: isProcessing ? 'not-allowed' : 'pointer',
-                        opacity: isProcessing ? 0.6 : 1
-                      }}
-                    >
-                      <CheckCircle2 size={18} />
-                      <span>Confirmar Votos de Lima Metropolitana ({totalProv} total)</span>
-                    </button>
-                  )}
+                  </div>
+
+                  {/* Votos Impugnados */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '8px' }}>
+                    <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#fcd34d' }}>⚠️ VOTOS IMPUGNADOS:</span>
+                    <div style={{ minWidth: '58px', textAlign: 'center', padding: '5px 8px', fontSize: '0.9rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #f59e0b', background: 'rgba(245, 158, 11, 0.2)', color: '#fcd34d' }}>
+                      {typeof provVotes.IMPUGNADOS === 'object' ? (provVotes.IMPUGNADOS?.votos ?? 0) : (provVotes.IMPUGNADOS ?? 0)}
+                    </div>
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
           )}
 
           {/* ═══════════════════════════════════════════════════════════════════════ */}
-          {/* VISTA 2: FOTO Y TABLA DISTRITAL */}
+          {/* VISTA 2: FOTOS Y TABLA DISTRITAL */}
           {/* ═══════════════════════════════════════════════════════════════════════ */}
           {activeStep === 'DISTRITAL' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               
-              {/* SI YA ESTÁ BLOQUEADO POR HABER SIDO TRANSMITIDO */}
-              {isLocked ? (
-                <div style={{
-                  background: 'rgba(16, 185, 129, 0.12)',
-                  border: '1px solid rgba(16, 185, 129, 0.4)',
-                  borderRadius: '12px',
-                  padding: '14px 16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981', fontWeight: 800, fontSize: '0.92rem' }}>
-                    <CheckCircle2 size={20} />
-                    <span>✓ Votos Distritales ({userDistrict}) Transmitidos</span>
-                  </div>
-                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#a7f3d0' }}>
-                    🔒 Esta acta ya fue transmitida y guardada en el sistema.
-                  </p>
+              {/* SLOTS DE FOTO PARA DISTRITO */}
+              <div style={{
+                background: 'rgba(124, 58, 237, 0.06)',
+                border: '1px solid rgba(168, 85, 247, 0.3)',
+                borderRadius: '12px',
+                padding: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#c084fc', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <MapPin size={16} /> Actas Distritales: {userDistrict} (Máximo 2 fotos)
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8', background: 'rgba(168, 85, 247, 0.1)', padding: '2px 8px', borderRadius: '6px', border: '1px solid rgba(168, 85, 247, 0.2)' }}>
+                    {distCount} / 2 fotos cargadas
+                  </span>
                 </div>
-              ) : (
-                /* SI NO ESTÁ BLOQUEADO: PERMITIR TOMAR/SUBIR FOTO */
-                <div style={{
-                  background: 'rgba(124, 58, 237, 0.06)',
-                  border: '1px solid rgba(168, 85, 247, 0.3)',
-                  borderRadius: '12px',
-                  padding: '12px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#c084fc', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <MapPin size={16} /> Hoja 2: Acta Distrital ({userDistrict})
-                    </span>
-                    {distImage && !isLocked && (
-                      <button
-                        type="button"
-                        disabled={isProcessing}
-                        onClick={() => { setDistImage(null); setDistVotes({}); }}
-                        style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: isProcessing ? 'not-allowed' : 'pointer' }}
-                        title="Eliminar foto"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    )}
-                  </div>
 
+                {/* Grid de 2 Slots de Fotos */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+                  <PhotoSlotCard
+                    slotNumber={1}
+                    title="Foto 1 (Hoja 1 / Principal)"
+                    image={distImages[0]}
+                    color="#c084fc"
+                    isProcessing={isProcessing}
+                    isLocked={isLocked}
+                    inputId="dist-slot-input-0"
+                    onFileChange={(e) => handleDistSlotFile(e, 0)}
+                    onRemove={() => handleRemoveDistImage(0)}
+                  />
+
+                  <PhotoSlotCard
+                    slotNumber={2}
+                    title="Foto 2 (Hoja 2 / Opcional)"
+                    image={distImages[1]}
+                    color="#c084fc"
+                    isProcessing={isProcessing}
+                    isLocked={isLocked}
+                    inputId="dist-slot-input-1"
+                    onFileChange={(e) => handleDistSlotFile(e, 1)}
+                    onRemove={() => handleRemoveDistImage(1)}
+                  />
+                </div>
+
+                {/* Botón de selección rápida para subir hasta 2 fotos a la vez */}
+                {!isLocked && (
                   <label
-                    htmlFor={isProcessing ? "" : "dist-file-input"}
+                    htmlFor={isProcessing ? "" : "dist-batch-file-input"}
                     style={{
                       cursor: isProcessing ? 'not-allowed' : 'pointer',
                       pointerEvents: isProcessing ? 'none' : 'auto',
@@ -667,211 +885,143 @@ export const ScannerModal = () => {
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '8px',
-                      padding: '12px',
+                      padding: '10px 12px',
                       borderRadius: '8px',
-                      background: distImage ? 'rgba(168, 85, 247, 0.15)' : 'rgba(168, 85, 247, 0.25)',
+                      background: 'rgba(168, 85, 247, 0.12)',
                       border: '1px dashed #c084fc',
-                      color: '#f8fafc',
-                      fontSize: '0.86rem',
-                      fontWeight: 700
+                      color: '#f3e8ff',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      transition: 'all 0.2s ease'
                     }}
                   >
-                    <Camera size={18} color="#c084fc" />
-                    <span>{distImage ? `Cambiar Foto de ${userDistrict}` : `📷 Tomar / Subir Foto de ${userDistrict}`}</span>
+                    <Camera size={16} color="#c084fc" />
+                    <span>{distCount === 0 ? `📷 Seleccionar hasta 2 fotos de ${userDistrict} a la vez` : `📷 Cambiar / Reemplazar fotos de ${userDistrict} (Máx. 2)`}</span>
                     <input
                       type="file"
-                      id="dist-file-input"
-                      ref={distInputRef}
+                      id="dist-batch-file-input"
                       accept="image/*"
+                      multiple
                       disabled={isProcessing}
                       style={{ display: 'none' }}
-                      onChange={handleDistFile}
+                      onChange={handleDistBatchFiles}
                     />
                   </label>
+                )}
+              </div>
+
+              {/* TABLA DE CANDIDATOS DISTRITALES (SOLO LECTURA OCR) */}
+              <div style={{
+                background: 'rgba(15, 23, 42, 0.85)',
+                border: '1px solid rgba(168, 85, 247, 0.3)',
+                borderRadius: '14px',
+                padding: '14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#c084fc', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Table size={16} color="#c084fc" /> Votos Extraídos por Imagen: {userDistrict}
+                  </span>
+                  <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#f8fafc' }}>
+                    Total: <strong style={{ color: '#c084fc' }}>{totalDist} votos</strong>
+                  </span>
                 </div>
-              )}
 
-              {/* TABLA DE VERIFICACIÓN DISTRITAL */}
-              {Object.keys(distVotes).length > 0 && (
-                <div style={{
-                  background: 'rgba(15, 23, 42, 0.85)',
-                  border: '1px solid rgba(168, 85, 247, 0.3)',
-                  borderRadius: '14px',
-                  padding: '14px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '10px'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#c084fc', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Table size={16} color="#c084fc" /> {isDistConfirmed ? `Votos Confirmados: ${userDistrict}` : `Verificación de Votos: ${userDistrict}`}
-                    </span>
-                    <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#f8fafc' }}>
-                      Total: <strong style={{ color: '#c084fc' }}>{totalDist} votos</strong>
-                    </span>
-                  </div>
+                {/* Lista de Filas - Solo lectura */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '280px', overflowY: 'auto', paddingRight: '4px' }}>
+                  {distritalCandidates.map(c => {
+                    const rawVal = distVotes[c.key];
+                    const val = typeof rawVal === 'object' ? (rawVal?.votos ?? 0) : (rawVal ?? 0);
+                    const hasV = Number(val) > 0;
+                    return (
+                      <div
+                        key={`dist-row-${c.key}`}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '7px 10px',
+                          background: hasV ? 'rgba(168, 85, 247, 0.12)' : 'rgba(15, 23, 42, 0.6)',
+                          border: hasV ? '1px solid rgba(168, 85, 247, 0.35)' : '1px solid rgba(255, 255, 255, 0.05)',
+                          borderRadius: '8px',
+                          gap: '8px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', width: '22px' }}>
+                            #{c.num}
+                          </span>
+                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {c.candidato}
+                            </span>
+                            <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#c084fc' }}>
+                              {c.partyLong || c.organizacion}
+                            </span>
+                          </div>
+                        </div>
 
-                  {/* Lista de Filas */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '260px', overflowY: 'auto', paddingRight: '4px' }}>
-                    {distritalCandidates.map(c => {
-                      const val = distVotes[c.key] ?? 0;
-                      const hasV = Number(val) > 0;
-                      return (
+                        {/* Valor de voto extraído por IA (Solo Lectura) */}
                         <div
-                          key={`dist-row-${c.key}`}
                           style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '6px 10px',
-                            background: hasV ? 'rgba(168, 85, 247, 0.12)' : 'rgba(15, 23, 42, 0.6)',
-                            border: hasV ? '1px solid rgba(168, 85, 247, 0.35)' : '1px solid rgba(255, 255, 255, 0.05)',
-                            borderRadius: '8px',
-                            gap: '8px'
+                            minWidth: '58px',
+                            textAlign: 'center',
+                            padding: '5px 8px',
+                            fontSize: '0.9rem',
+                            fontWeight: 800,
+                            borderRadius: '6px',
+                            border: hasV ? '1px solid #c084fc' : '1px solid rgba(255,255,255,0.12)',
+                            background: hasV ? 'rgba(168, 85, 247, 0.2)' : 'rgba(15, 23, 42, 0.9)',
+                            color: hasV ? '#c084fc' : '#64748b'
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-                            <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', width: '22px' }}>
-                              #{c.num}
-                            </span>
-                            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                {c.candidato}
-                              </span>
-                              <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#c084fc' }}>
-                                {c.partyLong || c.organizacion}
-                              </span>
-                            </div>
-                          </div>
-
-                          <input
-                            type="number"
-                            min="0"
-                            max="999"
-                            value={val}
-                            disabled={isLocked || isProcessing}
-                            readOnly={isLocked || isProcessing}
-                            onChange={(e) => handleDistVoteChange(c.key, e.target.value)}
-                            style={{
-                              width: '58px',
-                              textAlign: 'center',
-                              padding: '4px 6px',
-                              fontSize: '0.88rem',
-                              fontWeight: 800,
-                              borderRadius: '6px',
-                              border: hasV ? '1px solid #c084fc' : '1px solid rgba(255,255,255,0.15)',
-                              background: (isLocked || isProcessing) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a',
-                              color: hasV ? '#c084fc' : '#94a3b8',
-                              cursor: (isLocked || isProcessing) ? 'not-allowed' : 'text'
-                            }}
-                          />
+                          {val}
                         </div>
-                      );
-                    })}
+                      </div>
+                    );
+                  })}
 
-                    {/* Votos Nulos */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '8px' }}>
-                      <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#fca5a5' }}>❌ VOTOS NULOS:</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="999"
-                        value={distVotes.NULOS ?? 0}
-                        disabled={isLocked || isProcessing}
-                        readOnly={isLocked || isProcessing}
-                        onChange={(e) => handleDistVoteChange('NULOS', e.target.value)}
-                        style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #ef4444', background: (isLocked || isProcessing) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#fca5a5', cursor: (isLocked || isProcessing) ? 'not-allowed' : 'text' }}
-                      />
-                    </div>
-
-                    {/* Votos en Blanco */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.12)', borderRadius: '8px' }}>
-                      <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#cbd5e1' }}>⚪ VOTOS EN BLANCO:</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="999"
-                        value={distVotes.BLANCO ?? 0}
-                        disabled={isLocked || isProcessing}
-                        readOnly={isLocked || isProcessing}
-                        onChange={(e) => handleDistVoteChange('BLANCO', e.target.value)}
-                        style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #94a3b8', background: (isLocked || isProcessing) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#ffffff', cursor: (isLocked || isProcessing) ? 'not-allowed' : 'text' }}
-                      />
-                    </div>
-
-                    {/* Votos Impugnados */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '8px' }}>
-                      <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#fcd34d' }}>⚠️ VOTOS IMPUGNADOS:</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="999"
-                        value={distVotes.IMPUGNADOS ?? 0}
-                        disabled={isLocked || isProcessing}
-                        readOnly={isLocked || isProcessing}
-                        onChange={(e) => handleDistVoteChange('IMPUGNADOS', e.target.value)}
-                        style={{ width: '58px', textAlign: 'center', padding: '4px 6px', fontSize: '0.88rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #f59e0b', background: (isLocked || isProcessing) ? 'rgba(15, 23, 42, 0.95)' : '#0f172a', color: '#fcd34d', cursor: (isLocked || isProcessing) ? 'not-allowed' : 'text' }}
-                      />
+                  {/* Votos Nulos */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '8px' }}>
+                    <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#fca5a5' }}>❌ VOTOS NULOS:</span>
+                    <div style={{ minWidth: '58px', textAlign: 'center', padding: '5px 8px', fontSize: '0.9rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #ef4444', background: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5' }}>
+                      {typeof distVotes.NULOS === 'object' ? (distVotes.NULOS?.votos ?? 0) : (distVotes.NULOS ?? 0)}
                     </div>
                   </div>
 
-                  {/* Botón de Confirmación Foto 2 */}
-                  {isDistConfirmed ? (
-                    <div
-                      style={{
-                        marginTop: '8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        width: '100%',
-                        padding: '11px',
-                        borderRadius: '8px',
-                        background: 'rgba(16, 185, 129, 0.2)',
-                        border: '1px solid #10b981',
-                        color: '#86efac',
-                        fontSize: '0.86rem',
-                        fontWeight: 800
-                      }}
-                    >
-                      <CheckCircle2 size={18} color="#10b981" />
-                      <span>✓ Votos Distritales ({userDistrict}) Revisados ({totalDist} total)</span>
+                  {/* Votos en Blanco */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.12)', borderRadius: '8px' }}>
+                    <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#cbd5e1' }}>⚪ VOTOS EN BLANCO:</span>
+                    <div style={{ minWidth: '58px', textAlign: 'center', padding: '5px 8px', fontSize: '0.9rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #94a3b8', background: 'rgba(255, 255, 255, 0.1)', color: '#ffffff' }}>
+                      {typeof distVotes.BLANCO === 'object' ? (distVotes.BLANCO?.votos ?? 0) : (distVotes.BLANCO ?? 0)}
                     </div>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={isProcessing}
-                      onClick={handleConfirmDistrital}
-                      style={{
-                        marginTop: '8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        width: '100%',
-                        padding: '11px',
-                        borderRadius: '8px',
-                        border: 'none',
-                        background: 'linear-gradient(135deg, #7c3aed, #9333ea)',
-                        color: '#ffffff',
-                        fontSize: '0.86rem',
-                        fontWeight: 800,
-                        cursor: isProcessing ? 'not-allowed' : 'pointer',
-                        opacity: isProcessing ? 0.6 : 1
-                      }}
-                    >
-                      <CheckCircle2 size={18} />
-                      <span>Confirmar Votos Distritales ({totalDist} total)</span>
-                    </button>
-                  )}
+                  </div>
+
+                  {/* Votos Impugnados */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '8px' }}>
+                    <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#fcd34d' }}>⚠️ VOTOS IMPUGNADOS:</span>
+                    <div style={{ minWidth: '58px', textAlign: 'center', padding: '5px 8px', fontSize: '0.9rem', fontWeight: 800, borderRadius: '6px', border: '1px solid #f59e0b', background: 'rgba(245, 158, 11, 0.2)', color: '#fcd34d' }}>
+                      {typeof distVotes.IMPUGNADOS === 'object' ? (distVotes.IMPUGNADOS?.votos ?? 0) : (distVotes.IMPUGNADOS ?? 0)}
+                    </div>
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
           )}
         </div>
 
         {/* Footer con Botón Finalizar */}
-        <div className="modal-footer" style={{ marginTop: '14px', display: 'flex', gap: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '12px' }}>
+        <div
+          style={{
+            padding: '12px 18px',
+            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            background: 'rgba(15, 23, 42, 0.8)',
+            display: 'flex',
+            gap: '10px'
+          }}
+        >
           <button
             type="button"
             className="btn btn-primary"
@@ -884,12 +1034,12 @@ export const ScannerModal = () => {
               justifyContent: 'center',
               gap: '8px',
               padding: '12px',
-              fontSize: '0.9rem',
+              fontSize: '0.92rem',
               fontWeight: 800,
               borderRadius: '10px',
-              background: (isProvConfirmed || isDistConfirmed) ? 'linear-gradient(135deg, #10b981, #059669)' : 'rgba(255, 255, 255, 0.1)',
+              background: (totalProv > 0 || totalDist > 0) ? 'linear-gradient(135deg, #10b981, #059669)' : 'rgba(255, 255, 255, 0.1)',
               cursor: (isProcessing || isTransmitting) ? 'not-allowed' : 'pointer',
-              boxShadow: (isProvConfirmed || isDistConfirmed) ? '0 4px 15px rgba(16, 185, 129, 0.35)' : 'none',
+              boxShadow: (totalProv > 0 || totalDist > 0) ? '0 4px 15px rgba(16, 185, 129, 0.35)' : 'none',
               opacity: (isProcessing || isTransmitting) ? 0.7 : 1
             }}
           >
@@ -898,7 +1048,7 @@ export const ScannerModal = () => {
             ) : (
               <Check size={18} />
             )}
-            <span>{isTransmitting ? 'Guardando en Base de Datos...' : 'Listo / Volver a la Mesa'}</span>
+            <span>{isTransmitting ? 'Transmitiendo a Base de Datos...' : 'Finalizar Conteo por Imagen y Guardar'}</span>
           </button>
         </div>
       </div>

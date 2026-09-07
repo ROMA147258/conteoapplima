@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useApp } from '../context/AppContext';
+import { useApp, DEFAULT_VOTES } from '../context/AppContext';
 import { apiPost } from '../services/api/apiClient';
 import { offlineQueue } from '../services/sync/offlineQueue';
 import { isCountingTimeEnabled, checkIsSuperAdmin } from '../utils/helpers';
@@ -23,26 +23,30 @@ export const useVotes = () => {
 
   // Bloqueo de Conteo Manual (solo 1 vez para usuarios normales)
   const [isManualLocked, setIsManualLocked] = useState(() => {
-    if (currentUser?.dni) {
-      if (currentUser?.voto_manual_enviado !== undefined) {
-        return Boolean(currentUser.voto_manual_enviado);
-      }
-      const local = localStorage.getItem(`votoReal_manualLocked_${currentUser.dni}`);
-      return local === 'true';
+    try {
+      const u = JSON.parse(sessionStorage.getItem('votoReal_user') || '{}');
+      if (checkIsSuperAdmin(u)) return false;
+      if (u.voto_manual_enviado) return true;
+      const mesaKey = u.mesa ? `votoReal_manualLocked_${u.dni}_${u.mesa}` : null;
+      if (mesaKey && localStorage.getItem(mesaKey) === 'true') return true;
+      return localStorage.getItem(`votoReal_manualLocked_${u.dni}`) === 'true';
+    } catch (e) {
+      return false;
     }
-    return false;
   });
 
   // Bloqueo de Conteo por Imagen / OCR (solo 1 vez para usuarios normales)
   const [isOcrLocked, setIsOcrLocked] = useState(() => {
-    if (currentUser?.dni) {
-      if (currentUser?.voto_imagen_enviado !== undefined) {
-        return Boolean(currentUser.voto_imagen_enviado);
-      }
-      const local = localStorage.getItem(`votoReal_ocrLocked_${currentUser.dni}`);
-      return local === 'true';
+    try {
+      const u = JSON.parse(sessionStorage.getItem('votoReal_user') || '{}');
+      if (checkIsSuperAdmin(u)) return false;
+      if (u.voto_imagen_enviado) return true;
+      const mesaKey = u.mesa ? `votoReal_ocrLocked_${u.dni}_${u.mesa}` : null;
+      if (mesaKey && localStorage.getItem(mesaKey) === 'true') return true;
+      return localStorage.getItem(`votoReal_ocrLocked_${u.dni}`) === 'true';
+    } catch (e) {
+      return false;
     }
-    return false;
   });
 
   // Helper para convertir registro de votos de BD a formato frontend
@@ -172,6 +176,8 @@ export const useVotes = () => {
           } else {
             localStorage.removeItem(`votoReal_manualLocked_${currentUser.dni}`);
             if (currentUser.mesa) localStorage.removeItem(`votoReal_manualLocked_${currentUser.dni}_${currentUser.mesa}`);
+            localStorage.removeItem(`votoReal_manualVotes_${currentUser.dni}`);
+            setCurrentVotes(JSON.parse(JSON.stringify(DEFAULT_VOTES)));
           }
 
           // 2. Voto Imagen / OCR
@@ -189,6 +195,8 @@ export const useVotes = () => {
           } else {
             localStorage.removeItem(`votoReal_ocrLocked_${currentUser.dni}`);
             if (currentUser.mesa) localStorage.removeItem(`votoReal_ocrLocked_${currentUser.dni}_${currentUser.mesa}`);
+            localStorage.removeItem(`votoReal_ocrVotes_${currentUser.dni}`);
+            setOcrVotes(JSON.parse(JSON.stringify(DEFAULT_VOTES)));
           }
 
           // Sincronizar currentUser y sessionStorage si cambió el estado

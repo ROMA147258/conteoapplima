@@ -5,7 +5,7 @@ import { isCountingTimeEnabled, isLlegadaButtonUnlocked } from '../utils/helpers
 
 const AppContext = createContext(null);
 
-const INITIAL_KEYS = [
+export const INITIAL_KEYS = [
   "SOMOS PERU", "RENOVACION", "AHORA NACION", "AVANZA PAIS", "PODEMOS", "JP",
   "OBRAS", "FREPAP", "ACCION POPULAR", "ESPERANZA", "VENCEREMOS", "VISION PERU",
   "APRA", "FP", "PPC", "PROGRESEMOS", "MORADO", "BUEN GOBIERNO", "VERDE",
@@ -14,13 +14,13 @@ const INITIAL_KEYS = [
   "BLANCO", "NULOS", "IMPUGNADOS"
 ];
 
-const createInitialVotesObj = () => {
+export const createInitialVotesObj = () => {
   const obj = {};
   INITIAL_KEYS.forEach(k => { obj[k] = 0; });
   return obj;
 };
 
-const DEFAULT_VOTES = {
+export const DEFAULT_VOTES = {
   provincial: createInitialVotesObj(),
   distrital: createInitialVotesObj()
 };
