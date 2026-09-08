@@ -296,7 +296,7 @@ export const CountingView = () => {
               </span>
             </div>
             <span style={{ fontSize: '0.72rem', color: '#94a3b8', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '10px' }}>
-              Mesa {mesaInput || '---'}
+              Mesa de sufragio {mesaInput || '---'}
             </span>
           </div>
 
@@ -377,7 +377,7 @@ export const CountingView = () => {
                           gap: '4px'
                         }}
                       >
-                        <CheckCircle2 size={12} /> Transmitido
+                        <CheckCircle2 size={12} /> Completado
                       </span>
                     )
                   ) : (
@@ -540,7 +540,7 @@ export const CountingView = () => {
                           gap: '4px'
                         }}
                       >
-                        <CheckCircle2 size={12} /> Transmitido
+                        <CheckCircle2 size={12} /> Completado
                       </span>
                     )
                   ) : (
@@ -548,17 +548,14 @@ export const CountingView = () => {
                       style={{
                         fontSize: '0.68rem',
                         fontWeight: 600,
-                        color: '#c084fc',
-                        background: 'rgba(168, 85, 247, 0.12)',
+                        color: '#94a3b8',
+                        background: 'rgba(255, 255, 255, 0.06)',
                         padding: '2px 8px',
                         borderRadius: '10px',
-                        border: '1px solid rgba(168, 85, 247, 0.3)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px'
+                        border: '1px solid rgba(255, 255, 255, 0.1)'
                       }}
                     >
-                      <Sparkles size={11} /> Con IA
+                      Pendiente
                     </span>
                   )}
                 </div>

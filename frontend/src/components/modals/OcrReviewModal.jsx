@@ -89,7 +89,7 @@ export const OcrReviewModal = ({
                 Visualización de Votos de Imagen (IA) <Sparkles size={14} color="#c084fc" />
               </h3>
               <div style={{ fontSize: '0.78rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
-                <span style={{ fontWeight: 600, color: '#c084fc' }}>Mesa: {mesaInput || '---'}</span>
+                <span style={{ fontWeight: 600, color: '#c084fc' }}>Mesa de sufragio: {mesaInput || '---'}</span>
                 <span>•</span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                   <MapPin size={12} /> {ubicacion || 'Lima'}

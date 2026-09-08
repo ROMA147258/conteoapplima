@@ -69,7 +69,7 @@ export const MesaCard = ({
                 letterSpacing: '0.3px'
               }}
             >
-              1ra Confirmación: Mesa, Colegio y Foto
+              1ra Confirmación: Mesa de Sufragio, Centro de Votación y Foto
             </span>
           </div>
 
@@ -92,7 +92,7 @@ export const MesaCard = ({
           )}
         </div>
 
-        {/* Fila compacta con Mesa, Colegio y el Botón al costado */}
+        {/* Fila compacta con Mesa, Centro de Votación y el Botón al costado */}
         <div
           style={{
             display: 'flex',
@@ -104,7 +104,7 @@ export const MesaCard = ({
           {/* Campo Mesa */}
           <div style={{ flex: '1 1 110px', minWidth: '90px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
             <label htmlFor="input-mesa" style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8' }}>
-              Mesa:
+              Mesa de sufragio:
             </label>
             <input
               type="number"
@@ -135,17 +135,17 @@ export const MesaCard = ({
             />
           </div>
 
-          {/* Campo Colegio */}
+          {/* Campo Centro de Votacion */}
           <div style={{ flex: '2 1 180px', minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
             <label htmlFor="input-colegio" style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8' }}>
-              Local / Colegio:
+              Centro de votación:
             </label>
             <input
               type="text"
               id="input-colegio"
               value={colegioInput}
               readOnly
-              placeholder={mesaInput ? 'Colegio no identificado...' : 'Ingresa tu mesa...'}
+              placeholder={mesaInput ? 'Centro de votación no identificado...' : 'Ingresa tu mesa de sufragio...'}
               style={{
                 width: '100%',
                 padding: '7px 10px',
@@ -239,7 +239,7 @@ export const MesaCard = ({
               2da Confirmación: Ubicación GPS
             </div>
             <div style={{ fontSize: '0.71rem', color: isLlegadaConfirmed ? '#86efac' : '#94a3b8' }}>
-              {isLlegadaConfirmed ? 'Llegada al local validada con éxito ✓' : 'Valida tu posición en tiempo real'}
+              {isLlegadaConfirmed ? 'Llegada al centro de votación validada con éxito ✓' : 'Valida tu posición en tiempo real'}
             </div>
           </div>
         </div>
