@@ -41,7 +41,7 @@ export const ManualCounting = ({
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <User size={16} />
-          <span>Conteo Manual Oficial</span>
+          <span>Registro Manual Oficial</span>
         </div>
         
         {isManualLocked && (
@@ -126,7 +126,7 @@ export const ManualCounting = ({
             }}
           >
             <CheckCircle size={18} color="#22c55e" style={{ flexShrink: 0 }} />
-            <span>Tus votos de conteo manual ya fueron transmitidos exitosamente. El formulario ha sido bloqueado para evitar reenvíos.</span>
+            <span>Tus votos de registro manual ya fueron transmitidos exitosamente. El formulario ha sido bloqueado para evitar reenvíos.</span>
           </div>
         )
       )}
@@ -196,7 +196,7 @@ export const ManualCounting = ({
             : isSuperAdmin && isManualLocked
             ? 'Guardar Modificación de Votos en BD'
             : isManualLocked
-            ? 'Conteo Manual Transmitido (Bloqueado)'
+            ? 'Registro Manual Transmitido (Bloqueado)'
             : 'Transmitir Resultados Manuales'}
         </span>
         {isSuperAdmin && isManualLocked ? (

@@ -27,7 +27,7 @@ export const CountingTabs = ({ activeFilter, onChangeFilter }) => {
         onClick={() => onChangeFilter('manual')}
         style={{ padding: '6px 12px', fontSize: '0.8rem', flex: 1, textAlign: 'center' }}
       >
-        Conteo Manual
+        Registro Manual
       </button>
       <button
         type="button"

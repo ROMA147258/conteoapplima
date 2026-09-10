@@ -86,7 +86,7 @@ export const ManualCountingModal = ({
             </div>
             <div>
               <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#f8fafc' }}>
-                Conteo Manual de Votos
+                Registro Manual de Votos
               </h3>
               <div style={{ fontSize: '0.78rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
                 <span style={{ fontWeight: 600, color: '#38bdf8' }}>Mesa de sufragio: {mesaInput || '---'}</span>

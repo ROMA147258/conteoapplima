@@ -244,7 +244,7 @@ export const useVotes = () => {
     // Validación de Bloqueo Único para personeros normales (Superadmin tiene permiso de modificación)
     if (!isSuperAdmin) {
       if (origen === 'MANUAL' && isManualLocked) {
-        showToast('El conteo manual ya fue transmitido y se encuentra bloqueado (solo 1 envío permitido).', 'warning');
+        showToast('El registro manual ya fue transmitido y se encuentra bloqueado (solo 1 envío permitido).', 'warning');
         return;
       }
 

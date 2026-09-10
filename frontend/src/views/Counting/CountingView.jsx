@@ -265,8 +265,6 @@ export const CountingView = () => {
           mesaInput={mesaInput}
           onMesaChange={setMesaInput}
           colegioInput={colegioInput}
-          isLlegadaConfirmed={isLlegadaConfirmed}
-          onConfirmarLlegada={() => confirmLlegadaGPS(colegioInput, ubicacion, mesaInput)}
           isAttendanceConfirmed={isAttendanceConfirmed}
           onAttendanceCheck={handleAttendanceCheck}
         />
@@ -292,7 +290,7 @@ export const CountingView = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Layers size={18} color="#38bdf8" />
               <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f1f5f9' }}>
-                Módulos de Conteo y Transmisión
+                Escrutinio
               </span>
             </div>
             <span style={{ fontSize: '0.72rem', color: '#94a3b8', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '10px' }}>
@@ -307,7 +305,7 @@ export const CountingView = () => {
               gap: '12px'
             }}
           >
-            {/* 1. BOTÓN / TARJETA POPUP CONTEO MANUAL */}
+            {/* 1. BOTÓN / TARJETA POPUP REGISTRO MANUAL */}
             <div
               className="glass"
               style={{
@@ -398,7 +396,7 @@ export const CountingView = () => {
                 </div>
 
                 <h4 style={{ margin: '0 0 2px 0', fontSize: '0.96rem', fontWeight: 700, color: '#f8fafc' }}>
-                  Conteo Manual
+                  Registro Manual
                 </h4>
                 <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8', lineHeight: 1.3 }}>
                   Ingreso casilla por casilla para candidatos y actas.
@@ -440,7 +438,7 @@ export const CountingView = () => {
                   }}
                 >
                   {isManualEffectiveLocked ? <Lock size={15} /> : <ClipboardList size={15} />}
-                  <span>{isSuperAdmin && isManualLocked ? 'Modificar' : isManualEffectiveLocked ? 'Transmitido (Bloqueado)' : 'Conteo Manual'}</span>
+                  <span>{isSuperAdmin && isManualLocked ? 'Modificar' : isManualEffectiveLocked ? 'Transmitido (Bloqueado)' : 'Registro Manual'}</span>
                 </button>
 
                 <button

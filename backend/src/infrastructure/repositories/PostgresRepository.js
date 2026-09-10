@@ -63,6 +63,27 @@ class PostgresRepository {
       const isCoordZonal = tablaStr === 'rcoordinadoresz' || rolStr.includes('zonal');
       const isCoordLocal = tablaStr === 'rcoordinadores' || rolStr.includes('local') || (!isCoordZonal && (rolStr.includes('coordinador') || defaultRol.toLowerCase().includes('coordinador')));
 
+      // RESTRICCIÓN COORDINADOR ZONAL: Únicamente habilitado para Villa María del Triunfo
+      if (isCoordZonal) {
+        const ubicacionRaw = (u.ubicacion || u.distrito_asignado || u.distrito_donde_vota || u.distrito || '')
+          .toString()
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .trim();
+        const isVMT = ubicacionRaw.includes('villa maria del triunfo') || ubicacionRaw.includes('vmt');
+        if (!isVMT) {
+          const errorMsg = 'Acceso Restringido: La interfaz de Coordinador Zonal está habilitada únicamente para el distrito de Villa María del Triunfo.';
+          usuarioBloqueado = {
+            isBlocked: true,
+            status: 'blocked',
+            rol: 'Coordinador Zonal',
+            message: errorMsg
+          };
+          return { valid: false, message: errorMsg };
+        }
+      }
+
       if (isConfirmed && isAprobado) {
         if (isCoordZonal) {
           u.origenHoja = 'rcoordinadoresz';
@@ -848,6 +869,7 @@ class PostgresRepository {
         CASE WHEN (l.id IS NOT NULL OR a.id IS NOT NULL) THEN TRUE ELSE FALSE END AS ha_llegado,
         COALESCE(l.fecha_registro, a.fecha_hora) AS fecha_llegada,
         l.distancia_metros,
+        a.foto_url,
         -- Estado de confirmación de coordinador
         CASE WHEN c.id IS NOT NULL THEN TRUE ELSE FALSE END AS confirmado_coordinador,
         c.fecha_hora AS fecha_confirmacion,
@@ -860,7 +882,7 @@ class PostgresRepository {
         ORDER BY id DESC LIMIT 1
       ) l ON TRUE
       LEFT JOIN LATERAL (
-        SELECT id, fecha_hora 
+        SELECT id, fecha_hora, foto_url 
         FROM asistencia 
         WHERE TRIM(dni) = TRIM(p.dni) 
         ORDER BY id DESC LIMIT 1

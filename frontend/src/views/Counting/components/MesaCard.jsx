@@ -1,12 +1,10 @@
 import React from 'react';
-import { MapPin, Camera, CheckCircle2 } from 'lucide-react';
+import { Camera, CheckCircle2 } from 'lucide-react';
 
 export const MesaCard = ({
   mesaInput,
   onMesaChange,
   colegioInput,
-  isLlegadaConfirmed,
-  onConfirmarLlegada,
   isAttendanceConfirmed,
   onAttendanceCheck
 }) => {
@@ -25,7 +23,7 @@ export const MesaCard = ({
       }}
     >
       {/* ======================================================== */}
-      {/* 1RA CONFIRMACIÓN: MESA + COLEGIO + BOTÓN FOTO AL COSTADO */}
+      {/* INSTALACIÓN DE MESA DE SUFRAGIO                          */}
       {/* ======================================================== */}
       <div
         style={{
@@ -43,33 +41,32 @@ export const MesaCard = ({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div
               style={{
-                background: isAttendanceConfirmed ? '#22c55e' : '#0284c7',
-                color: '#ffffff',
-                borderRadius: '50%',
-                width: '20px',
-                height: '20px',
+                background: isAttendanceConfirmed ? 'rgba(34, 197, 94, 0.2)' : 'rgba(2, 132, 199, 0.2)',
+                border: isAttendanceConfirmed ? '1px solid #22c55e' : '1px solid #0284c7',
+                color: isAttendanceConfirmed ? '#86efac' : '#38bdf8',
+                borderRadius: '8px',
+                width: '26px',
+                height: '26px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '0.74rem',
-                fontWeight: 900,
                 flexShrink: 0
               }}
             >
-              1
-            </span>
+              <Camera size={15} />
+            </div>
             <span
               style={{
-                fontSize: '0.8rem',
+                fontSize: '0.84rem',
                 fontWeight: 800,
                 color: isAttendanceConfirmed ? '#86efac' : '#38bdf8',
                 letterSpacing: '0.3px'
               }}
             >
-              1ra Confirmación: Mesa de Sufragio, Centro de Votación y Foto
+              Instalación de Mesa de Sufragio
             </span>
           </div>
 
@@ -92,7 +89,7 @@ export const MesaCard = ({
           )}
         </div>
 
-        {/* Fila compacta con Mesa, Centro de Votación y el Botón al costado */}
+        {/* Fila compacta con Mesa, Centro de Votación y el Botón de Foto al costado */}
         <div
           style={{
             display: 'flex',
@@ -161,7 +158,7 @@ export const MesaCard = ({
             />
           </div>
 
-          {/* Botón 1ra Confirmación al Costado */}
+          {/* Botón Foto al Costado */}
           <button
             type="button"
             id="btn-confirm-asistencia-paso1"
@@ -191,88 +188,9 @@ export const MesaCard = ({
             }}
           >
             {isAttendanceConfirmed ? <CheckCircle2 size={16} color="#22c55e" /> : <Camera size={16} />}
-            <span>{isAttendanceConfirmed ? 'Foto OK ✓' : 'Mandar Foto'}</span>
+            <span>{isAttendanceConfirmed ? 'Foto OK ✓' : 'Tomar Foto'}</span>
           </button>
         </div>
-      </div>
-
-      {/* ======================================================== */}
-      {/* 2DA CONFIRMACIÓN: UBICACIÓN Y LLEGADA (GPS)              */}
-      {/* ======================================================== */}
-      <div
-        style={{
-          background: isLlegadaConfirmed
-            ? 'linear-gradient(145deg, rgba(34, 197, 94, 0.09) 0%, rgba(15, 23, 42, 0.5) 100%)'
-            : 'linear-gradient(145deg, rgba(168, 85, 247, 0.08) 0%, rgba(15, 23, 42, 0.5) 100%)',
-          border: isLlegadaConfirmed
-            ? '1px solid rgba(34, 197, 94, 0.35)'
-            : '1px solid rgba(168, 85, 247, 0.3)',
-          borderRadius: '12px',
-          padding: '10px 12px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '10px',
-          flexWrap: 'wrap'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span
-            style={{
-              background: isLlegadaConfirmed ? '#22c55e' : '#9333ea',
-              color: '#ffffff',
-              borderRadius: '50%',
-              width: '20px',
-              height: '20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '0.74rem',
-              fontWeight: 900,
-              flexShrink: 0
-            }}
-          >
-            2
-          </span>
-          <div>
-            <div style={{ fontSize: '0.82rem', fontWeight: 800, color: isLlegadaConfirmed ? '#86efac' : '#e2e8f0' }}>
-              2da Confirmación: Ubicación GPS
-            </div>
-            <div style={{ fontSize: '0.71rem', color: isLlegadaConfirmed ? '#86efac' : '#94a3b8' }}>
-              {isLlegadaConfirmed ? 'Llegada al centro de votación validada con éxito ✓' : 'Valida tu posición en tiempo real'}
-            </div>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          id="btn-confirm-llegada-paso2"
-          onClick={onConfirmarLlegada}
-          style={{
-            height: '36px',
-            padding: '0 14px',
-            borderRadius: '8px',
-            border: isLlegadaConfirmed
-              ? '1px solid rgba(34, 197, 94, 0.45)'
-              : '1px solid rgba(168, 85, 247, 0.45)',
-            background: isLlegadaConfirmed
-              ? 'rgba(34, 197, 94, 0.2)'
-              : 'linear-gradient(135deg, #9333ea 0%, #7e22ce 100%)',
-            color: isLlegadaConfirmed ? '#86efac' : '#ffffff',
-            fontWeight: 700,
-            fontSize: '0.82rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '6px',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            boxShadow: isLlegadaConfirmed ? 'none' : '0 2px 10px rgba(147, 51, 234, 0.3)'
-          }}
-        >
-          {isLlegadaConfirmed ? <CheckCircle2 size={16} color="#22c55e" /> : <MapPin size={16} />}
-          <span>{isLlegadaConfirmed ? 'Ubicación OK ✓' : 'Confirmar GPS'}</span>
-        </button>
       </div>
     </div>
   );

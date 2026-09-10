@@ -30,6 +30,22 @@ export function isCountingTimeEnabled(currentUser = null, forceDisableLock = fal
   return currentMinutes >= (17 * 60) || currentMinutes < (5 * 60);
 }
 
+// Validación de horario para Asistencia del Personero de Centro de Votación (a partir de 3:00 PM / 15:00)
+export function isAsistencia3pmEnabled(currentUser = null, forceDisableLock = false) {
+  if (TEMPORARY_LOCK_OVERRIDE || forceDisableLock) return true;
+
+  const isSuperAdmin = currentUser && (
+    currentUser.dni === 'Admin#2026$Secure!VotoReal' || 
+    currentUser.dni === '99999999' || 
+    (currentUser.nombre || '').toLowerCase().includes('super admin')
+  );
+  if (isSuperAdmin) return true;
+
+  const currentMinutes = obtenerMinutosActualesLimaBogota();
+  // 15:00 = 15 * 60 = 900 minutos
+  return currentMinutes >= 900 || currentMinutes < (5 * 60);
+}
+
 // Validación de horario para el botón "Confirmar Llegada" (a partir de 4:50 PM / 16:50)
 export function isLlegadaButtonUnlocked(currentUser = null, forceDisableLock = false) {
   if (TEMPORARY_LOCK_OVERRIDE || forceDisableLock) return true;

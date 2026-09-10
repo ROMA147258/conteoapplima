@@ -112,12 +112,30 @@ export const useAuth = () => {
       setOcrVotes(JSON.parse(JSON.stringify(DEFAULT_VOTES)));
     }
 
+    // Restricción de Coordinador Zonal (Solo permitido para Villa María del Triunfo)
+    const isZonal = (userObj.rol || '').toLowerCase().includes('zonal') || 
+                    (userObj.tabla_origen || '').toLowerCase().includes('rcoordinadoresz') ||
+                    (userObj.tipo_interfaz || '').toLowerCase() === 'coordinador_zonal';
+    if (isZonal) {
+      const ubNorm = (userObj.ubicacion || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+      const isVMT = ubNorm.includes('villa maria del triunfo') || ubNorm.includes('vmt');
+      if (!isVMT) {
+        showAlertDialog({
+          title: 'Acceso Restringido',
+          message: 'La interfaz de Coordinador Zonal está habilitada únicamente para el distrito de <strong>Villa María del Triunfo</strong>.<br><br>Tu distrito registrado es: <strong>' + (userObj.ubicacion || 'No asignado') + '</strong>.',
+          buttonText: 'Entendido',
+          type: 'error'
+        });
+        return false;
+      }
+    }
+
     setCurrentUser(userObj);
     sessionStorage.setItem('votoReal_user', JSON.stringify(userObj));
 
     if (esCoordinador(userObj)) {
       setCurrentView('view-coordinator');
-      showToast(`Bienvenido Coordinador, ${userObj.nombre}.`, 'success');
+      showToast(`Bienvenido, ${userObj.nombre}.`, 'success');
     } else {
       setCurrentView('view-counting');
       showToast(`Bienvenido, ${userObj.nombre}.`, 'success');
