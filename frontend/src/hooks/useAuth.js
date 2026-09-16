@@ -89,6 +89,7 @@ export const useAuth = () => {
     const targetDni = user.dni || user.DNI || cleanDni;
 
     const userObj = {
+      ...user,
       nombre: user.nombre || user.Nombres_y_Apellidos || cleanNombre || 'Personero',
       dni: targetDni,
       ubicacion: user.ubicacion || user.Distrito_Asignado || user.Distrito_donde_Vota || 'Lima',
@@ -97,8 +98,23 @@ export const useAuth = () => {
       rol: user.rol || 'Personero',
       origenHoja: user.origenHoja || '',
       tabla_origen: user.tabla_origen || user.origenHoja || '',
-      tipo_interfaz: user.tipo_interfaz || ''
+      tipo_interfaz: user.tipo_interfaz || '',
+      voto_manual_enviado: Boolean(user.voto_manual_enviado),
+      voto_imagen_enviado: Boolean(user.voto_imagen_enviado),
+      asistencia_confirmada: Boolean(user.asistencia_confirmada),
+      llegada_confirmada: Boolean(user.llegada_confirmada)
     };
+
+    // Sincronizar bloqueos locales si el backend ya registró los votos
+    if (userObj.voto_manual_enviado) {
+      localStorage.setItem(`votoReal_manualLocked_${targetDni}`, 'true');
+    }
+    if (userObj.voto_imagen_enviado) {
+      localStorage.setItem(`votoReal_ocrLocked_${targetDni}`, 'true');
+    }
+    if (userObj.asistencia_confirmada) {
+      localStorage.setItem(`votoReal_attConfirmed_${targetDni}`, 'true');
+    }
 
     // Cargar votos guardados para este DNI si existen, o inicializar limpio en 0s
     try {

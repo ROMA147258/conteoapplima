@@ -40,6 +40,7 @@ if (fs.existsSync(frontendDist)) {
 app.use(errorHandler);
 
 const { runMigrations } = require('./infrastructure/database/migrate');
+const electoralBloomManager = require('./infrastructure/cache/ElectoralBloomManager');
 
 if (require.main === module) {
   app.listen(env.PORT, '0.0.0.0', async () => {
@@ -53,6 +54,12 @@ if (require.main === module) {
       await runMigrations();
     } catch (e) {
       console.warn('[Server] Las migraciones se reintentarán al conectar la BD.');
+    }
+
+    try {
+      await electoralBloomManager.init();
+    } catch (e) {
+      console.warn('[Server] Error inicializando Bloom Filter:', e.message);
     }
   });
 }
