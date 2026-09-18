@@ -17,9 +17,6 @@ export const ProvincialTable = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
           <Map size={16} />
           <span>Alcaldía Metropolitana (Lima - 26 Candidatos)</span>
-          <span style={{ fontSize: '0.68rem', color: '#38bdf8', fontWeight: 500, marginLeft: 'auto', background: 'rgba(56, 189, 248, 0.1)', padding: '2px 8px', borderRadius: '12px', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
-            Alcalde actual: {alcaldeActual}
-          </span>
         </div>
       </div>
 
