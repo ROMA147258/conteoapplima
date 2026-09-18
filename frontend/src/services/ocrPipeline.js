@@ -177,36 +177,36 @@ export function procesarTextoOCR(text, currentDistrict = 'ATE') {
     if (!str) return null;
     const s = norm(str).toUpperCase();
 
-    // 1. Partidos Políticos Primero (Evitar que "RENOVACION" coincida con "VACIO")
-    if (s.includes('RENOVACION') || s.includes('LOPEZ ALIAGA') || s.includes('ACOSTA CAJALEON')) return 'RENOVACION';
-    if (s.includes('AHORA NACION') || s.includes('SUSEL') || s.includes('CABELLO ACOSTA')) return 'AHORA NACION';
-    if (s.includes('AVANZA') || s.includes('ALLISON') || s.includes('COMBINA') || s.includes('CASAS')) return 'AVANZA PAIS';
-    if (s.includes('PODEMOS') || s.includes('URRESTI') || s.includes('AMAYA')) return 'PODEMOS';
-    if (s.includes('OBRAS') || s.includes('BELMONT')) return 'OBRAS';
-    if (s.includes('ACCION POPULAR') || s.includes('ACCION') || s.includes('TEJADA') || s.includes('CHACON') || s.includes('ARANA')) return 'ACCION POPULAR';
-    if (s.includes('ESPERANZA') || s.includes('LEON CHINCHAY') || s.includes('SILVA MONTERO')) return 'ESPERANZA';
-    if (s.includes('VENCEREMOS') || s.includes('ALVARADO')) return 'VENCEREMOS';
-    if (s.includes('VISION') || s.includes('ABARCA') || s.includes('CAVERO')) return 'VISION PERU';
-    if (s.includes('APRA') || s.includes('APRISTA') || s.includes('YAYA') || s.includes('MUNOZ')) return 'APRA';
-    if (s.includes('PPC') || s.includes('CRISTIANO') || s.includes('DE POMAR') || s.includes('GARCIA DURANTE') || s.includes('POPULAR CRISTIANO')) return 'PPC';
-    if (s.includes('PROGRESEMOS') || s.includes('LLANOS')) return 'PROGRESEMOS';
-    if (s.includes('BUEN GOBIERNO') || s.includes('GALLARDO')) return 'BUEN GOBIERNO';
-    if (s.includes('PERU LIBRE') || s.includes('RAMIREZ MATEO')) return 'PERU LIBRE';
-    if (s.includes('TIERRA VERDE') || s.includes('YEHUDE') || s.includes('SIMON')) return 'TIERRA VERDE';
-    if (s.includes('PUEBLO CONSCIENTE') || s.includes('HUETTE')) return 'PUEBLO CONSCIENTE';
-    if (s.includes('PATRIOTICO') || s.includes('CALLER') || /\bPPP\b/.test(s)) return 'PPP';
-    if (s.includes('INTEGRIDAD') || s.includes('LINARES')) return 'INTEGRIDAD';
-    if (s.includes('FUERZA CIUDADANA') || s.includes('BONILLA')) return 'FUERZA CIUDADANA';
-    if (s.includes('BATALLA') || s.includes('QUISPE CABALLERO')) return 'BATALLA PERU';
-    if (s.includes('ALIANZA PARA EL PROGRESO') || s.includes('BENEL') || /\bAPP\b/.test(s)) return 'APP';
-    if (s.includes('ALIANZA REGIONAL') || s.includes('MANCHEGO')) return 'ALIANZA REGIONAL';
+    // 1. Partidos Políticos Primero (Cruzando Nombre de Partido, Candidato y Sello/Símbolo Oficial)
+    if (s.includes('RENOVACION') || s.includes('LOPEZ ALIAGA') || s.includes('ACOSTA CAJALEON') || s.includes('LETRA R') || s.includes('CIRCULO AZUL')) return 'RENOVACION';
+    if (s.includes('AHORA NACION') || s.includes('SUSEL') || s.includes('CABELLO ACOSTA') || s.includes('BANDERA PERUANA') || /\bAN\b/.test(s)) return 'AHORA NACION';
+    if (s.includes('AVANZA') || s.includes('ALLISON') || s.includes('COMBINA') || s.includes('CASAS') || s.includes('TREN') || s.includes('FERROCARRIL')) return 'AVANZA PAIS';
+    if (s.includes('PODEMOS') || s.includes('URRESTI') || s.includes('AMAYA') || s.includes('LETRA P') || s.includes('ESTRELLAS')) return 'PODEMOS';
+    if (s.includes('OBRAS') || s.includes('BELMONT') || s.includes('CIVICO OBRAS')) return 'OBRAS';
+    if (s.includes('ACCION POPULAR') || s.includes('ACCION') || s.includes('TEJADA') || s.includes('CHACON') || s.includes('ARANA') || s.includes('LAMPA') || s.includes('PALA')) return 'ACCION POPULAR';
+    if (s.includes('ESPERANZA') || s.includes('LEON CHINCHAY') || s.includes('SILVA MONTERO') || s.includes('ESCARAPELA') || s.includes('LETRA E')) return 'ESPERANZA';
+    if (s.includes('VENCEREMOS') || s.includes('ALVARADO') || s.includes('TRES SILUETAS')) return 'VENCEREMOS';
+    if (s.includes('VISION') || s.includes('ABARCA') || s.includes('CAVERO') || s.includes('OJO') || s.includes('SOL RADIANTE')) return 'VISION PERU';
+    if (s.includes('APRA') || s.includes('APRISTA') || s.includes('YAYA') || s.includes('MUNOZ') || s.includes('ESTRELLA ROJA') || s.includes('ESTRELLA DE CINCO')) return 'APRA';
+    if (s.includes('PPC') || s.includes('CRISTIANO') || s.includes('DE POMAR') || s.includes('GARCIA DURANTE') || s.includes('POPULAR CRISTIANO') || s.includes('MAPA DEL PERU') || s.includes('MAPA VERDE')) return 'PPC';
+    if (s.includes('PROGRESEMOS') || s.includes('LLANOS') || s.includes('FLOR MULTICOLOR')) return 'PROGRESEMOS';
+    if (s.includes('BUEN GOBIERNO') || s.includes('GALLARDO') || s.includes('MANOS ENTRELAZADAS') || /\bPBG\b/.test(s)) return 'BUEN GOBIERNO';
+    if (s.includes('PERU LIBRE') || s.includes('RAMIREZ MATEO') || s.includes('LAPIZ') || s.includes('LAPICERO')) return 'PERU LIBRE';
+    if (s.includes('TIERRA VERDE') || s.includes('YEHUDE') || s.includes('SIMON') || s.includes('HOJA VERDE')) return 'TIERRA VERDE';
+    if (s.includes('PUEBLO CONSCIENTE') || s.includes('HUETTE') || s.includes('ANTORCHA Y MANOS')) return 'PUEBLO CONSCIENTE';
+    if (s.includes('PATRIOTICO') || s.includes('CALLER') || s.includes('ESCUDO PPP') || /\bPPP\b/.test(s)) return 'PPP';
+    if (s.includes('INTEGRIDAD') || s.includes('LINARES') || s.includes('BALANZA')) return 'INTEGRIDAD';
+    if (s.includes('FUERZA CIUDADANA') || s.includes('BONILLA') || s.includes('MANO ALZADA')) return 'FUERZA CIUDADANA';
+    if (s.includes('BATALLA') || s.includes('QUISPE CABALLERO') || s.includes('CASCO') || s.includes('ESCUDO DE BATALLA')) return 'BATALLA PERU';
+    if (s.includes('ALIANZA PARA EL PROGRESO') || s.includes('BENEL') || s.includes('LETRA A') || /\bAPP\b/.test(s)) return 'APP';
+    if (s.includes('ALIANZA REGIONAL') || s.includes('MANCHEGO') || s.includes('ESTRELLA DORADA') || /\bARP\b/.test(s)) return 'ALIANZA REGIONAL';
 
-    if (s.includes('FUERZA POPULAR') || /\bFP\b/.test(s) || s.startsWith('FUERZA') || s.includes('DAZA') || s.includes('KEIKO')) return 'FP';
-    if (s.includes('JUNTOS POR EL PERU') || /\bJP\b/.test(s) || s.startsWith('JUNTOS') || s.includes('VARGAS CUELLAR')) return 'JP';
-    if (s.includes('SOMOS PERU') || /\bSP\b/.test(s) || s.includes('SOMOS') || s.includes('BRUCE') || s.includes('LEGUIA') || s.includes('BAZAN')) return 'SOMOS PERU';
-    if (s.includes('FREPAP') || s.includes('AGRICOLA') || s.includes('VALDEZ')) return 'FREPAP';
-    if (s.includes('DEMOCRATA VERDE') || s.includes('PARTIDO VERDE') || /\bVERDE\b/.test(s) || s.includes('HURTADO')) return 'VERDE';
-    if (s.includes('PARTIDO MORADO') || /\bMORADO\b/.test(s) || s.includes('LA CRUZ') || s.includes('RUIZ GUTIERREZ')) return 'MORADO';
+    if (s.includes('FUERZA POPULAR') || /\bFP\b/.test(s) || s.startsWith('FUERZA') || s.includes('DAZA') || s.includes('KEIKO') || s.includes('LETRA K') || s.includes('K NARANJA')) return 'FP';
+    if (s.includes('JUNTOS POR EL PERU') || /\bJP\b/.test(s) || s.startsWith('JUNTOS') || s.includes('VARGAS CUELLAR') || s.includes('ESPIRAL')) return 'JP';
+    if (s.includes('SOMOS PERU') || /\bSP\b/.test(s) || s.includes('SOMOS') || s.includes('BRUCE') || s.includes('LEGUIA') || s.includes('BAZAN') || s.includes('CORAZON')) return 'SOMOS PERU';
+    if (s.includes('FREPAP') || s.includes('AGRICOLA') || s.includes('VALDEZ') || s.includes('PESCADITO') || s.includes('PEZ')) return 'FREPAP';
+    if (s.includes('DEMOCRATA VERDE') || s.includes('PARTIDO VERDE') || /\bVERDE\b/.test(s) || s.includes('HURTADO') || s.includes('ARBOL')) return 'VERDE';
+    if (s.includes('PARTIDO MORADO') || /\bMORADO\b/.test(s) || s.includes('LA CRUZ') || s.includes('RUIZ GUTIERREZ') || s.includes('LETRA M') || s.includes('ANTORCHA MORADA')) return 'MORADO';
 
     // 2. Votos especiales
     if (s.includes('IMPUGNAD')) return 'IMPUGNADOS';
@@ -450,44 +450,44 @@ export async function analizarImagenActa(imageSrc, options = {}) {
   if (geminiApiKey) {
     const fallbackModels = ['gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-2.5-flash'];
     const prompt = `Eres un perito experto en escaneo de actas electorales peruanas (ONPE / JNE). Analiza esta imagen con precisión absoluta y extrae cada uno de los votos manuscritos o impresos para cada organización política.
+ 
+REGLAS CRÍTICAS DE EXTRACCIÓN Y RECONOCIMIENTO MULTIMODAL:
+1. IDENTIFICACIÓN POR SELLO/SÍMBOLO, PARTIDO Y CANDIDATO: En las actas electorales y cédulas de sufragio peruanas, cada fila contiene el Sello/Símbolo gráfico oficial del partido, el Nombre del partido y el Candidato. Cruza SIEMPRE los 3 elementos para identificar y asignar con exactitud el voto:
+   - SOMOS PERU: Sello/Símbolo (Corazón rojo/azul 'SP') | Partido (Somos Perú) | Candidato (Carlos Bruce)
+   - RENOVACION: Sello/Símbolo ('R' celeste en círculo azul) | Partido (Renovación Popular) | Candidato (Rafael López Aliaga)
+   - AHORA NACION: Sello/Símbolo (Bandera peruana / 'AN') | Partido (Ahora Nación) | Candidato (Susel Paredes)
+   - AVANZA PAIS: Sello/Símbolo (Tren / Ferrocarril) | Partido (Avanza País) | Candidato (Francis Allison)
+   - PODEMOS: Sello/Símbolo (Letra 'P' tricolor con estrellas) | Partido (Podemos Perú) | Candidato (Daniel Urresti)
+   - JP: Sello/Símbolo (Letras 'JP' rojo y verde) | Partido (Juntos por el Perú) | Candidato (Oswaldo Vargas)
+   - OBRAS: Sello/Símbolo (Manos estrechadas / Sol / Obras) | Partido (Partido Cívico Obras) | Candidato (Ricardo Belmont)
+   - FREPAP: Sello/Símbolo (Pescadito / Pez israelita) | Partido (FREPAP) | Candidato (Segundo Valdez)
+   - ACCION POPULAR: Sello/Símbolo (Lampa / Pala roja y blanca) | Partido (Acción Popular) | Candidato (Carlos Tejada)
+   - ESPERANZA: Sello/Símbolo (Escarapela verde / 'E') | Partido (Frente de la Esperanza 2021) | Candidato (Elizabeth León)
+   - VENCEREMOS: Sello/Símbolo (Tres siluetas / 'V') | Partido (Alianza Electoral Venceremos) | Candidato (Juan Alvarado)
+   - VISION PERU: Sello/Símbolo (Ojo / Sol radiante) | Partido (Visión Perú) | Candidato (Santiago Abarca)
+   - APRA: Sello/Símbolo (Estrella roja de cinco puntas) | Partido (Partido Aprista Peruano) | Candidata (Mónica Yaya)
+   - FP: Sello/Símbolo (Letra 'K' naranja) | Partido (Fuerza Popular) | Candidato (Samuel Daza)
+   - PPC: Sello/Símbolo (Mapa verde del Perú) | Partido (Partido Popular Cristiano) | Candidato (Edgardo de Pomar)
+   - PROGRESEMOS: Sello/Símbolo (Flor multicolor / sol) | Partido (Progresemos) | Candidato (Luis Miguel Llanos)
+   - MORADO: Sello/Símbolo (Letra 'M' morada / antorcha) | Partido (Partido Morado) | Candidata (Victoria La Cruz)
+   - BUEN GOBIERNO: Sello/Símbolo (Manos entrelazadas / PBG) | Partido (Partido del Buen Gobierno) | Candidato (Carlos Gallardo)
+   - VERDE: Sello/Símbolo (Árbol / girasol verde) | Partido (Partido Demócrata Verde) | Candidata (Flor de María Hurtado)
+   - PERU LIBRE: Sello/Símbolo (Lápiz escolar amarillo y rojo) | Partido (Perú Libre) | Candidato (Rubén Ramírez)
+   - TIERRA VERDE: Sello/Símbolo (Hoja verde / Tierra) | Partido (Coalición Transformadora Tierra Verde) | Candidato (Yehude Simon)
+   - PUEBLO CONSCIENTE: Sello/Símbolo (Antorcha / Manos unidas) | Partido (Pueblo Consciente) | Candidato (Luis Huette)
+   - PPP: Sello/Símbolo (Escudo rojo / PPP) | Partido (Partido Patriótico del Perú) | Candidato (Sandro Caller)
+   - INTEGRIDAD: Sello/Símbolo (Balanza de justicia / ID) | Partido (Integridad Democrática) | Candidata (Jessica Linares)
+   - FUERZA CIUDADANA: Sello/Símbolo (Mano alzada / Flecha) | Partido (Fuerza Ciudadana) | Candidato (Rubén Bonilla)
+   - BATALLA PERU: Sello/Símbolo (Casco / Escudo de batalla) | Partido (Batalla Perú) | Candidato (Samir Quispe)
+   - APP: Sello/Símbolo (Letra 'A' roja en círculo blanco) | Partido (Alianza para el Progreso)
+   - ALIANZA REGIONAL: Sello/Símbolo (Estrella dorada / Sol ARP) | Partido (Alianza Regional)
+   - BLANCO: Fila de Votos en Blanco
+   - NULOS: Fila de Votos Nulos / Viciados
+   - IMPUGNADOS: Fila de Votos Impugnados
 
-REGLAS CRÍTICAS DE EXTRACCIÓN:
-1. Extrae TODOS los partidos que figuren en la tabla o lista del acta. No omitas ninguno.
-2. Si un partido no tiene votos visibles o está en blanco, asígnale 0.
-3. Claves de Partidos oficiales que debes usar:
-   - SOMOS PERU (Somos Perú)
-   - RENOVACION (Renovación Popular)
-   - AHORA NACION (Ahora Nación)
-   - AVANZA PAIS (Avanza País)
-   - PODEMOS (Podemos Perú)
-   - JP (Juntos por el Perú)
-   - OBRAS (Partido Cívico Obras)
-   - FREPAP (FREPAP)
-   - ACCION POPULAR (Acción Popular)
-   - ESPERANZA (Frente de la Esperanza)
-   - VENCEREMOS (Alianza Electoral Venceremos)
-   - VISION PERU (Visión Perú)
-   - APRA (Partido Aprista Peruano)
-   - FP (Fuerza Popular)
-   - PPC (Partido Popular Cristiano)
-   - PROGRESEMOS (Progresemos)
-   - MORADO (Partido Morado)
-   - BUEN GOBIERNO (Partido del Buen Gobierno)
-   - VERDE (Partido Demócrata Verde)
-   - PERU LIBRE (Perú Libre)
-   - TIERRA VERDE (Tierra Verde)
-   - PUEBLO CONSCIENTE (Pueblo Consciente)
-   - PPP (Partido Patriótico del Perú)
-   - INTEGRIDAD (Integridad Democrática)
-   - FUERZA CIUDADANA (Fuerza Ciudadana)
-   - BATALLA PERU (Batalla Perú)
-   - APP (Alianza para el Progreso)
-   - ALIANZA REGIONAL (Alianza Regional)
-   - BLANCO (Votos en Blanco)
-   - NULOS (Votos Nulos)
-   - IMPUGNADOS (Votos Impugnados)
+2. Extrae TODOS los partidos que figuren en la tabla o lista del acta. Si un partido no tiene votos visibles o está en blanco, asígnale 0.
 
-4. Estructura de salida JSON obligatoria:
+3. Estructura de salida JSON obligatoria:
 {
   "tipoDocumento": "acta_electoral",
   "votos": {

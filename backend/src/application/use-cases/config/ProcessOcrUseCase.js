@@ -74,44 +74,43 @@ class ProcessOcrUseCase {
 
     const defaultJsonPrompt = prompt || `Eres un perito experto en escaneo de actas electorales peruanas (ONPE / JNE). Analiza esta imagen con precisión absoluta y extrae cada uno de los votos manuscritos o impresos para cada organización política.
 
-REGLAS CRÍTICAS DE EXTRACCIÓN:
-1. Extrae TODOS los partidos que figuren en la tabla o lista del acta. No omitas ninguno.
-2. Si un partido no tiene votos visibles o está en blanco, asígnale 0.
-3. Claves de Partidos oficiales que debes usar:
-   - SOMOS PERU (Somos Perú / Carlos Bruce)
-   - RENOVACION (Renovación Popular / Rafael López Aliaga)
-   - AHORA NACION (Ahora Nación / Susel Paredes)
-   - AVANZA PAIS (Avanza País / Francis Allison)
-   - PODEMOS (Podemos Perú / Daniel Urresti)
-   - JP (Juntos por el Perú / Oswaldo Vargas)
-   - OBRAS (Partido Cívico Obras / Ricardo Belmont)
-   - FREPAP (FREPAP / Segundo Valdez)
-   - ACCION POPULAR (Acción Popular / Carlos Tejada)
-   - ESPERANZA (Frente de la Esperanza / Elizabeth León)
-   - VENCEREMOS (Alianza Electoral Venceremos / Juan Alvarado)
-   - VISION PERU (Visión Perú / Santiago Abarca)
-   - APRA (Partido Aprista Peruano / Mónica Yaya)
-   - FP (Fuerza Popular / Samuel Daza)
-   - PPC (Partido Popular Cristiano / Edgardo de Pomar)
-   - PROGRESEMOS (Progresemos / Luis Miguel Llanos)
-   - MORADO (Partido Morado / Victoria La Cruz)
-   - BUEN GOBIERNO (Partido del Buen Gobierno / Carlos Gallardo)
-   - VERDE (Partido Demócrata Verde / Flor de María Hurtado)
-   - PERU LIBRE (Perú Libre)
-   - TIERRA VERDE (Tierra Verde)
-   - PUEBLO CONSCIENTE (Pueblo Consciente)
-   - PPP (Partido Patriótico del Perú)
-   - INTEGRIDAD (Integridad Democrática)
-   - FUERZA CIUDADANA (Fuerza Ciudadana)
-   - BATALLA PERU (Batalla Perú)
-   - APP (Alianza para el Progreso)
-   - ALIANZA REGIONAL (Alianza Regional por el Perú)
-   - BLANCO (Votos en Blanco)
-   - NULOS (Votos Nulos)
-   - IMPUGNADOS (Votos Impugnados)
+REGLAS CRÍTICAS DE EXTRACCIÓN Y RECONOCIMIENTO MULTIMODAL:
+1. IDENTIFICACIÓN POR SELLO/SÍMBOLO, PARTIDO Y CANDIDATO: En las actas electorales y cédulas de sufragio peruanas, cada fila contiene el Sello/Símbolo gráfico oficial del partido, el Nombre del partido y el Candidato. Cruza SIEMPRE los 3 elementos para identificar y asignar con exactitud el voto:
+   - SOMOS PERU: Sello/Símbolo (Corazón rojo/azul 'SP') | Partido (Somos Perú) | Candidato (Carlos Bruce)
+   - RENOVACION: Sello/Símbolo ('R' celeste en círculo azul) | Partido (Renovación Popular) | Candidato (Rafael López Aliaga)
+   - AHORA NACION: Sello/Símbolo (Bandera peruana / 'AN') | Partido (Ahora Nación) | Candidato (Susel Paredes)
+   - AVANZA PAIS: Sello/Símbolo (Tren / Ferrocarril) | Partido (Avanza País) | Candidato (Francis Allison)
+   - PODEMOS: Sello/Símbolo (Letra 'P' tricolor con estrellas) | Partido (Podemos Perú) | Candidato (Daniel Urresti)
+   - JP: Sello/Símbolo (Letras 'JP' rojo y verde) | Partido (Juntos por el Perú) | Candidato (Oswaldo Vargas)
+   - OBRAS: Sello/Símbolo (Manos estrechadas / Sol / Obras) | Partido (Partido Cívico Obras) | Candidato (Ricardo Belmont)
+   - FREPAP: Sello/Símbolo (Pescadito / Pez israelita) | Partido (FREPAP) | Candidato (Segundo Valdez)
+   - ACCION POPULAR: Sello/Símbolo (Lampa / Pala roja y blanca) | Partido (Acción Popular) | Candidato (Carlos Tejada)
+   - ESPERANZA: Sello/Símbolo (Escarapela verde / 'E') | Partido (Frente de la Esperanza 2021) | Candidato (Elizabeth León)
+   - VENCEREMOS: Sello/Símbolo (Tres siluetas / 'V') | Partido (Alianza Electoral Venceremos) | Candidato (Juan Alvarado)
+   - VISION PERU: Sello/Símbolo (Ojo / Sol radiante) | Partido (Visión Perú) | Candidato (Santiago Abarca)
+   - APRA: Sello/Símbolo (Estrella roja de cinco puntas) | Partido (Partido Aprista Peruano) | Candidata (Mónica Yaya)
+   - FP: Sello/Símbolo (Letra 'K' naranja) | Partido (Fuerza Popular) | Candidato (Samuel Daza)
+   - PPC: Sello/Símbolo (Mapa verde del Perú) | Partido (Partido Popular Cristiano) | Candidato (Edgardo de Pomar)
+   - PROGRESEMOS: Sello/Símbolo (Flor multicolor / sol) | Partido (Progresemos) | Candidato (Luis Miguel Llanos)
+   - MORADO: Sello/Símbolo (Letra 'M' morada / antorcha) | Partido (Partido Morado) | Candidata (Victoria La Cruz)
+   - BUEN GOBIERNO: Sello/Símbolo (Manos entrelazadas / PBG) | Partido (Partido del Buen Gobierno) | Candidato (Carlos Gallardo)
+   - VERDE: Sello/Símbolo (Árbol / girasol verde) | Partido (Partido Demócrata Verde) | Candidata (Flor de María Hurtado)
+   - PERU LIBRE: Sello/Símbolo (Lápiz escolar amarillo y rojo) | Partido (Perú Libre) | Candidato (Rubén Ramírez)
+   - TIERRA VERDE: Sello/Símbolo (Hoja verde / Tierra) | Partido (Coalición Transformadora Tierra Verde) | Candidato (Yehude Simon)
+   - PUEBLO CONSCIENTE: Sello/Símbolo (Antorcha / Manos unidas) | Partido (Pueblo Consciente) | Candidato (Luis Huette)
+   - PPP: Sello/Símbolo (Escudo rojo / PPP) | Partido (Partido Patriótico del Perú) | Candidato (Sandro Caller)
+   - INTEGRIDAD: Sello/Símbolo (Balanza de justicia / ID) | Partido (Integridad Democrática) | Candidata (Jessica Linares)
+   - FUERZA CIUDADANA: Sello/Símbolo (Mano alzada / Flecha) | Partido (Fuerza Ciudadana) | Candidato (Rubén Bonilla)
+   - BATALLA PERU: Sello/Símbolo (Casco / Escudo de batalla) | Partido (Batalla Perú) | Candidato (Samir Quispe)
+   - APP: Sello/Símbolo (Letra 'A' roja en círculo blanco) | Partido (Alianza para el Progreso)
+   - ALIANZA REGIONAL: Sello/Símbolo (Estrella dorada / Sol ARP) | Partido (Alianza Regional por el Perú)
+   - BLANCO: Fila de Votos en Blanco
+   - NULOS: Fila de Votos Nulos / Viciados
+   - IMPUGNADOS: Fila de Votos Impugnados
 
-4. Si el acta contiene 2 columnas (LIMA / PROVINCIAL y ${distrito} / DISTRITAL), extrae ambas en sus respectivos campos.
-5. Si el acta es de una sola columna para ${seccion === 'distrital' ? 'DISTRITAL (' + distrito + ')' : 'LIMA METROPOLITANA (PROVINCIAL)'}, llena los votos en la sección correspondiente.
+2. Extrae TODOS los partidos que figuren en la tabla o lista del acta. Si un partido no tiene votos visibles o está en blanco, asígnale 0.
+3. Si el acta contiene 2 columnas (LIMA / PROVINCIAL y ${distrito} / DISTRITAL), extrae ambas en sus respectivos campos.
+4. Si el acta es de una sola columna para ${seccion === 'distrital' ? 'DISTRITAL (' + distrito + ')' : 'LIMA METROPOLITANA (PROVINCIAL)'}, llena los votos en la sección correspondiente.
 
 Devuelve ÚNICAMENTE un JSON válido con esta estructura:
 {

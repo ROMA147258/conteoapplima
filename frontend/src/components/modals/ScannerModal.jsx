@@ -19,6 +19,7 @@ import {
   obtenerListaCandidatosProvincial, 
   obtenerListaCandidatosDistrital 
 } from '../../constants/distritos';
+import { PartyLogo } from '../common/PartyLogo';
 import { checkIsSuperAdmin } from '../../utils/helpers';
 
 // Componente visual para cada slot de foto (Slot 1 / Slot 2)
@@ -668,10 +669,11 @@ export const ScannerModal = () => {
                           gap: '8px'
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
                           <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', width: '22px' }}>
                             #{c.num}
                           </span>
+                          <PartyLogo partyKey={c.key} partyId={c.partyId} size={32} />
                           <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                             <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {c.candidato}
@@ -823,10 +825,11 @@ export const ScannerModal = () => {
                           gap: '8px'
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
                           <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', width: '22px' }}>
                             #{c.num}
                           </span>
+                          <PartyLogo partyKey={c.key} partyId={c.partyId} size={32} />
                           <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                             <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {c.candidato}
