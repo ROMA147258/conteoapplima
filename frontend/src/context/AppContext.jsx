@@ -312,8 +312,13 @@ export const AppProvider = ({ children }) => {
     setCurrentUser(null);
     sessionStorage.removeItem('votoReal_user');
     sessionStorage.removeItem('votoReal_popupEntradaMostrar');
+    localStorage.removeItem('votoReal_mesa_activa');
+    localStorage.removeItem('votoReal_colegio_activo');
     setCurrentVotes(JSON.parse(JSON.stringify(DEFAULT_VOTES)));
     setOcrVotes(JSON.parse(JSON.stringify(DEFAULT_VOTES)));
+    setOcrRawDetail('');
+    setIsScannerModalOpen(false);
+    setIsOcrDetailModalOpen(false);
     setCurrentView('view-login');
     showToast('Sesión cerrada correctamente.', 'info');
   };

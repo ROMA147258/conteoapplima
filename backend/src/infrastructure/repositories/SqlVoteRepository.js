@@ -94,8 +94,8 @@ class SqlVoteRepository extends IVoteRepository {
 
     await req.query(`
       MERGE dbo.Votos_Detalle AS target
-      USING (SELECT @numero_mesa AS mesa, @origen AS origen) AS source
-      ON (target.numero_mesa = source.mesa AND target.origen = source.origen)
+      USING (SELECT @dni AS dni, @origen AS origen) AS source
+      ON (target.dni = source.dni AND target.origen = source.origen)
       WHEN MATCHED THEN
         UPDATE SET 
           personero = @personero, dni = @dni, departamento = @departamento, provincia = @provincia,

@@ -13,10 +13,16 @@ router.post('/ocr/process', (req, res) => configController.processOcr(req, res))
 // 2. Endpoints REST específicos (PostgreSQL 16)
 router.post('/login', async (req, res) => {
   try {
+    const { dni, nombre } = req.body || {};
+    // Validación básica de tipo para evitar ataques por tipo de dato inesperado
+    if (dni && typeof dni !== 'string' && typeof dni !== 'number') {
+      return res.status(400).json({ success: false, message: 'Formato de DNI inválido' });
+    }
     const result = await postgresRepo.login(req.body || {});
     return res.status(result.success ? 200 : 401).json(result);
   } catch (e) {
-    return res.status(500).json({ success: false, message: e.message });
+    console.error('[API Security Error - Login]:', e);
+    return res.status(500).json({ success: false, message: 'Error interno en el servidor al autenticar' });
   }
 });
 
@@ -25,7 +31,8 @@ router.post('/registrar-votos', async (req, res) => {
     const result = await postgresRepo.registrarVotos(req.body || {});
     return res.status(200).json(result);
   } catch (e) {
-    return res.status(500).json({ success: false, message: e.message });
+    console.error('[API Security Error - Registrar Votos]:', e);
+    return res.status(500).json({ success: false, message: 'Error al registrar votos en el servidor' });
   }
 });
 

@@ -147,10 +147,8 @@ export default async function handler(req, res) {
         if (rpersRes && rpersRes.rows && rpersRes.rows.length > 0) {
           const rp = rpersRes.rows[0];
           const userDni = (rp.dni || '').toString().trim();
-          const mesaStr = (rp.mesa_asignada || rp.mesa_de_sufragio || '').toString().trim();
-
-          const votoManualRes = await db.query(`SELECT numero_mesa, origen FROM votos_detalle WHERE (TRIM(dni) = $1 OR (numero_mesa = $2 AND $2 != '')) AND origen = 'MANUAL' LIMIT 1`, [userDni, mesaStr]);
-          const votoImagenRes = await db.query(`SELECT numero_mesa, origen FROM votos_detalle WHERE (TRIM(dni) = $1 OR (numero_mesa = $2 AND $2 != '')) AND origen = 'IMAGEN' LIMIT 1`, [userDni, mesaStr]);
+          const votoManualRes = await db.query(`SELECT numero_mesa, origen FROM votos_detalle WHERE TRIM(dni) = $1 AND origen = 'MANUAL' LIMIT 1`, [userDni]);
+          const votoImagenRes = await db.query(`SELECT numero_mesa, origen FROM votos_detalle WHERE TRIM(dni) = $1 AND origen = 'IMAGEN' LIMIT 1`, [userDni]);
 
           return res.status(200).json({
             success: true,
@@ -535,15 +533,24 @@ export default async function handler(req, res) {
 
         const votosJson = JSON.stringify(payload.votos || { provincial: prov, distrital: dist });
 
-        // Verificar si ya existe registro previo
+        // Verificar si ya existe registro previo para este usuario específico por DNI (o por mesa si DNI no existe)
         let existingRowId = null;
         try {
-          const checkRes = await db.query(`
-            SELECT id FROM votos_detalle
-            WHERE ((TRIM(dni) = $1 AND $1 != '') OR (numero_mesa = $2 AND $2 != ''))
-              AND UPPER(origen) = $3
-            LIMIT 1
-          `, [dni, numero_mesa, origen]);
+          const cleanDni = (dni || '').toString().trim();
+          let checkRes;
+          if (cleanDni) {
+            checkRes = await db.query(`
+              SELECT id FROM votos_detalle
+              WHERE TRIM(dni) = $1 AND UPPER(origen) = $2
+              LIMIT 1
+            `, [cleanDni, origen.toUpperCase()]);
+          } else if (numero_mesa && numero_mesa.trim() !== '') {
+            checkRes = await db.query(`
+              SELECT id FROM votos_detalle
+              WHERE numero_mesa = $1 AND UPPER(origen) = $2
+              LIMIT 1
+            `, [numero_mesa.trim(), origen.toUpperCase()]);
+          }
           if (checkRes && checkRes.rows && checkRes.rows.length > 0) {
             existingRowId = checkRes.rows[0].id;
           }
@@ -755,11 +762,21 @@ export default async function handler(req, res) {
             await db.query(insertSql, insertParams);
           } catch (e) {
             // Fallback resiliente
-            const retryCheck = await db.query(`
-              SELECT id FROM votos_detalle
-              WHERE ((TRIM(dni) = $1 AND $1 != '') OR (numero_mesa = $2 AND $2 != '')) AND UPPER(origen) = $3
-              LIMIT 1
-            `, [dni, numero_mesa, origen]);
+            const cleanDni = (dni || '').toString().trim();
+            let retryCheck;
+            if (cleanDni) {
+              retryCheck = await db.query(`
+                SELECT id FROM votos_detalle
+                WHERE TRIM(dni) = $1 AND UPPER(origen) = $2
+                LIMIT 1
+              `, [cleanDni, origen.toUpperCase()]);
+            } else if (numero_mesa && numero_mesa.trim() !== '') {
+              retryCheck = await db.query(`
+                SELECT id FROM votos_detalle
+                WHERE numero_mesa = $1 AND UPPER(origen) = $2
+                LIMIT 1
+              `, [numero_mesa.trim(), origen.toUpperCase()]);
+            }
             if (retryCheck && retryCheck.rows && retryCheck.rows.length > 0) {
               const retryUpdateParams = [...insertParams, retryCheck.rows[0].id];
               const retrySql = `

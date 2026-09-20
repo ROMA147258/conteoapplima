@@ -4,13 +4,79 @@ if (typeof dns.setDefaultResultOrder === 'function') {
 }
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const env = require('./config/env');
 const apiRoutes = require('./interfaces/routes/apiRoutes');
 const errorHandler = require('./interfaces/middleware/errorHandler');
 
 const app = express();
 
-app.use(cors());
+// 1. Ocultar que usamos Express y activar cabeceras de seguridad HTTP
+app.disable('x-powered-by');
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // Permite flexibilidad con CDNs de React/Vercel
+    crossOriginEmbedderPolicy: false
+  })
+);
+
+// 2. Configurar CORS estricto y seguro
+const allowedOrigins = [
+  'https://conteoapplima.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000'
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Permitir solicitudes sin origen (como apps móviles, Postman o curl)
+      if (!origin) return callback(null, true);
+      
+      // Permitir orígenes en la lista o cualquier subdominio vercel.app
+      if (
+        allowedOrigins.indexOf(origin) !== -1 ||
+        /^https:\/\/.*\.vercel\.app$/.test(origin)
+      ) {
+        return callback(null, true);
+      }
+      return callback(new Error('Acceso no permitido por la política CORS'));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  })
+);
+
+// 3. Rate Limiter General (Máximo 300 peticiones por minuto por IP para evitar DoS)
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Has superado el límite de solicitudes. Por favor espera un momento.'
+  }
+});
+app.use('/api/', apiLimiter);
+
+// 4. Rate Limiter Estricto para Login (Anti Fuerza Bruta: máximo 15 intentos por minuto)
+const authLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Demasiados intentos de acceso fallidos. Por seguridad, espera 1 minuto.'
+  }
+});
+app.use('/api/login', authLimiter);
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 

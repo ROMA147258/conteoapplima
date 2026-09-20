@@ -182,6 +182,15 @@ export const ScannerModal = () => {
   const [distImages, setDistImages] = useState([null, null]);
   const [distVotes, setDistVotes] = useState(() => (hasSavedDist ? { ...ocrVotes.distrital } : {}));
 
+  // Resetear fotos y votos cuando cambia el usuario (DNI) para aislamiento total entre cuentas
+  useEffect(() => {
+    setProvImages([null, null]);
+    setDistImages([null, null]);
+    setActiveStep('PROVINCIAL');
+    setProvVotes(ocrVotes?.provincial ? { ...ocrVotes.provincial } : {});
+    setDistVotes(ocrVotes?.distrital ? { ...ocrVotes.distrital } : {});
+  }, [currentUser?.dni]);
+
   // Sincronizar estado local al abrir el modal (sin sobrescribir hasta presionar Finalizar)
   useEffect(() => {
     if (isScannerModalOpen) {
@@ -381,6 +390,8 @@ export const ScannerModal = () => {
       showToast('✅ Conteo por imagen finalizado y guardado en la mesa.', 'success');
     }
 
+    setProvImages([null, null]);
+    setDistImages([null, null]);
     setIsScannerModalOpen(false);
   };
 

@@ -327,13 +327,14 @@ class PostgresRepository {
       }
 
       // 3. Votos Manuales
+      // 3. Votos Manuales
       try {
         const vCheck = await query(`
           SELECT numero_mesa, origen, p_total_votos
           FROM votos_detalle
-          WHERE (TRIM(dni) = $1 OR (numero_mesa = $2 AND $2 != '')) AND origen = 'MANUAL'
+          WHERE TRIM(dni) = $1 AND origen = 'MANUAL'
           LIMIT 1
-        `, [dniTrim, mesaTrim]);
+        `, [dniTrim]);
         u.voto_manual_enviado = Boolean(vCheck && vCheck.rows && vCheck.rows.length > 0);
         u.voto_manual_data = vCheck.rows[0] || null;
       } catch (e) {
@@ -345,9 +346,9 @@ class PostgresRepository {
         const vImgCheck = await query(`
           SELECT numero_mesa, origen, p_total_votos
           FROM votos_detalle
-          WHERE (TRIM(dni) = $1 OR (numero_mesa = $2 AND $2 != '')) AND origen = 'IMAGEN'
+          WHERE TRIM(dni) = $1 AND origen = 'IMAGEN'
           LIMIT 1
-        `, [dniTrim, mesaTrim]);
+        `, [dniTrim]);
         u.voto_imagen_enviado = Boolean(vImgCheck && vImgCheck.rows && vImgCheck.rows.length > 0);
         u.voto_imagen_data = vImgCheck.rows[0] || null;
       } catch (e) {
@@ -496,15 +497,23 @@ class PostgresRepository {
     const votosJson = JSON.stringify(data.votos || { provincial: prov, distrital: dist });
 
     // ⚡ Manejo de colisiones / UPSERT seguro garantizado:
-    // Primero verificamos si ya existe registro previo por (dni, origen) o por (mesa, origen)
+    // Primero verificamos si ya existe registro previo para este usuario por (dni, origen) o por (mesa, origen) si no hay DNI
     let existingRowId = null;
     try {
-      const checkRes = await query(`
-        SELECT id FROM votos_detalle
-        WHERE ((TRIM(dni) = $1 AND $1 != '') OR (numero_mesa = $2 AND $2 != ''))
-          AND UPPER(origen) = $3
-        LIMIT 1
-      `, [dniStr, mesaStr, origenStr]);
+      let checkRes;
+      if (dniStr) {
+        checkRes = await query(`
+          SELECT id FROM votos_detalle
+          WHERE TRIM(dni) = $1 AND UPPER(origen) = $2
+          LIMIT 1
+        `, [dniStr, origenStr]);
+      } else if (mesaStr) {
+        checkRes = await query(`
+          SELECT id FROM votos_detalle
+          WHERE numero_mesa = $1 AND UPPER(origen) = $2
+          LIMIT 1
+        `, [mesaStr, origenStr]);
+      }
       if (checkRes && checkRes.rows && checkRes.rows.length > 0) {
         existingRowId = checkRes.rows[0].id;
       }
@@ -737,11 +746,20 @@ class PostgresRepository {
       } catch (insertErr) {
         // Fallback resiliente si hubo colisión concurrente
         console.warn('[PostgresRepository] Colisión detectada en inserción, reintentando como actualización...');
-        const retryCheck = await query(`
-          SELECT id FROM votos_detalle
-          WHERE ((TRIM(dni) = $1 AND $1 != '') OR (numero_mesa = $2 AND $2 != '')) AND UPPER(origen) = $3
-          LIMIT 1
-        `, [dniStr, mesaStr, origenStr]);
+        let retryCheck;
+        if (dniStr) {
+          retryCheck = await query(`
+            SELECT id FROM votos_detalle
+            WHERE TRIM(dni) = $1 AND UPPER(origen) = $2
+            LIMIT 1
+          `, [dniStr, origenStr]);
+        } else if (mesaStr) {
+          retryCheck = await query(`
+            SELECT id FROM votos_detalle
+            WHERE numero_mesa = $1 AND UPPER(origen) = $2
+            LIMIT 1
+          `, [mesaStr, origenStr]);
+        }
         if (retryCheck && retryCheck.rows && retryCheck.rows.length > 0) {
           const retryUpdateParams = [...insertParams, retryCheck.rows[0].id];
           const retrySql = `

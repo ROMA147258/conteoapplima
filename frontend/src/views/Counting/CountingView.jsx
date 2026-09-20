@@ -89,16 +89,29 @@ export const CountingView = () => {
 
   const attendanceFileRef = useRef(null);
 
-  // Si no hay asistencia confirmada en la BD, asegurar que los campos inicien vacíos
+  // Sincronizar mesa y local cada vez que cambia el usuario activo (DNI)
   useEffect(() => {
-    if (!isAttendanceConfirmed) {
-      const localConfirmed = localStorage.getItem(`votoReal_attConfirmed_${currentUser?.dni}`) === 'true';
-      if (!localConfirmed) {
-        setMesaInput('');
-        setColegioInput('');
-      }
+    if (!currentUser?.dni) {
+      setMesaInput('');
+      setColegioInput('');
+      setIsManualModalOpen(false);
+      setIsOcrModalOpen(false);
+      return;
     }
-  }, [isAttendanceConfirmed, currentUser?.dni]);
+
+    const localConfirmed = localStorage.getItem(`votoReal_attConfirmed_${currentUser.dni}`) === 'true';
+    if (isAttendanceConfirmed || localConfirmed) {
+      const savedMesa = localStorage.getItem(`votoReal_attMesa_${currentUser.dni}`) || currentUser.mesa || '';
+      const savedColegio = localStorage.getItem(`votoReal_attColegio_${currentUser.dni}`) || currentUser.colegio || '';
+      setMesaInput(savedMesa);
+      setColegioInput(savedColegio);
+    } else {
+      setMesaInput(currentUser.mesa || '');
+      setColegioInput(currentUser.colegio || '');
+    }
+    setIsManualModalOpen(false);
+    setIsOcrModalOpen(false);
+  }, [currentUser?.dni, isAttendanceConfirmed]);
 
   // Sincronización en tiempo real: el colegio SOLO se detecta cuando el usuario escribe el número de mesa
   useEffect(() => {

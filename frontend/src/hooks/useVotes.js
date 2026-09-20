@@ -154,7 +154,29 @@ export const useVotes = () => {
 
   // Sincronización en tiempo real con votos_detalle en la base de datos
   useEffect(() => {
-    if (!currentUser?.dni) return;
+    if (!currentUser?.dni) {
+      setIsManualLocked(false);
+      setIsOcrLocked(false);
+      return;
+    }
+
+    // Inicialización inmediata según el DNI actual antes de la respuesta asíncrona
+    if (isSuperAdmin) {
+      setIsManualLocked(false);
+      setIsOcrLocked(false);
+    } else {
+      const isMLocked = Boolean(currentUser.voto_manual_enviado) || localStorage.getItem(`votoReal_manualLocked_${currentUser.dni}`) === 'true';
+      const isOLocked = Boolean(currentUser.voto_imagen_enviado) || localStorage.getItem(`votoReal_ocrLocked_${currentUser.dni}`) === 'true';
+      setIsManualLocked(isMLocked);
+      setIsOcrLocked(isOLocked);
+
+      try {
+        const savedManual = localStorage.getItem(`votoReal_manualVotes_${currentUser.dni}`);
+        setCurrentVotes(savedManual ? JSON.parse(savedManual) : JSON.parse(JSON.stringify(DEFAULT_VOTES)));
+        const savedOcr = localStorage.getItem(`votoReal_ocrVotes_${currentUser.dni}`);
+        setOcrVotes(savedOcr ? JSON.parse(savedOcr) : JSON.parse(JSON.stringify(DEFAULT_VOTES)));
+      } catch (e) {}
+    }
 
     let isMounted = true;
     const syncVoteStatusFromDb = async () => {

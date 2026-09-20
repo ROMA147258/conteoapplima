@@ -251,23 +251,19 @@ class ElectoralBloomManager {
   /**
    * Consulta si un DNI o Mesa ya envió votos manuales
    */
-  hasVotoManual(dni, mesa) {
+  hasVotoManual(dni) {
     if (!this.isInitialized) return false;
     const cleanDni = (dni || '').toString().trim();
-    const cleanMesa = (mesa || '').toString().trim();
-    return (cleanDni && this.votoManualFilter.has(cleanDni)) || 
-           (cleanMesa && this.votoManualFilter.has(cleanMesa));
+    return Boolean(cleanDni && this.votoManualFilter.has(cleanDni));
   }
 
   /**
-   * Consulta si un DNI o Mesa ya envió votos por imagen/OCR
+   * Consulta si un DNI ya envió votos por imagen/OCR
    */
-  hasVotoImagen(dni, mesa) {
+  hasVotoImagen(dni) {
     if (!this.isInitialized) return false;
     const cleanDni = (dni || '').toString().trim();
-    const cleanMesa = (mesa || '').toString().trim();
-    return (cleanDni && this.votoImagenFilter.has(cleanDni)) || 
-           (cleanMesa && this.votoImagenFilter.has(cleanMesa));
+    return Boolean(cleanDni && this.votoImagenFilter.has(cleanDni));
   }
 
   /**
@@ -282,10 +278,8 @@ class ElectoralBloomManager {
 
     if (cleanOrigen === 'IMAGEN') {
       if (cleanDni) this.votoImagenFilter.add(cleanDni);
-      if (cleanMesa) this.votoImagenFilter.add(cleanMesa);
     } else {
       if (cleanDni) this.votoManualFilter.add(cleanDni);
-      if (cleanMesa) this.votoManualFilter.add(cleanMesa);
     }
   }
 
