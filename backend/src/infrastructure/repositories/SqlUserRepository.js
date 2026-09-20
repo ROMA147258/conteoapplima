@@ -96,7 +96,14 @@ class SqlUserRepository extends IUserRepository {
           u.origenHoja = 'Rpersoneros';
           u.tabla_origen = 'dbo.Rpersoneros';
           u.rol = 'Personero';
-          u.tipo_interfaz = 'personero_conteo';
+          const ubicacionRaw = (u.ubicacion || u.distrito_asignado || u.distrito_donde_vota || u.distrito || '')
+            .toString()
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .trim();
+          const isVMT = ubicacionRaw.includes('villa maria del triunfo') || ubicacionRaw.includes('vmt');
+          u.tipo_interfaz = isVMT ? 'personero_asistencia' : 'personero_conteo';
           return u;
         } else {
           let errorMsg = 'Acceso Denegado: Tus credenciales deben estar en estado Confirmado y tu evaluación en estado Aprobado para ingresar.';

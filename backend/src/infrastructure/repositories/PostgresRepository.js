@@ -113,7 +113,14 @@ class PostgresRepository {
           u.origenHoja = 'rpersoneros';
           u.tabla_origen = 'rpersoneros';
           u.rol = 'Personero';
-          u.tipo_interfaz = 'personero_conteo';
+          const ubicacionRaw = (u.ubicacion || u.distrito_asignado || u.distrito_donde_vota || u.distrito || '')
+            .toString()
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .trim();
+          const isVMT = ubicacionRaw.includes('villa maria del triunfo') || ubicacionRaw.includes('vmt');
+          u.tipo_interfaz = isVMT ? 'personero_asistencia' : 'personero_conteo';
         }
         return { valid: true, user: u };
       } else {

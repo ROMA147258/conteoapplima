@@ -67,6 +67,24 @@ export const CountingView = () => {
     (currentUser.rol || '').toLowerCase().includes('admin')
   );
 
+  // Detección de Personero de Villa María del Triunfo (VMT)
+  const cleanUbicacion = (
+    currentUser?.ubicacion ||
+    currentUser?.distrito ||
+    currentUser?.distrito_asignado ||
+    currentUser?.distrito_donde_vota ||
+    ubicacion ||
+    ''
+  )
+    .toString()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+
+  const isVMT = cleanUbicacion.includes('villa maria del triunfo') || cleanUbicacion === 'vmt';
+  const isPersoneroVMT = isVMT && !isSuperAdmin;
+
   const [mesaInput, setMesaInput] = useState(() => {
     if (currentUser?.dni) {
       const isConfirmed = localStorage.getItem(`votoReal_attConfirmed_${currentUser.dni}`) === 'true';
@@ -283,415 +301,459 @@ export const CountingView = () => {
         />
 
         {/* ======================================================== */}
-        {/* PANEL PRINCIPAL COMPACTO CON BOTONES / TARJETAS POPUP    */}
+        {/* PANEL DE ESCRUTINIO: REGISTRO MANUAL Y POR IMAGEN        */}
+        {/* (Exclusivo para otros distritos; VMT solo asistencia)    */}
         {/* ======================================================== */}
-        <div
-          id="counting-hub-container"
-          className="glass"
-          style={{
-            marginTop: '14px',
-            padding: '16px',
-            borderRadius: '16px',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            background: 'linear-gradient(180deg, rgba(30, 41, 59, 0.45) 0%, rgba(15, 23, 42, 0.7) 100%)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', paddingBottom: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Layers size={18} color="#38bdf8" />
-              <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f1f5f9' }}>
-                Escrutinio
-              </span>
-            </div>
-            <span style={{ fontSize: '0.72rem', color: '#94a3b8', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '10px' }}>
-              Mesa de sufragio {mesaInput || '---'}
-            </span>
-          </div>
-
+        {isPersoneroVMT ? (
           <div
+            className="glass"
             style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+              marginTop: '14px',
+              padding: '20px 16px',
+              borderRadius: '16px',
+              border: '1px solid rgba(56, 189, 248, 0.25)',
+              background: 'linear-gradient(180deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.75) 100%)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              textAlign: 'center',
+              gap: '10px'
+            }}
+          >
+            <div
+              style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '12px',
+                background: 'rgba(56, 189, 248, 0.15)',
+                border: '1px solid rgba(56, 189, 248, 0.35)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#38bdf8'
+              }}
+            >
+              <CheckCircle2 size={24} />
+            </div>
+            <div>
+              <h3 style={{ margin: '0 0 4px 0', fontSize: '1rem', fontWeight: 700, color: '#f8fafc' }}>
+                Módulo de Asistencia - Villa María del Triunfo
+              </h3>
+              <p style={{ margin: 0, fontSize: '0.82rem', color: '#94a3b8', maxWidth: '420px', lineHeight: 1.4 }}>
+                Tu función designada en tu mesa es la <strong>confirmación de asistencia</strong> en tu local de votación. Al confirmar tu llegada con tu fotografía de acreditación, tu registro quedará guardado satisfactoriamente.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div
+            id="counting-hub-container"
+            className="glass"
+            style={{
+              marginTop: '14px',
+              padding: '16px',
+              borderRadius: '16px',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              background: 'linear-gradient(180deg, rgba(30, 41, 59, 0.45) 0%, rgba(15, 23, 42, 0.7) 100%)',
+              display: 'flex',
+              flexDirection: 'column',
               gap: '12px'
             }}
           >
-            {/* 1. BOTÓN / TARJETA POPUP REGISTRO MANUAL */}
-            <div
-              className="glass"
-              style={{
-                padding: '14px',
-                borderRadius: '12px',
-                border: isManualLocked
-                  ? '1px solid rgba(34, 197, 94, 0.35)'
-                  : '1px solid rgba(56, 189, 248, 0.3)',
-                background: isManualLocked
-                  ? 'linear-gradient(145deg, rgba(34, 197, 94, 0.08) 0%, rgba(15, 23, 42, 0.4) 100%)'
-                  : 'linear-gradient(145deg, rgba(56, 189, 248, 0.08) 0%, rgba(15, 23, 42, 0.4) 100%)',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                gap: '10px'
-              }}
-            >
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <div
-                    style={{
-                      width: '38px',
-                      height: '38px',
-                      borderRadius: '10px',
-                      background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(37, 99, 235, 0.3))',
-                      border: '1px solid rgba(56, 189, 248, 0.4)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#38bdf8'
-                    }}
-                  >
-                    <ClipboardList size={20} />
-                  </div>
-
-                  {/* Estado */}
-                  {isManualLocked ? (
-                    isSuperAdmin ? (
-                      <span
-                        style={{
-                          fontSize: '0.68rem',
-                          fontWeight: 700,
-                          color: '#fef08a',
-                          background: 'rgba(234, 179, 8, 0.2)',
-                          padding: '2px 8px',
-                          borderRadius: '10px',
-                          border: '1px solid rgba(234, 179, 8, 0.4)',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}
-                      >
-                        <ShieldAlert size={12} /> Modificar (Superadmin)
-                      </span>
-                    ) : (
-                      <span
-                        style={{
-                          fontSize: '0.68rem',
-                          fontWeight: 700,
-                          color: '#86efac',
-                          background: 'rgba(34, 197, 94, 0.2)',
-                          padding: '2px 8px',
-                          borderRadius: '10px',
-                          border: '1px solid rgba(34, 197, 94, 0.4)',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}
-                      >
-                        <CheckCircle2 size={12} /> Completado
-                      </span>
-                    )
-                  ) : (
-                    <span
-                      style={{
-                        fontSize: '0.68rem',
-                        fontWeight: 600,
-                        color: '#94a3b8',
-                        background: 'rgba(255, 255, 255, 0.06)',
-                        padding: '2px 8px',
-                        borderRadius: '10px',
-                        border: '1px solid rgba(255, 255, 255, 0.1)'
-                      }}
-                    >
-                      Pendiente
-                    </span>
-                  )}
-                </div>
-
-                <h4 style={{ margin: '0 0 2px 0', fontSize: '0.96rem', fontWeight: 700, color: '#f8fafc' }}>
-                  Registro Manual
-                </h4>
-                <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8', lineHeight: 1.3 }}>
-                  Ingreso casilla por casilla para candidatos y actas.
-                </p>
-
-                {totalManualVotes > 0 && (
-                  <div style={{ marginTop: '6px', fontSize: '0.74rem', color: '#38bdf8', fontWeight: 600 }}>
-                    📊 Votos registrados: {totalManualVotes}
-                  </div>
-                )}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', paddingBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Layers size={18} color="#38bdf8" />
+                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f1f5f9' }}>
+                  Escrutinio
+                </span>
               </div>
-
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  type="button"
-                  id="btn-open-manual-modal"
-                  className="btn btn-primary"
-                  onClick={() => setIsManualModalOpen(true)}
-                  disabled={isManualEffectiveLocked}
-                  style={{
-                    flex: 1,
-                    background: isManualEffectiveLocked
-                      ? 'rgba(255, 255, 255, 0.05)'
-                      : 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-                    borderColor: isManualEffectiveLocked ? 'rgba(255,255,255,0.1)' : '#38bdf8',
-                    color: isManualEffectiveLocked ? '#94a3b8' : '#ffffff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '5px',
-                    padding: '10px 8px',
-                    fontWeight: 700,
-                    fontSize: '0.84rem',
-                    borderRadius: '8px',
-                    cursor: isManualEffectiveLocked ? 'not-allowed' : 'pointer',
-                    boxShadow: isManualEffectiveLocked ? 'none' : '0 4px 12px rgba(2, 132, 199, 0.25)',
-                    opacity: isManualEffectiveLocked ? 0.6 : 1,
-                    pointerEvents: isManualEffectiveLocked ? 'none' : 'auto'
-                  }}
-                >
-                  {isManualEffectiveLocked ? <Lock size={15} /> : <ClipboardList size={15} />}
-                  <span>{isSuperAdmin && isManualLocked ? 'Modificar' : isManualEffectiveLocked ? 'Transmitido (Bloqueado)' : 'Registro Manual'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  id="btn-view-manual-modal"
-                  className="btn"
-                  onClick={() => setIsManualModalOpen(true)}
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.06)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#e2e8f0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '4px',
-                    padding: '10px 14px',
-                    fontSize: '0.84rem',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontWeight: 600
-                  }}
-                  title="Ver tabla de votos manuales"
-                >
-                  <Eye size={15} />
-                  <span>Ver</span>
-                </button>
-              </div>
+              <span style={{ fontSize: '0.72rem', color: '#94a3b8', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '10px' }}>
+                Mesa de sufragio {mesaInput || '---'}
+              </span>
             </div>
 
-            {/* 2. BOTÓN / TARJETA POPUP CONTEO POR IMAGEN (OCR) */}
             <div
-              className="glass"
               style={{
-                padding: '14px',
-                borderRadius: '12px',
-                border: isOcrLocked
-                  ? '1px solid rgba(168, 85, 247, 0.4)'
-                  : '1px solid rgba(168, 85, 247, 0.3)',
-                background: isOcrLocked
-                  ? 'linear-gradient(145deg, rgba(168, 85, 247, 0.08) 0%, rgba(15, 23, 42, 0.4) 100%)'
-                  : 'linear-gradient(145deg, rgba(168, 85, 247, 0.08) 0%, rgba(15, 23, 42, 0.4) 100%)',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                gap: '10px'
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                gap: '12px'
               }}
             >
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <div
-                    style={{
-                      width: '38px',
-                      height: '38px',
-                      borderRadius: '10px',
-                      background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(124, 58, 237, 0.35))',
-                      border: '1px solid rgba(168, 85, 247, 0.4)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#c084fc'
-                    }}
-                  >
-                    <Camera size={20} />
-                  </div>
+              {/* 1. BOTÓN / TARJETA POPUP REGISTRO MANUAL */}
+              <div
+                className="glass"
+                style={{
+                  padding: '14px',
+                  borderRadius: '12px',
+                  border: isManualLocked
+                    ? '1px solid rgba(34, 197, 94, 0.35)'
+                    : '1px solid rgba(56, 189, 248, 0.3)',
+                  background: isManualLocked
+                    ? 'linear-gradient(145deg, rgba(34, 197, 94, 0.08) 0%, rgba(15, 23, 42, 0.4) 100%)'
+                    : 'linear-gradient(145deg, rgba(56, 189, 248, 0.08) 0%, rgba(15, 23, 42, 0.4) 100%)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  gap: '10px'
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <div
+                      style={{
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '10px',
+                        background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(37, 99, 235, 0.3))',
+                        border: '1px solid rgba(56, 189, 248, 0.4)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#38bdf8'
+                      }}
+                    >
+                      <ClipboardList size={20} />
+                    </div>
 
-                  {/* Estado */}
-                  {isOcrEffectiveLocked ? (
-                    isSuperAdmin ? (
-                      <span
-                        style={{
-                          fontSize: '0.68rem',
-                          fontWeight: 700,
-                          color: '#fef08a',
-                          background: 'rgba(234, 179, 8, 0.2)',
-                          padding: '2px 8px',
-                          borderRadius: '10px',
-                          border: '1px solid rgba(234, 179, 8, 0.4)',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}
-                      >
-                        <ShieldAlert size={12} /> Reescanear (Superadmin)
-                      </span>
+                    {/* Estado */}
+                    {isManualLocked ? (
+                      isSuperAdmin ? (
+                        <span
+                          style={{
+                            fontSize: '0.68rem',
+                            fontWeight: 700,
+                            color: '#fef08a',
+                            background: 'rgba(234, 179, 8, 0.2)',
+                            padding: '2px 8px',
+                            borderRadius: '10px',
+                            border: '1px solid rgba(234, 179, 8, 0.4)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <ShieldAlert size={12} /> Modificar (Superadmin)
+                        </span>
+                      ) : (
+                        <span
+                          style={{
+                            fontSize: '0.68rem',
+                            fontWeight: 700,
+                            color: '#86efac',
+                            background: 'rgba(34, 197, 94, 0.2)',
+                            padding: '2px 8px',
+                            borderRadius: '10px',
+                            border: '1px solid rgba(34, 197, 94, 0.4)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <CheckCircle2 size={12} /> Completado
+                        </span>
+                      )
                     ) : (
                       <span
                         style={{
                           fontSize: '0.68rem',
-                          fontWeight: 700,
-                          color: '#4ade80',
-                          background: 'rgba(16, 185, 129, 0.2)',
+                          fontWeight: 600,
+                          color: '#94a3b8',
+                          background: 'rgba(255, 255, 255, 0.06)',
                           padding: '2px 8px',
                           borderRadius: '10px',
-                          border: '1px solid rgba(16, 185, 129, 0.4)',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px'
+                          border: '1px solid rgba(255, 255, 255, 0.1)'
                         }}
                       >
-                        <CheckCircle2 size={12} /> Completado
+                        Pendiente
                       </span>
-                    )
-                  ) : (
-                    <span
-                      style={{
-                        fontSize: '0.68rem',
-                        fontWeight: 600,
-                        color: '#94a3b8',
-                        background: 'rgba(255, 255, 255, 0.06)',
-                        padding: '2px 8px',
-                        borderRadius: '10px',
-                        border: '1px solid rgba(255, 255, 255, 0.1)'
-                      }}
-                    >
-                      Pendiente
-                    </span>
+                    )}
+                  </div>
+
+                  <h4 style={{ margin: '0 0 2px 0', fontSize: '0.96rem', fontWeight: 700, color: '#f8fafc' }}>
+                    Registro Manual
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8', lineHeight: 1.3 }}>
+                    Ingreso casilla por casilla para candidatos y actas.
+                  </p>
+
+                  {totalManualVotes > 0 && (
+                    <div style={{ marginTop: '6px', fontSize: '0.74rem', color: '#38bdf8', fontWeight: 600 }}>
+                      📊 Votos registrados: {totalManualVotes}
+                    </div>
                   )}
                 </div>
 
-                <h4 style={{ margin: '0 0 2px 0', fontSize: '0.96rem', fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  Conteo por Imagen (OCR)
-                </h4>
-                <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8', lineHeight: 1.3 }}>
-                  Escaneo inteligente de actas con IA y extracción de votos.
-                </p>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    id="btn-open-manual-modal"
+                    className="btn btn-primary"
+                    onClick={() => setIsManualModalOpen(true)}
+                    disabled={isManualEffectiveLocked}
+                    style={{
+                      flex: 1,
+                      background: isManualEffectiveLocked
+                        ? 'rgba(255, 255, 255, 0.05)'
+                        : 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                      borderColor: isManualEffectiveLocked ? 'rgba(255,255,255,0.1)' : '#38bdf8',
+                      color: isManualEffectiveLocked ? '#94a3b8' : '#ffffff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '5px',
+                      padding: '10px 8px',
+                      fontWeight: 700,
+                      fontSize: '0.84rem',
+                      borderRadius: '8px',
+                      cursor: isManualEffectiveLocked ? 'not-allowed' : 'pointer',
+                      boxShadow: isManualEffectiveLocked ? 'none' : '0 4px 12px rgba(2, 132, 199, 0.25)',
+                      opacity: isManualEffectiveLocked ? 0.6 : 1,
+                      pointerEvents: isManualEffectiveLocked ? 'none' : 'auto'
+                    }}
+                  >
+                    {isManualEffectiveLocked ? <Lock size={15} /> : <ClipboardList size={15} />}
+                    <span>{isSuperAdmin && isManualLocked ? 'Modificar' : isManualEffectiveLocked ? 'Transmitido (Bloqueado)' : 'Registro Manual'}</span>
+                  </button>
 
-                {totalOcrVotes > 0 && (
-                  <div style={{ marginTop: '6px', fontSize: '0.74rem', color: '#c084fc', fontWeight: 600 }}>
-                    📷 Votos de acta detectados: {totalOcrVotes}
-                  </div>
-                )}
+                  <button
+                    type="button"
+                    id="btn-view-manual-modal"
+                    className="btn"
+                    onClick={() => setIsManualModalOpen(true)}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.06)',
+                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                      color: '#e2e8f0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px',
+                      padding: '10px 14px',
+                      fontSize: '0.84rem',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: 600
+                    }}
+                    title="Ver tabla de votos manuales"
+                  >
+                    <Eye size={15} />
+                    <span>Ver</span>
+                  </button>
+                </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  type="button"
-                  id="btn-scan-camera-direct"
-                  className="btn btn-secondary"
-                  onClick={() => !isOcrEffectiveLocked && setIsScannerModalOpen(true)}
-                  disabled={isOcrEffectiveLocked}
-                  style={{
-                    flex: 1,
-                    background: isOcrEffectiveLocked
-                      ? 'rgba(255, 255, 255, 0.05)'
-                      : 'linear-gradient(135deg, #9333ea 0%, #7e22ce 100%)',
-                    borderColor: isOcrEffectiveLocked ? 'rgba(255,255,255,0.1)' : '#a855f7',
-                    color: isOcrEffectiveLocked ? '#94a3b8' : '#ffffff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '5px',
-                    padding: '10px 8px',
-                    fontWeight: 700,
-                    fontSize: '0.84rem',
-                    borderRadius: '8px',
-                    cursor: isOcrEffectiveLocked ? 'not-allowed' : 'pointer',
-                    boxShadow: isOcrEffectiveLocked ? 'none' : '0 4px 12px rgba(147, 51, 234, 0.25)',
-                    opacity: isOcrEffectiveLocked ? 0.6 : 1,
-                    pointerEvents: isOcrEffectiveLocked ? 'none' : 'auto'
-                  }}
-                >
-                  {isOcrEffectiveLocked ? <Lock size={15} /> : <Camera size={15} />}
-                  <span>{isSuperAdmin && isOcrLocked ? 'Reescanear' : isOcrEffectiveLocked ? 'Escaneado (Bloqueado)' : 'Escanear Acta'}</span>
-                </button>
+              {/* 2. BOTÓN / TARJETA POPUP CONTEO POR IMAGEN (OCR) */}
+              <div
+                className="glass"
+                style={{
+                  padding: '14px',
+                  borderRadius: '12px',
+                  border: isOcrLocked
+                    ? '1px solid rgba(168, 85, 247, 0.4)'
+                    : '1px solid rgba(168, 85, 247, 0.3)',
+                  background: isOcrLocked
+                    ? 'linear-gradient(145deg, rgba(168, 85, 247, 0.08) 0%, rgba(15, 23, 42, 0.4) 100%)'
+                    : 'linear-gradient(145deg, rgba(168, 85, 247, 0.08) 0%, rgba(15, 23, 42, 0.4) 100%)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  gap: '10px'
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <div
+                      style={{
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '10px',
+                        background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(124, 58, 237, 0.35))',
+                        border: '1px solid rgba(168, 85, 247, 0.4)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#c084fc'
+                      }}
+                    >
+                      <Camera size={20} />
+                    </div>
 
-                <button
-                  type="button"
-                  id="btn-open-ocr-review"
-                  className="btn"
-                  onClick={() => setIsOcrModalOpen(true)}
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.06)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#e2e8f0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '4px',
-                    padding: '10px 14px',
-                    fontSize: '0.84rem',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontWeight: 600
-                  }}
-                  title="Ver tabla de votos OCR"
-                >
-                  <Eye size={15} />
-                  <span>Ver</span>
-                </button>
+                    {/* Estado */}
+                    {isOcrEffectiveLocked ? (
+                      isSuperAdmin ? (
+                        <span
+                          style={{
+                            fontSize: '0.68rem',
+                            fontWeight: 700,
+                            color: '#fef08a',
+                            background: 'rgba(234, 179, 8, 0.2)',
+                            padding: '2px 8px',
+                            borderRadius: '10px',
+                            border: '1px solid rgba(234, 179, 8, 0.4)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <ShieldAlert size={12} /> Reescanear (Superadmin)
+                        </span>
+                      ) : (
+                        <span
+                          style={{
+                            fontSize: '0.68rem',
+                            fontWeight: 700,
+                            color: '#4ade80',
+                            background: 'rgba(16, 185, 129, 0.2)',
+                            padding: '2px 8px',
+                            borderRadius: '10px',
+                            border: '1px solid rgba(16, 185, 129, 0.4)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <CheckCircle2 size={12} /> Completado
+                        </span>
+                      )
+                    ) : (
+                      <span
+                        style={{
+                          fontSize: '0.68rem',
+                          fontWeight: 600,
+                          color: '#94a3b8',
+                          background: 'rgba(255, 255, 255, 0.06)',
+                          padding: '2px 8px',
+                          borderRadius: '10px',
+                          border: '1px solid rgba(255, 255, 255, 0.1)'
+                        }}
+                      >
+                        Pendiente
+                      </span>
+                    )}
+                  </div>
+
+                  <h4 style={{ margin: '0 0 2px 0', fontSize: '0.96rem', fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    Conteo por Imagen (OCR)
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8', lineHeight: 1.3 }}>
+                    Escaneo inteligente de actas con IA y extracción de votos.
+                  </p>
+
+                  {totalOcrVotes > 0 && (
+                    <div style={{ marginTop: '6px', fontSize: '0.74rem', color: '#c084fc', fontWeight: 600 }}>
+                      📷 Votos de acta detectados: {totalOcrVotes}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    id="btn-scan-camera-direct"
+                    className="btn btn-secondary"
+                    onClick={() => !isOcrEffectiveLocked && setIsScannerModalOpen(true)}
+                    disabled={isOcrEffectiveLocked}
+                    style={{
+                      flex: 1,
+                      background: isOcrEffectiveLocked
+                        ? 'rgba(255, 255, 255, 0.05)'
+                        : 'linear-gradient(135deg, #9333ea 0%, #7e22ce 100%)',
+                      borderColor: isOcrEffectiveLocked ? 'rgba(255,255,255,0.1)' : '#a855f7',
+                      color: isOcrEffectiveLocked ? '#94a3b8' : '#ffffff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '5px',
+                      padding: '10px 8px',
+                      fontWeight: 700,
+                      fontSize: '0.84rem',
+                      borderRadius: '8px',
+                      cursor: isOcrEffectiveLocked ? 'not-allowed' : 'pointer',
+                      boxShadow: isOcrEffectiveLocked ? 'none' : '0 4px 12px rgba(147, 51, 234, 0.25)',
+                      opacity: isOcrEffectiveLocked ? 0.6 : 1,
+                      pointerEvents: isOcrEffectiveLocked ? 'none' : 'auto'
+                    }}
+                  >
+                    {isOcrEffectiveLocked ? <Lock size={15} /> : <Camera size={15} />}
+                    <span>{isSuperAdmin && isOcrLocked ? 'Reescanear' : isOcrEffectiveLocked ? 'Escaneado (Bloqueado)' : 'Escanear Acta'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    id="btn-open-ocr-review"
+                    className="btn"
+                    onClick={() => setIsOcrModalOpen(true)}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.06)',
+                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                      color: '#e2e8f0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px',
+                      padding: '10px 14px',
+                      fontSize: '0.84rem',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: 600
+                    }}
+                    title="Ver tabla de votos OCR"
+                  >
+                    <Eye size={15} />
+                    <span>Ver</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </form>
 
       {/* ======================================================== */}
-      {/* POPUP / MODAL DE CONTEO MANUAL                           */}
+      {/* POPUP / MODAL DE CONTEO MANUAL Y OCR (Solo otros distritos) */}
       {/* ======================================================== */}
-      <ManualCountingModal
-        isOpen={isManualModalOpen}
-        onClose={() => setIsManualModalOpen(false)}
-        mesaInput={mesaInput}
-        ubicacion={ubicacion}
-        candidatosProvincial={candidatosProvincial}
-        candidatosDistrital={candidatosDistrital}
-        alcaldeProvincial={alcaldeProvincial}
-        alcaldeDistrital={alcaldeDistrital}
-        currentVotes={currentVotes}
-        onVoteChange={handleVoteChange}
-        onTransmit={() => {
-          handleTransmit('MANUAL');
-        }}
-        isTransmitting={isTransmitting}
-        isManualLocked={isManualLocked}
-        isSuperAdmin={Boolean(isSuperAdmin)}
-      />
+      {!isPersoneroVMT && (
+        <>
+          <ManualCountingModal
+            isOpen={isManualModalOpen}
+            onClose={() => setIsManualModalOpen(false)}
+            mesaInput={mesaInput}
+            ubicacion={ubicacion}
+            candidatosProvincial={candidatosProvincial}
+            candidatosDistrital={candidatosDistrital}
+            alcaldeProvincial={alcaldeProvincial}
+            alcaldeDistrital={alcaldeDistrital}
+            currentVotes={currentVotes}
+            onVoteChange={handleVoteChange}
+            onTransmit={() => {
+              handleTransmit('MANUAL');
+            }}
+            isTransmitting={isTransmitting}
+            isManualLocked={isManualLocked}
+            isSuperAdmin={Boolean(isSuperAdmin)}
+          />
 
-      {/* ======================================================== */}
-      {/* POPUP / MODAL DE CONTEO POR IMAGEN (OCR)                 */}
-      {/* ======================================================== */}
-      <OcrReviewModal
-        isOpen={isOcrModalOpen}
-        onClose={() => setIsOcrModalOpen(false)}
-        mesaInput={mesaInput}
-        ubicacion={ubicacion}
-        candidatosProvincial={candidatosProvincial}
-        candidatosDistrital={candidatosDistrital}
-        alcaldeProvincial={alcaldeProvincial}
-        alcaldeDistrital={alcaldeDistrital}
-        ocrVotes={ocrVotes}
-        onOpenScanner={() => {
-          setIsScannerModalOpen(true);
-        }}
-        onTransmit={() => {
-          handleTransmit('IMAGEN');
-        }}
-        isTransmitting={isTransmitting}
-        isOcrLocked={isOcrLocked}
-        isSuperAdmin={Boolean(isSuperAdmin)}
-      />
+          <OcrReviewModal
+            isOpen={isOcrModalOpen}
+            onClose={() => setIsOcrModalOpen(false)}
+            mesaInput={mesaInput}
+            ubicacion={ubicacion}
+            candidatosProvincial={candidatosProvincial}
+            candidatosDistrital={candidatosDistrital}
+            alcaldeProvincial={alcaldeProvincial}
+            alcaldeDistrital={alcaldeDistrital}
+            ocrVotes={ocrVotes}
+            onOpenScanner={() => {
+              setIsScannerModalOpen(true);
+            }}
+            onTransmit={() => {
+              handleTransmit('IMAGEN');
+            }}
+            isTransmitting={isTransmitting}
+            isOcrLocked={isOcrLocked}
+            isSuperAdmin={Boolean(isSuperAdmin)}
+          />
+        </>
+      )}
     </section>
   );
 };

@@ -150,6 +150,14 @@ export default async function handler(req, res) {
           const votoManualRes = await db.query(`SELECT numero_mesa, origen FROM votos_detalle WHERE TRIM(dni) = $1 AND origen = 'MANUAL' LIMIT 1`, [userDni]);
           const votoImagenRes = await db.query(`SELECT numero_mesa, origen FROM votos_detalle WHERE TRIM(dni) = $1 AND origen = 'IMAGEN' LIMIT 1`, [userDni]);
 
+          const ubicacionVMT = (rp.distrito_asignado || rp.distrito_donde_vota || 'Lima')
+            .toString()
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .trim();
+          const isPersoneroVMT = ubicacionVMT.includes('villa maria del triunfo') || ubicacionVMT === 'vmt';
+
           return res.status(200).json({
             success: true,
             status: 'success',
@@ -164,7 +172,7 @@ export default async function handler(req, res) {
               mesa: mesaStr,
               tabla_origen: 'rpersoneros',
               origenHoja: 'rpersoneros',
-              tipo_interfaz: 'personero_conteo',
+              tipo_interfaz: isPersoneroVMT ? 'personero_asistencia' : 'personero_conteo',
               voto_manual_enviado: votoManualRes.rows.length > 0,
               voto_imagen_enviado: votoImagenRes.rows.length > 0
             }
