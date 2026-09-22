@@ -196,7 +196,7 @@ class PostgresRepository {
         }
       } catch (e) {}
 
-      // 1.2 Coordinadores zonales (rcoordinadoresz)
+      // 1.2 Coordinadores zonales (rcoordinadoresz) - ACCESO EXCLUSIVO CON CLAVE
       try {
         const resZ = await query(`
           SELECT 
@@ -212,12 +212,26 @@ class PostgresRepository {
             clave_acceso,
             'rcoordinadoresz' AS tabla_origen
           FROM rcoordinadoresz
-          WHERE TRIM(clave_acceso) ILIKE $1 OR TRIM(token_verificacion) ILIKE $1 OR TRIM(dni) ILIKE $1
+          WHERE TRIM(clave_acceso) ILIKE $1 OR TRIM(token_verificacion) ILIKE $1
           LIMIT 1
         `, [idClean]);
         if (resZ && resZ.rows && resZ.rows.length > 0) {
           const validResult = validarAcceso(resZ.rows[0], 'Coordinador Zonal', 'rcoordinadoresz');
           if (validResult.valid) return validResult.user;
+          return null;
+        }
+
+        // Si intentó ingresar con su DNI en vez de su clave asignada (ej. ZN....)
+        const resZonalDni = await query(`
+          SELECT dni, clave_acceso, nombres_y_apellidos FROM rcoordinadoresz WHERE TRIM(dni) = $1 LIMIT 1
+        `, [idClean]);
+        if (resZonalDni && resZonalDni.rows && resZonalDni.rows.length > 0) {
+          usuarioBloqueado = {
+            isBlocked: true,
+            status: 'blocked',
+            rol: 'Coordinador Zonal',
+            message: 'Acceso Denegado: Los Coordinadores Zonales deben ingresar con su Clave de Acceso asignada (ej. ZN....), no con su DNI.'
+          };
           return null;
         }
       } catch (e) {}
@@ -289,15 +303,13 @@ class PostgresRepository {
         return `nombres_y_apellidos ILIKE $${params.length}`;
       });
 
-      const tablas = ['rcoordinadoresd', 'rcoordinadoresz', 'rcoordinadores', 'rpersoneros'];
+      const tablas = ['rcoordinadoresd', 'rcoordinadores', 'rpersoneros'];
       for (const tabla of tablas) {
         try {
           const isPersonero = tabla === 'rpersoneros';
           const defaultRol = tabla === 'rcoordinadoresd' 
             ? 'Coordinador Distrital'
-            : (tabla === 'rcoordinadoresz' 
-              ? 'Coordinador Zonal' 
-              : (tabla === 'rcoordinadores' ? 'Coordinador de Local' : 'Personero'));
+            : (tabla === 'rcoordinadores' ? 'Coordinador de Local' : 'Personero');
           const res = await query(`
             SELECT 
               dni,

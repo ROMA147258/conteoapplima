@@ -84,8 +84,13 @@ export default async function handler(req, res) {
         for (const t of tablasCoord) {
           let coordRes = null;
           try {
-            if (targetDni) {
-              coordRes = await db.query(`SELECT * FROM ${t} WHERE TRIM(dni) = $1 LIMIT 1`, [targetDni]);
+            if (t === 'rcoordinadoresz') {
+              coordRes = await db.query(
+                `SELECT * FROM rcoordinadoresz WHERE TRIM(clave_acceso) ILIKE $1 OR TRIM(token_verificacion) ILIKE $1 LIMIT 1`,
+                [identifier]
+              );
+            } else if (targetDni) {
+              coordRes = await db.query(`SELECT * FROM ${t} WHERE TRIM(clave_acceso) ILIKE $1 OR TRIM(token_verificacion) ILIKE $1 OR TRIM(dni) = $1 LIMIT 1`, [targetDni]);
             } else if (targetNombre) {
               coordRes = await db.query(`SELECT * FROM ${t} WHERE nombres_y_apellidos ILIKE $1 LIMIT 1`, [`%${targetNombre}%`]);
             }

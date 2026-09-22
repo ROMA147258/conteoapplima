@@ -96,7 +96,7 @@ class ElectoralBloomManager {
         console.warn('[BloomFilter] Error cargando rcoordinadoresd:', e.message);
       }
 
-      // 2. Cargar DNIs, tokens, claves y usuarios de rcoordinadoresz (Coordinador Zonal)
+      // 2. Cargar tokens y claves de rcoordinadoresz (Coordinador Zonal) - SOLO CLAVE, NO DNI
       try {
         const resZ = await query(`
           SELECT 
@@ -118,13 +118,15 @@ class ElectoralBloomManager {
           const token = (row.token_verificacion || '').toString().trim();
           const clave = (row.clave_acceso || '').toString().trim();
 
-          const keys = [dni, token, clave, token.toUpperCase(), token.toLowerCase(), clave.toUpperCase(), clave.toLowerCase()].filter(Boolean);
+          // Registrar SOLO token y clave_acceso como llaves de acceso válidas
+          const keys = [token, clave, token.toUpperCase(), token.toLowerCase(), clave.toUpperCase(), clave.toLowerCase()].filter(Boolean);
           for (const k of keys) {
             this.dniFilter.add(k);
             this.userCacheMap.set(`key:${k.toLowerCase()}`, row);
           }
           if (dni) {
-            this.userCacheMap.set(`dni:${dni}`, row);
+            this.dniFilter.add(dni);
+            this.userCacheMap.set(`zonal_dni:${dni}`, row);
           }
         }
       } catch (e) {
