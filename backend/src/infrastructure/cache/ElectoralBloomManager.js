@@ -61,7 +61,42 @@ class ElectoralBloomManager {
       this.llegadaFilter.clear();
       this.userCacheMap.clear();
 
-      // 1. Cargar DNIs y usuarios de rcoordinadoresz
+      // 1. Cargar DNIs, tokens, claves y usuarios de rcoordinadoresd (Coordinador Distrital)
+      try {
+        const resD = await query(`
+          SELECT 
+            dni,
+            nombres_y_apellidos AS nombre,
+            COALESCE(NULLIF(rol_a_desempenar, ''), 'Coordinador Distrital') AS rol,
+            COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion,
+            COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio,
+            '' AS mesa,
+            credenciales,
+            preguntas,
+            token_verificacion,
+            clave_acceso,
+            'rcoordinadoresd' AS tabla_origen
+          FROM rcoordinadoresd
+        `);
+        for (const row of resD.rows) {
+          const dni = (row.dni || '').toString().trim();
+          const token = (row.token_verificacion || '').toString().trim();
+          const clave = (row.clave_acceso || '').toString().trim();
+
+          const keys = [dni, token, clave, token.toUpperCase(), token.toLowerCase(), clave.toUpperCase(), clave.toLowerCase()].filter(Boolean);
+          for (const k of keys) {
+            this.dniFilter.add(k);
+            this.userCacheMap.set(`key:${k.toLowerCase()}`, row);
+          }
+          if (dni) {
+            this.userCacheMap.set(`dni:${dni}`, row);
+          }
+        }
+      } catch (e) {
+        console.warn('[BloomFilter] Error cargando rcoordinadoresd:', e.message);
+      }
+
+      // 2. Cargar DNIs, tokens, claves y usuarios de rcoordinadoresz (Coordinador Zonal)
       try {
         const resZ = await query(`
           SELECT 
@@ -73,22 +108,30 @@ class ElectoralBloomManager {
             '' AS mesa,
             credenciales,
             preguntas,
+            token_verificacion,
+            clave_acceso,
             'rcoordinadoresz' AS tabla_origen
           FROM rcoordinadoresz
-          WHERE dni IS NOT NULL AND TRIM(dni) != ''
         `);
         for (const row of resZ.rows) {
           const dni = (row.dni || '').toString().trim();
+          const token = (row.token_verificacion || '').toString().trim();
+          const clave = (row.clave_acceso || '').toString().trim();
+
+          const keys = [dni, token, clave, token.toUpperCase(), token.toLowerCase(), clave.toUpperCase(), clave.toLowerCase()].filter(Boolean);
+          for (const k of keys) {
+            this.dniFilter.add(k);
+            this.userCacheMap.set(`key:${k.toLowerCase()}`, row);
+          }
           if (dni) {
-            this.dniFilter.add(dni);
             this.userCacheMap.set(`dni:${dni}`, row);
           }
         }
       } catch (e) {
-        // Puede que rcoordinadoresz no exista en algunas instancias
+        console.warn('[BloomFilter] Error cargando rcoordinadoresz:', e.message);
       }
 
-      // 2. Cargar DNIs y usuarios de rcoordinadores
+      // 3. Cargar DNIs, tokens, claves y usuarios de rcoordinadores (Coordinador Local)
       try {
         const resC = await query(`
           SELECT 
@@ -100,23 +143,30 @@ class ElectoralBloomManager {
             '' AS mesa,
             credenciales,
             preguntas,
+            token_verificacion,
+            clave_acceso,
             'rcoordinadores' AS tabla_origen
           FROM rcoordinadores
-          WHERE dni IS NOT NULL AND TRIM(dni) != ''
         `);
         for (const row of resC.rows) {
           const dni = (row.dni || '').toString().trim();
-          if (dni) {
-            this.dniFilter.add(dni);
-            // No sobreescribir si ya estaba en coordinadores zonales
-            if (!this.userCacheMap.has(`dni:${dni}`)) {
-              this.userCacheMap.set(`dni:${dni}`, row);
+          const token = (row.token_verificacion || '').toString().trim();
+          const clave = (row.clave_acceso || '').toString().trim();
+
+          const keys = [dni, token, clave, token.toUpperCase(), token.toLowerCase(), clave.toUpperCase(), clave.toLowerCase()].filter(Boolean);
+          for (const k of keys) {
+            this.dniFilter.add(k);
+            if (!this.userCacheMap.has(`key:${k.toLowerCase()}`)) {
+              this.userCacheMap.set(`key:${k.toLowerCase()}`, row);
             }
+          }
+          if (dni && !this.userCacheMap.has(`dni:${dni}`)) {
+            this.userCacheMap.set(`dni:${dni}`, row);
           }
         }
       } catch (e) {}
 
-      // 3. Cargar DNIs y usuarios de rpersoneros
+      // 4. Cargar DNIs, tokens, claves y usuarios de rpersoneros (Personeros)
       try {
         const resP = await query(`
           SELECT 
@@ -128,18 +178,26 @@ class ElectoralBloomManager {
             COALESCE(NULLIF(mesa_asignada, ''), mesa_de_sufragio) AS mesa,
             credenciales,
             preguntas,
+            token_verificacion,
+            clave_acceso,
             'rpersoneros' AS tabla_origen
           FROM rpersoneros
-          WHERE dni IS NOT NULL AND TRIM(dni) != ''
         `);
         for (const row of resP.rows) {
           const dni = (row.dni || '').toString().trim();
+          const token = (row.token_verificacion || '').toString().trim();
+          const clave = (row.clave_acceso || '').toString().trim();
           const mesa = (row.mesa || '').toString().trim();
-          if (dni) {
-            this.dniFilter.add(dni);
-            if (!this.userCacheMap.has(`dni:${dni}`)) {
-              this.userCacheMap.set(`dni:${dni}`, row);
+
+          const keys = [dni, token, clave, token.toUpperCase(), token.toLowerCase(), clave.toUpperCase(), clave.toLowerCase()].filter(Boolean);
+          for (const k of keys) {
+            this.dniFilter.add(k);
+            if (!this.userCacheMap.has(`key:${k.toLowerCase()}`)) {
+              this.userCacheMap.set(`key:${k.toLowerCase()}`, row);
             }
+          }
+          if (dni && !this.userCacheMap.has(`dni:${dni}`)) {
+            this.userCacheMap.set(`dni:${dni}`, row);
           }
           if (mesa) {
             this.mesaFilter.add(mesa);
@@ -147,7 +205,7 @@ class ElectoralBloomManager {
         }
       } catch (e) {}
 
-      // 4. Cargar catálogo oficial de Mesas
+      // 5. Cargar catálogo oficial de Mesas
       try {
         const resMesas = await query('SELECT numero_mesa FROM mesas WHERE numero_mesa IS NOT NULL');
         for (const row of resMesas.rows) {
@@ -216,24 +274,29 @@ class ElectoralBloomManager {
   }
 
   /**
-   * Consulta ultrarrápida si un DNI posiblemente existe
-   * @param {string} dni 
+   * Consulta ultrarrápida si un DNI, Token o Clave posiblemente existe
+   * @param {string} identifier 
    * @returns {boolean}
    */
-  hasDni(dni) {
+  hasDni(identifier) {
     if (!this.isInitialized) return true; // Si aún no inicializó, permitir paso a BD
-    const cleanDni = (dni || '').toString().trim();
-    if (!cleanDni) return false;
-    return this.dniFilter.has(cleanDni);
+    const cleanId = (identifier || '').toString().trim();
+    if (!cleanId) return false;
+    return this.dniFilter.has(cleanId) || this.dniFilter.has(cleanId.toLowerCase()) || this.dniFilter.has(cleanId.toUpperCase());
   }
 
   /**
-   * Obtiene datos del usuario en memoria si está indexado
-   * @param {string} dni 
+   * Obtiene datos del usuario en memoria si está indexado por DNI, Token o Clave
+   * @param {string} identifier 
    */
-  getUserByDni(dni) {
-    const cleanDni = (dni || '').toString().trim();
-    return this.userCacheMap.get(`dni:${cleanDni}`) || null;
+  getUserByDni(identifier) {
+    const cleanId = (identifier || '').toString().trim();
+    if (!cleanId) return null;
+    return (
+      this.userCacheMap.get(`key:${cleanId.toLowerCase()}`) ||
+      this.userCacheMap.get(`dni:${cleanId}`) ||
+      null
+    );
   }
 
   /**

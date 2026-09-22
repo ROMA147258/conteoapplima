@@ -54,7 +54,7 @@ export const LoginView = () => {
                 id="login-dni"
                 value={dni}
                 onChange={(e) => setDni(e.target.value)}
-                placeholder="Ingresa tu DNI de 8 dígitos"
+                placeholder="Ingresa tu Clave de acceso o DNI"
                 autoComplete="current-password"
                 maxLength="30"
                 style={{ paddingRight: '44px' }}
@@ -73,7 +73,7 @@ export const LoginView = () => {
                   transform: 'translateY(-50%)',
                   background: 'transparent',
                   border: 'none',
-                  color: showPassword ? '#38bdf8' : '#94a3b8',
+                  color: showPassword ? '#0284c7' : '#64748b',
                   cursor: 'pointer',
                   padding: '6px',
                   display: 'flex',

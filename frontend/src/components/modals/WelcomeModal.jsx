@@ -25,9 +25,9 @@ export const WelcomeModal = () => {
         width: '100%',
         height: '100%',
         minHeight: '100dvh',
-        background: 'rgba(5, 10, 20, 0.88)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
+        background: 'rgba(15, 23, 42, 0.65)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
         zIndex: 99999999,
         display: 'flex',
         alignItems: 'center',
@@ -44,11 +44,11 @@ export const WelcomeModal = () => {
       <div
         className="modal-card"
         style={{
-          background: 'linear-gradient(135deg, #1e1b2e, #0f172a)',
-          border: '2px solid rgba(56, 189, 248, 0.4)',
+          background: '#ffffff',
+          border: '2px solid #bae6fd',
           borderRadius: '24px',
           padding: '28px 22px',
-          boxShadow: '0 20px 50px rgba(56, 189, 248, 0.25)',
+          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.15)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -64,8 +64,8 @@ export const WelcomeModal = () => {
           style={{
             width: '64px',
             height: '64px',
-            background: 'rgba(56, 189, 248, 0.15)',
-            border: '2px solid #38bdf8',
+            background: '#e0f2fe',
+            border: '2px solid #0284c7',
             borderRadius: '50%',
             display: 'flex',
             alignItems: 'center',
@@ -73,23 +73,23 @@ export const WelcomeModal = () => {
             flexShrink: 0
           }}
         >
-          <Info size={32} color="#38bdf8" />
+          <Info size={32} color="#0284c7" />
         </div>
 
         <div>
-          <h3 style={{ margin: '0 0 8px', fontSize: '1.3rem', fontWeight: 800, color: '#f8fafc', letterSpacing: '-0.5px' }}>
-            Control de <span style={{ color: '#38bdf8' }}>Votación</span>
+          <h3 style={{ margin: '0 0 8px', fontSize: '1.3rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.5px' }}>
+            Control de <span style={{ color: '#0284c7' }}>Votación</span>
           </h3>
-          <p style={{ margin: 0, fontSize: '0.9rem', color: '#94a3b8', lineHeight: '1.4' }}>
-            Bienvenido al sistema. Tienes <strong style={{ color: '#fff' }}>2 opciones</strong> independientes para registrar tus actas de mesa:
+          <p style={{ margin: 0, fontSize: '0.9rem', color: '#475569', lineHeight: '1.4' }}>
+            Bienvenido al sistema. Tienes <strong style={{ color: '#0f172a' }}>2 opciones</strong> independientes para registrar tus actas de mesa:
           </p>
         </div>
 
         <div
           style={{
             width: '100%',
-            background: 'rgba(15, 23, 42, 0.6)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
+            background: '#f8fafc',
+            border: '1px solid #e2e8f0',
             borderRadius: '12px',
             padding: '14px 16px',
             display: 'flex',
@@ -100,15 +100,15 @@ export const WelcomeModal = () => {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Edit3 size={18} color="#38bdf8" style={{ flexShrink: 0 }} />
-            <div style={{ fontSize: '0.86rem', color: '#cbd5e1' }}>
-              <strong style={{ color: '#fff' }}>Formulario Manual:</strong> Conteo digitado.
+            <Edit3 size={18} color="#0284c7" style={{ flexShrink: 0 }} />
+            <div style={{ fontSize: '0.86rem', color: '#334155' }}>
+              <strong style={{ color: '#0f172a' }}>Formulario Manual:</strong> Conteo digitado.
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Camera size={18} color="#a855f7" style={{ flexShrink: 0 }} />
-            <div style={{ fontSize: '0.86rem', color: '#cbd5e1' }}>
-              <strong style={{ color: '#fff' }}>Formulario Imagen:</strong> Foto y OCR.
+            <Camera size={18} color="#7e22ce" style={{ flexShrink: 0 }} />
+            <div style={{ fontSize: '0.86rem', color: '#334155' }}>
+              <strong style={{ color: '#0f172a' }}>Formulario Imagen:</strong> Foto y OCR.
             </div>
           </div>
         </div>
@@ -119,14 +119,14 @@ export const WelcomeModal = () => {
           style={{
             width: '100%',
             padding: '13px',
-            background: 'linear-gradient(135deg, #38bdf8, #0284c7)',
+            background: 'linear-gradient(135deg, #0284c7, #0369a1)',
             color: '#fff',
             border: 'none',
             borderRadius: '12px',
             fontWeight: 700,
             fontSize: '1rem',
             cursor: 'pointer',
-            boxShadow: '0 4px 15px rgba(56, 189, 248, 0.35)',
+            boxShadow: '0 4px 15px rgba(2, 132, 199, 0.35)',
             marginTop: '4px'
           }}
         >

@@ -179,6 +179,11 @@ export const useAttendance = () => {
   const processAttendancePhoto = async (file, mesaVal, colegioVal, ubicacionVal) => {
     if (!file) return;
 
+    if (isAttendanceConfirmed && !isSuperAdmin) {
+      showToast('Ya has registrado tu fotografía de instalación/asistencia previamente. No se permiten duplicados.', 'info');
+      return false;
+    }
+
     setAttendanceSyncLoader({
       isOpen: true,
       percentage: 30,

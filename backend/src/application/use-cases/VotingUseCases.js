@@ -37,7 +37,7 @@ class VotingUseCases {
         return await sqlRepo.obtenerAsistenciaPorDni(payload.dni);
 
       case 'obtener_confirmaciones_por_colegio':
-        return await sqlRepo.obtenerConfirmacionesPorColegio(payload.colegio || payload.local);
+        return await sqlRepo.obtenerConfirmacionesPorColegio(payload.colegio || payload.local, payload.distrito || payload.ubicacion);
 
       case 'obtener_personeros_por_colegio':
         return await sqlRepo.obtenerPersonerosPorColegio(payload);

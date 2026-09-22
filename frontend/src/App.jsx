@@ -5,7 +5,6 @@ import { ToastContainer } from './components/common/ToastContainer';
 import { LoadingOverlay } from './components/common/LoadingOverlay';
 import { AlertDialog } from './components/common/AlertDialog';
 import { WelcomeModal } from './components/modals/WelcomeModal';
-import { ConfigModal } from './components/modals/ConfigModal';
 import { ScannerModal } from './components/modals/ScannerModal';
 import { OcrDetailModal } from './components/modals/OcrDetailModal';
 import { AttendanceSyncLoader } from './components/modals/AttendanceSyncLoader';
@@ -33,7 +32,6 @@ export const App = () => {
       </main>
 
       {/* MODALS & OVERLAYS */}
-      <ConfigModal />
       <ScannerModal />
       <OcrDetailModal />
       <AlertDialog />

@@ -105,15 +105,40 @@ export const useAuth = () => {
       llegada_confirmada: Boolean(user.llegada_confirmada)
     };
 
-    // Sincronizar bloqueos locales si el backend ya registró los votos
-    if (userObj.voto_manual_enviado) {
-      localStorage.setItem(`votoReal_manualLocked_${targetDni}`, 'true');
+    // Restricción de Coordinador Zonal (Solo existe y aplica para Villa María del Triunfo)
+    const ubNorm = (userObj.ubicacion || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    const isVMT = ubNorm.includes('villa maria del triunfo') || ubNorm.includes('vmt');
+    const isSuperAdmin = userObj.rol === 'Admin' || userObj.dni === '99999999' || userObj.dni === '12345678';
+
+    const isZonal = (userObj.rol || '').toLowerCase().includes('zonal') || 
+                    (userObj.tabla_origen || '').toLowerCase().includes('rcoordinadoresz') ||
+                    (userObj.tipo_interfaz || '').toLowerCase() === 'coordinador_zonal';
+
+    if (isZonal && !isVMT && !isSuperAdmin) {
+      // En otros distritos no existen zonas, pasa a Coordinador Local
+      userObj.rol = 'Coordinador Local';
+      userObj.tipo_interfaz = 'coordinador_local';
     }
-    if (userObj.voto_imagen_enviado) {
-      localStorage.setItem(`votoReal_ocrLocked_${targetDni}`, 'true');
-    }
-    if (userObj.asistencia_confirmada) {
-      localStorage.setItem(`votoReal_attConfirmed_${targetDni}`, 'true');
+
+    const isCoordOrAdmin = isSuperAdmin || (
+      (userObj.rol || '').toLowerCase().includes('distrital') ||
+      (userObj.rol || '').toLowerCase().includes('zonal') ||
+      (userObj.rol || '').toLowerCase().includes('local') ||
+      (userObj.rol || '').toLowerCase().includes('coordinador') ||
+      (userObj.tipo_interfaz || '').includes('coordinador_')
+    );
+
+    // Sincronizar bloqueos locales si es personero normal
+    if (!isCoordOrAdmin) {
+      if (userObj.voto_manual_enviado) {
+        localStorage.setItem(`votoReal_manualLocked_${targetDni}`, 'true');
+      }
+      if (userObj.voto_imagen_enviado) {
+        localStorage.setItem(`votoReal_ocrLocked_${targetDni}`, 'true');
+      }
+      if (userObj.asistencia_confirmada) {
+        localStorage.setItem(`votoReal_attConfirmed_${targetDni}`, 'true');
+      }
     }
 
     // Cargar votos guardados para este DNI si existen, o inicializar limpio en 0s
@@ -128,24 +153,6 @@ export const useAuth = () => {
       setOcrVotes(JSON.parse(JSON.stringify(DEFAULT_VOTES)));
     }
 
-    // Restricción de Coordinador Zonal (Solo permitido para Villa María del Triunfo)
-    const isZonal = (userObj.rol || '').toLowerCase().includes('zonal') || 
-                    (userObj.tabla_origen || '').toLowerCase().includes('rcoordinadoresz') ||
-                    (userObj.tipo_interfaz || '').toLowerCase() === 'coordinador_zonal';
-    if (isZonal) {
-      const ubNorm = (userObj.ubicacion || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-      const isVMT = ubNorm.includes('villa maria del triunfo') || ubNorm.includes('vmt');
-      if (!isVMT) {
-        showAlertDialog({
-          title: 'Acceso Restringido',
-          message: 'La interfaz de Coordinador Zonal está habilitada únicamente para el distrito de <strong>Villa María del Triunfo</strong>.<br><br>Tu distrito registrado es: <strong>' + (userObj.ubicacion || 'No asignado') + '</strong>.',
-          buttonText: 'Entendido',
-          type: 'error'
-        });
-        return false;
-      }
-    }
-
     setCurrentUser(userObj);
     sessionStorage.setItem('votoReal_user', JSON.stringify(userObj));
 
@@ -153,6 +160,7 @@ export const useAuth = () => {
       setCurrentView('view-coordinator');
       showToast(`Bienvenido, ${userObj.nombre}.`, 'success');
     } else {
+      // Personeros de mesa: van a la vista de conteo manual y por imagen
       setCurrentView('view-counting');
       showToast(`Bienvenido, ${userObj.nombre}.`, 'success');
     }

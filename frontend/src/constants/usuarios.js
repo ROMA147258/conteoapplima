@@ -91,19 +91,32 @@ export function buscarBrigadistaPorDni(dni, cachedUsers = null) {
 
 export function esCoordinador(user) {
   if (!user) return false;
+
+  const rol = (user.rol || user.Rol_a_Desempenar || "").toString().toLowerCase().trim();
+  const tipoInterfaz = (user.tipo_interfaz || "").toString().toLowerCase().trim();
   const nombre = (user.nombre || user.Nombres_y_Apellidos || "").toString().toLowerCase().trim();
   const dni = (user.dni || user.DNI || "").toString().toLowerCase().trim();
   const origenHoja = (user.origenHoja || user.tabla_origen || "").toString().toLowerCase().trim();
-  const rol = (user.rol || user.Rol_a_Desempenar || "").toString().toLowerCase().trim();
-  const tipoInterfaz = (user.tipo_interfaz || "").toString().toLowerCase().trim();
 
+  // Coordinador(a) Distrital va a la interfaz de coordinación en todos los distritos
+  if (
+    rol.includes("distrital") ||
+    tipoInterfaz === "coordinador_distrital" ||
+    origenHoja.includes("rcoordinadoresd")
+  ) {
+    return true;
+  }
+
+  // Coordinadores Locales y Zonales
   if (
     origenHoja.includes("coordinador") ||
     origenHoja.includes("rcoordinadoresz") ||
     origenHoja.includes("rcoordinadores") ||
     origenHoja === "usuarios1" ||
     rol.includes("coordinador") ||
-    tipoInterfaz === "coordinador_lista"
+    tipoInterfaz === "coordinador_lista" ||
+    tipoInterfaz === "coordinador_local" ||
+    tipoInterfaz === "coordinador_zonal"
   ) {
     return true;
   }

@@ -16,6 +16,8 @@ import {
   CheckCircle2, 
   Lock, 
   ShieldAlert, 
+  ShieldCheck,
+  Users,
   Sparkles, 
   ChevronRight, 
   Eye, 
@@ -28,16 +30,9 @@ export const CountingView = () => {
     currentUser, setCurrentUser, logout,
     setCurrentView,
     isOnline,
-    setIsConfigModalOpen, setIsScannerModalOpen,
+    setIsScannerModalOpen,
     mesasEstructura, cachedUsers
   } = useApp();
-
-  // Guard: Coordinadores van a view-coordinator
-  useEffect(() => {
-    if (esCoordinador(currentUser)) {
-      setCurrentView('view-coordinator');
-    }
-  }, [currentUser, setCurrentView]);
 
   const { 
     currentVotes, 
@@ -59,7 +54,14 @@ export const CountingView = () => {
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [isOcrModalOpen, setIsOcrModalOpen] = useState(false);
 
-  const ubicacion = currentUser?.ubicacion || 'Lima';
+  const isCoordinadorDistrital = Boolean(
+    (currentUser?.rol || '').toLowerCase().includes('distrital') ||
+    (currentUser?.tipo_interfaz || '') === 'coordinador_distrital' ||
+    (currentUser?.tabla_origen || '').toLowerCase() === 'rcoordinadoresd' ||
+    (currentUser?.dni || '').toString() === '43310677'
+  );
+
+  const ubicacion = currentUser?.distrito || currentUser?.ubicacion || (isCoordinadorDistrital ? 'Villa María del Triunfo' : 'Lima');
   const isSuperAdmin = currentUser && (
     currentUser.dni === 'Admin#2026$Secure!VotoReal' ||
     currentUser.dni === '99999999' ||
@@ -83,7 +85,7 @@ export const CountingView = () => {
     .trim();
 
   const isVMT = cleanUbicacion.includes('villa maria del triunfo') || cleanUbicacion === 'vmt';
-  const isPersoneroVMT = isVMT && !isSuperAdmin;
+  const isPersoneroVMT = isVMT && !isSuperAdmin && !isCoordinadorDistrital;
 
   const [mesaInput, setMesaInput] = useState(() => {
     if (currentUser?.dni) {
@@ -147,7 +149,7 @@ export const CountingView = () => {
     if (match && match.colegio) {
       setColegioInput(match.colegio);
       localStorage.setItem('votoReal_colegio_activo', match.colegio);
-      if (match.distrito && currentUser && currentUser.ubicacion !== match.distrito) {
+      if (match.distrito && currentUser && currentUser.ubicacion !== match.distrito && !isCoordinadorDistrital) {
         const updatedUser = { ...currentUser, ubicacion: match.distrito };
         setCurrentUser(updatedUser);
         sessionStorage.setItem('votoReal_user', JSON.stringify(updatedUser));
@@ -156,7 +158,7 @@ export const CountingView = () => {
       setColegioInput('');
       localStorage.removeItem('votoReal_colegio_activo');
     }
-  }, [mesaInput, mesasEstructura, cachedUsers, currentUser]);
+  }, [mesaInput, mesasEstructura, cachedUsers, currentUser, isCoordinadorDistrital]);
 
   const handleAttendanceCheck = async (e) => {
     if (e && e.target && e.target.type === 'checkbox') {
@@ -209,13 +211,13 @@ export const CountingView = () => {
   const sumDistOcr = Object.values(ocrVotes?.distrital || {}).reduce((acc, v) => acc + (typeof v === 'object' ? (Number(v.votos) || 0) : (Number(v) || 0)), 0);
   const totalOcrVotes = sumProvOcr + sumDistOcr;
 
-  const isOcrEffectiveLocked = !isSuperAdmin && (
+  const isOcrEffectiveLocked = !isSuperAdmin && !isCoordinadorDistrital && (
     Boolean(isOcrLocked) ||
     Boolean(currentUser?.voto_imagen_enviado) ||
     (typeof localStorage !== 'undefined' && localStorage.getItem(`votoReal_ocrLocked_${currentUser?.dni}`) === 'true')
   );
 
-  const isManualEffectiveLocked = !isSuperAdmin && (
+  const isManualEffectiveLocked = !isSuperAdmin && !isCoordinadorDistrital && (
     Boolean(isManualLocked) ||
     Boolean(currentUser?.voto_manual_enviado) ||
     (typeof localStorage !== 'undefined' && localStorage.getItem(`votoReal_manualLocked_${currentUser?.dni}`) === 'true')
@@ -231,17 +233,69 @@ export const CountingView = () => {
         onChange={handlePhotoCaptured}
       />
 
+      {/* Banner de Navegación para Coordinadores (Distrital, Zonal, Local) */}
+      {(isCoordinadorDistrital || Boolean((currentUser?.rol || '').toLowerCase().includes('coordinador') || (currentUser?.tipo_interfaz || '').includes('coordinador') || (currentUser?.tabla_origen || '').includes('coordinador'))) && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: '#f0f9ff',
+          border: '1px solid #bae6fd',
+          borderRadius: '14px',
+          padding: '10px 16px',
+          marginBottom: '12px',
+          boxShadow: '0 2px 8px rgba(2, 132, 199, 0.08)',
+          gap: '10px',
+          flexWrap: 'wrap'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ background: '#e0f2fe', padding: '6px', borderRadius: '8px' }}>
+              <ShieldCheck size={20} color="#0284c7" />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.84rem', fontWeight: '800', color: '#0369a1', letterSpacing: '0.3px' }}>
+                {isCoordinadorDistrital ? 'ACCESO TOTAL COORDINADORA DISTRITAL' : 'MODO COORDINADOR'}
+              </div>
+              <div style={{ fontSize: '0.74rem', color: '#475569' }}>
+                Conteo en Vivo activo. Puedes registrar votos de cualquier mesa o volver a Supervisión.
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCurrentView('view-coordinator')}
+            style={{
+              background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '10px',
+              padding: '8px 14px',
+              fontSize: '0.8rem',
+              fontWeight: '700',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 2px 8px rgba(2, 132, 199, 0.25)'
+            }}
+          >
+            <Users size={16} />
+            <span>Supervisión & Asistencia</span>
+          </button>
+        </div>
+      )}
+
       <UserInfoBar
         currentUser={currentUser}
         ubicacion={ubicacion}
         isLlegadaConfirmed={isLlegadaConfirmed}
         onConfirmarLlegada={() => confirmLlegadaGPS(colegioInput, ubicacion, mesaInput)}
         isSuperAdmin={isSuperAdmin}
-        onOpenConfig={() => setIsConfigModalOpen(true)}
         onLogout={logout}
       />
 
-      {isSuperAdmin && (
+      {/* Selector de Distrito solo para SuperAdmin (No para Coordinadora Distrital que ya está fija en su distrito) */}
+      {(isSuperAdmin && !isCoordinadorDistrital) && (
         <div
           id="district-selector-container"
           className="glass"
@@ -252,12 +306,14 @@ export const CountingView = () => {
             borderRadius: '10px',
             display: 'flex',
             alignItems: 'center',
-            gap: '10px'
+            gap: '10px',
+            background: '#ffffff',
+            border: '1px solid #e2e8f0'
           }}
         >
           <label
             htmlFor="app-district-select"
-            style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--text-muted)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}
+            style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#334155', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}
           >
             <MapPin size={14} /> Distrito:
           </label>
@@ -276,10 +332,10 @@ export const CountingView = () => {
               padding: '6px 12px',
               fontSize: '0.85rem',
               flex: 1,
-              border: '1px solid rgba(255,255,255,0.1)',
+              border: '1px solid #cbd5e1',
               borderRadius: '6px',
-              background: 'rgba(0,0,0,0.25)',
-              color: 'white'
+              background: '#f8fafc',
+              color: '#0f172a'
             }}
           >
             {DISTRITOS_LIMA.map(dist => (
@@ -292,13 +348,15 @@ export const CountingView = () => {
       <SyncStatusBar isOnline={isOnline} />
 
       <form id="form-votos" className="counting-form" onSubmit={(e) => e.preventDefault()}>
-        <MesaCard
-          mesaInput={mesaInput}
-          onMesaChange={setMesaInput}
-          colegioInput={colegioInput}
-          isAttendanceConfirmed={isAttendanceConfirmed}
-          onAttendanceCheck={handleAttendanceCheck}
-        />
+        {!isCoordinadorDistrital && (
+          <MesaCard
+            mesaInput={mesaInput}
+            onMesaChange={setMesaInput}
+            colegioInput={colegioInput}
+            isAttendanceConfirmed={isAttendanceConfirmed}
+            onAttendanceCheck={handleAttendanceCheck}
+          />
+        )}
 
         {/* ======================================================== */}
         {/* PANEL DE ESCRUTINIO: REGISTRO MANUAL Y POR IMAGEN        */}
@@ -311,8 +369,9 @@ export const CountingView = () => {
               marginTop: '14px',
               padding: '20px 16px',
               borderRadius: '16px',
-              border: '1px solid rgba(56, 189, 248, 0.25)',
-              background: 'linear-gradient(180deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.75) 100%)',
+              border: '1px solid #bae6fd',
+              background: '#ffffff',
+              boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -325,21 +384,21 @@ export const CountingView = () => {
                 width: '44px',
                 height: '44px',
                 borderRadius: '12px',
-                background: 'rgba(56, 189, 248, 0.15)',
-                border: '1px solid rgba(56, 189, 248, 0.35)',
+                background: '#e0f2fe',
+                border: '1px solid #bae6fd',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#38bdf8'
+                color: '#0284c7'
               }}
             >
               <CheckCircle2 size={24} />
             </div>
             <div>
-              <h3 style={{ margin: '0 0 4px 0', fontSize: '1rem', fontWeight: 700, color: '#f8fafc' }}>
+              <h3 style={{ margin: '0 0 4px 0', fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
                 Módulo de Asistencia - Villa María del Triunfo
               </h3>
-              <p style={{ margin: 0, fontSize: '0.82rem', color: '#94a3b8', maxWidth: '420px', lineHeight: 1.4 }}>
+              <p style={{ margin: 0, fontSize: '0.82rem', color: '#475569', maxWidth: '420px', lineHeight: 1.4 }}>
                 Tu función designada en tu mesa es la <strong>confirmación de asistencia</strong> en tu local de votación. Al confirmar tu llegada con tu fotografía de acreditación, tu registro quedará guardado satisfactoriamente.
               </p>
             </div>
@@ -352,21 +411,22 @@ export const CountingView = () => {
               marginTop: '14px',
               padding: '16px',
               borderRadius: '16px',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              background: 'linear-gradient(180deg, rgba(30, 41, 59, 0.45) 0%, rgba(15, 23, 42, 0.7) 100%)',
+              border: '1px solid #e2e8f0',
+              background: '#ffffff',
+              boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)',
               display: 'flex',
               flexDirection: 'column',
               gap: '12px'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', paddingBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Layers size={18} color="#38bdf8" />
-                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f1f5f9' }}>
+                <Layers size={18} color="#0284c7" />
+                <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#0f172a' }}>
                   Escrutinio
                 </span>
               </div>
-              <span style={{ fontSize: '0.72rem', color: '#94a3b8', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '10px' }}>
+              <span style={{ fontSize: '0.72rem', color: '#475569', background: '#f1f5f9', padding: '2px 8px', borderRadius: '10px' }}>
                 Mesa de sufragio {mesaInput || '---'}
               </span>
             </div>
@@ -385,11 +445,11 @@ export const CountingView = () => {
                   padding: '14px',
                   borderRadius: '12px',
                   border: isManualLocked
-                    ? '1px solid rgba(34, 197, 94, 0.35)'
-                    : '1px solid rgba(56, 189, 248, 0.3)',
+                    ? '1px solid #86efac'
+                    : '1px solid #bae6fd',
                   background: isManualLocked
-                    ? 'linear-gradient(145deg, rgba(34, 197, 94, 0.08) 0%, rgba(15, 23, 42, 0.4) 100%)'
-                    : 'linear-gradient(145deg, rgba(56, 189, 248, 0.08) 0%, rgba(15, 23, 42, 0.4) 100%)',
+                    ? '#f0fdf4'
+                    : '#f0f9ff',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
@@ -403,12 +463,12 @@ export const CountingView = () => {
                         width: '38px',
                         height: '38px',
                         borderRadius: '10px',
-                        background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(37, 99, 235, 0.3))',
-                        border: '1px solid rgba(56, 189, 248, 0.4)',
+                        background: '#e0f2fe',
+                        border: '1px solid #bae6fd',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: '#38bdf8'
+                        color: '#0284c7'
                       }}
                     >
                       <ClipboardList size={20} />
@@ -421,11 +481,11 @@ export const CountingView = () => {
                           style={{
                             fontSize: '0.68rem',
                             fontWeight: 700,
-                            color: '#fef08a',
-                            background: 'rgba(234, 179, 8, 0.2)',
+                            color: '#854d0e',
+                            background: '#fef9c3',
                             padding: '2px 8px',
                             borderRadius: '10px',
-                            border: '1px solid rgba(234, 179, 8, 0.4)',
+                            border: '1px solid #fde047',
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '4px'
@@ -438,11 +498,11 @@ export const CountingView = () => {
                           style={{
                             fontSize: '0.68rem',
                             fontWeight: 700,
-                            color: '#86efac',
-                            background: 'rgba(34, 197, 94, 0.2)',
+                            color: '#15803d',
+                            background: '#dcfce7',
                             padding: '2px 8px',
                             borderRadius: '10px',
-                            border: '1px solid rgba(34, 197, 94, 0.4)',
+                            border: '1px solid #86efac',
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '4px'
@@ -456,11 +516,11 @@ export const CountingView = () => {
                         style={{
                           fontSize: '0.68rem',
                           fontWeight: 600,
-                          color: '#94a3b8',
-                          background: 'rgba(255, 255, 255, 0.06)',
+                          color: '#475569',
+                          background: '#f1f5f9',
                           padding: '2px 8px',
                           borderRadius: '10px',
-                          border: '1px solid rgba(255, 255, 255, 0.1)'
+                          border: '1px solid #e2e8f0'
                         }}
                       >
                         Pendiente
@@ -468,15 +528,15 @@ export const CountingView = () => {
                     )}
                   </div>
 
-                  <h4 style={{ margin: '0 0 2px 0', fontSize: '0.96rem', fontWeight: 700, color: '#f8fafc' }}>
+                  <h4 style={{ margin: '0 0 2px 0', fontSize: '0.96rem', fontWeight: 800, color: '#0f172a' }}>
                     Registro Manual
                   </h4>
-                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8', lineHeight: 1.3 }}>
+                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#475569', lineHeight: 1.3 }}>
                     Ingreso casilla por casilla para candidatos y actas.
                   </p>
 
                   {totalManualVotes > 0 && (
-                    <div style={{ marginTop: '6px', fontSize: '0.74rem', color: '#38bdf8', fontWeight: 600 }}>
+                    <div style={{ marginTop: '6px', fontSize: '0.74rem', color: '#0284c7', fontWeight: 700 }}>
                       📊 Votos registrados: {totalManualVotes}
                     </div>
                   )}
@@ -492,10 +552,10 @@ export const CountingView = () => {
                     style={{
                       flex: 1,
                       background: isManualEffectiveLocked
-                        ? 'rgba(255, 255, 255, 0.05)'
+                        ? '#e2e8f0'
                         : 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-                      borderColor: isManualEffectiveLocked ? 'rgba(255,255,255,0.1)' : '#38bdf8',
-                      color: isManualEffectiveLocked ? '#94a3b8' : '#ffffff',
+                      borderColor: isManualEffectiveLocked ? '#cbd5e1' : '#0284c7',
+                      color: isManualEffectiveLocked ? '#64748b' : '#ffffff',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -505,8 +565,8 @@ export const CountingView = () => {
                       fontSize: '0.84rem',
                       borderRadius: '8px',
                       cursor: isManualEffectiveLocked ? 'not-allowed' : 'pointer',
-                      boxShadow: isManualEffectiveLocked ? 'none' : '0 4px 12px rgba(2, 132, 199, 0.25)',
-                      opacity: isManualEffectiveLocked ? 0.6 : 1,
+                      boxShadow: isManualEffectiveLocked ? 'none' : '0 2px 8px rgba(2, 132, 199, 0.25)',
+                      opacity: isManualEffectiveLocked ? 0.7 : 1,
                       pointerEvents: isManualEffectiveLocked ? 'none' : 'auto'
                     }}
                   >
@@ -520,9 +580,9 @@ export const CountingView = () => {
                     className="btn"
                     onClick={() => setIsManualModalOpen(true)}
                     style={{
-                      background: 'rgba(255, 255, 255, 0.06)',
-                      border: '1px solid rgba(255, 255, 255, 0.12)',
-                      color: '#e2e8f0',
+                      background: '#ffffff',
+                      border: '1px solid #cbd5e1',
+                      color: '#334155',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -531,7 +591,7 @@ export const CountingView = () => {
                       fontSize: '0.84rem',
                       borderRadius: '8px',
                       cursor: 'pointer',
-                      fontWeight: 600
+                      fontWeight: 700
                     }}
                     title="Ver tabla de votos manuales"
                   >
@@ -548,11 +608,11 @@ export const CountingView = () => {
                   padding: '14px',
                   borderRadius: '12px',
                   border: isOcrLocked
-                    ? '1px solid rgba(168, 85, 247, 0.4)'
-                    : '1px solid rgba(168, 85, 247, 0.3)',
+                    ? '1px solid #86efac'
+                    : '1px solid #e9d5ff',
                   background: isOcrLocked
-                    ? 'linear-gradient(145deg, rgba(168, 85, 247, 0.08) 0%, rgba(15, 23, 42, 0.4) 100%)'
-                    : 'linear-gradient(145deg, rgba(168, 85, 247, 0.08) 0%, rgba(15, 23, 42, 0.4) 100%)',
+                    ? '#f0fdf4'
+                    : '#faf5ff',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
@@ -566,12 +626,12 @@ export const CountingView = () => {
                         width: '38px',
                         height: '38px',
                         borderRadius: '10px',
-                        background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(124, 58, 237, 0.35))',
-                        border: '1px solid rgba(168, 85, 247, 0.4)',
+                        background: '#f3e8ff',
+                        border: '1px solid #e9d5ff',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: '#c084fc'
+                        color: '#7e22ce'
                       }}
                     >
                       <Camera size={20} />
@@ -584,11 +644,11 @@ export const CountingView = () => {
                           style={{
                             fontSize: '0.68rem',
                             fontWeight: 700,
-                            color: '#fef08a',
-                            background: 'rgba(234, 179, 8, 0.2)',
+                            color: '#854d0e',
+                            background: '#fef9c3',
                             padding: '2px 8px',
                             borderRadius: '10px',
-                            border: '1px solid rgba(234, 179, 8, 0.4)',
+                            border: '1px solid #fde047',
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '4px'
@@ -601,11 +661,11 @@ export const CountingView = () => {
                           style={{
                             fontSize: '0.68rem',
                             fontWeight: 700,
-                            color: '#4ade80',
-                            background: 'rgba(16, 185, 129, 0.2)',
+                            color: '#15803d',
+                            background: '#dcfce7',
                             padding: '2px 8px',
                             borderRadius: '10px',
-                            border: '1px solid rgba(16, 185, 129, 0.4)',
+                            border: '1px solid #86efac',
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '4px'
@@ -619,11 +679,11 @@ export const CountingView = () => {
                         style={{
                           fontSize: '0.68rem',
                           fontWeight: 600,
-                          color: '#94a3b8',
-                          background: 'rgba(255, 255, 255, 0.06)',
+                          color: '#475569',
+                          background: '#f1f5f9',
                           padding: '2px 8px',
                           borderRadius: '10px',
-                          border: '1px solid rgba(255, 255, 255, 0.1)'
+                          border: '1px solid #e2e8f0'
                         }}
                       >
                         Pendiente
@@ -631,15 +691,15 @@ export const CountingView = () => {
                     )}
                   </div>
 
-                  <h4 style={{ margin: '0 0 2px 0', fontSize: '0.96rem', fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <h4 style={{ margin: '0 0 2px 0', fontSize: '0.96rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     Conteo por Imagen (OCR)
                   </h4>
-                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8', lineHeight: 1.3 }}>
+                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#475569', lineHeight: 1.3 }}>
                     Escaneo inteligente de actas con IA y extracción de votos.
                   </p>
 
                   {totalOcrVotes > 0 && (
-                    <div style={{ marginTop: '6px', fontSize: '0.74rem', color: '#c084fc', fontWeight: 600 }}>
+                    <div style={{ marginTop: '6px', fontSize: '0.74rem', color: '#7e22ce', fontWeight: 700 }}>
                       📷 Votos de acta detectados: {totalOcrVotes}
                     </div>
                   )}
@@ -655,10 +715,10 @@ export const CountingView = () => {
                     style={{
                       flex: 1,
                       background: isOcrEffectiveLocked
-                        ? 'rgba(255, 255, 255, 0.05)'
-                        : 'linear-gradient(135deg, #9333ea 0%, #7e22ce 100%)',
-                      borderColor: isOcrEffectiveLocked ? 'rgba(255,255,255,0.1)' : '#a855f7',
-                      color: isOcrEffectiveLocked ? '#94a3b8' : '#ffffff',
+                        ? '#e2e8f0'
+                        : 'linear-gradient(135deg, #7e22ce 0%, #6b21a8 100%)',
+                      borderColor: isOcrEffectiveLocked ? '#cbd5e1' : '#7e22ce',
+                      color: isOcrEffectiveLocked ? '#64748b' : '#ffffff',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -668,8 +728,8 @@ export const CountingView = () => {
                       fontSize: '0.84rem',
                       borderRadius: '8px',
                       cursor: isOcrEffectiveLocked ? 'not-allowed' : 'pointer',
-                      boxShadow: isOcrEffectiveLocked ? 'none' : '0 4px 12px rgba(147, 51, 234, 0.25)',
-                      opacity: isOcrEffectiveLocked ? 0.6 : 1,
+                      boxShadow: isOcrEffectiveLocked ? 'none' : '0 2px 8px rgba(126, 34, 206, 0.25)',
+                      opacity: isOcrEffectiveLocked ? 0.7 : 1,
                       pointerEvents: isOcrEffectiveLocked ? 'none' : 'auto'
                     }}
                   >
@@ -683,9 +743,9 @@ export const CountingView = () => {
                     className="btn"
                     onClick={() => setIsOcrModalOpen(true)}
                     style={{
-                      background: 'rgba(255, 255, 255, 0.06)',
-                      border: '1px solid rgba(255, 255, 255, 0.12)',
-                      color: '#e2e8f0',
+                      background: '#ffffff',
+                      border: '1px solid #cbd5e1',
+                      color: '#334155',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -694,9 +754,9 @@ export const CountingView = () => {
                       fontSize: '0.84rem',
                       borderRadius: '8px',
                       cursor: 'pointer',
-                      fontWeight: 600
+                      fontWeight: 700
                     }}
-                    title="Ver tabla de votos OCR"
+                    title="Ver acta escaneada"
                   >
                     <Eye size={15} />
                     <span>Ver</span>

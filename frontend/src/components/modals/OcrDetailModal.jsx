@@ -27,19 +27,22 @@ export const OcrDetailModal = () => {
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          padding: '20px'
+          padding: '20px',
+          background: '#ffffff',
+          border: '1px solid #cbd5e1',
+          boxShadow: '0 20px 50px rgba(0,0,0,0.15)'
         }}
       >
-        <div className="modal-header" style={{ flexShrink: 0, paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-          <h3 id="ocr-modal-title" style={{ margin: 0, color: '#f1f5f9', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <FileText size={20} /> Detalle del Escaneo
+        <div className="modal-header" style={{ flexShrink: 0, paddingBottom: '12px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+          <h3 id="ocr-modal-title" style={{ margin: 0, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <FileText size={20} color="#0284c7" /> Detalle del Escaneo
           </h3>
           <button
             type="button"
             id="btn-close-ocr-modal"
             className="btn-icon-close"
             onClick={() => setIsOcrDetailModalOpen(false)}
-            style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.5rem', cursor: 'pointer' }}
+            style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '1.5rem', cursor: 'pointer' }}
           >
             &times;
           </button>
@@ -73,49 +76,49 @@ export const OcrDetailModal = () => {
               style={{
                 maxHeight: '350px',
                 overflow: 'auto',
-                background: 'rgba(0,0,0,0.25)',
+                background: '#f8fafc',
                 padding: '12px',
                 borderRadius: '8px',
-                border: '1px solid rgba(255,255,255,0.08)',
-                color: '#f1f5f9',
+                border: '1px solid #e2e8f0',
+                color: '#0f172a',
                 fontSize: '0.85rem'
               }}
             >
               {parsedData ? (
                 <div>
-                  <div style={{ fontWeight: 700, color: '#a855f7', marginBottom: '8px' }}>
+                  <div style={{ fontWeight: 700, color: '#7e22ce', marginBottom: '8px' }}>
                     Tipo detectado: {parsedData.tipoDocumento || 'Documento general'}
                   </div>
                   {parsedData.votos && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <strong style={{ color: '#38bdf8' }}>Provincial:</strong>
-                      <pre style={{ margin: 0, fontSize: '0.78rem' }}>{JSON.stringify(parsedData.votos.provincial, null, 2)}</pre>
-                      <strong style={{ color: '#a855f7', marginTop: '6px' }}>Distrital:</strong>
-                      <pre style={{ margin: 0, fontSize: '0.78rem' }}>{JSON.stringify(parsedData.votos.distrital, null, 2)}</pre>
+                      <strong style={{ color: '#0284c7' }}>Provincial:</strong>
+                      <pre style={{ margin: 0, fontSize: '0.78rem', background: '#f1f5f9', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0', color: '#0f172a' }}>{JSON.stringify(parsedData.votos.provincial, null, 2)}</pre>
+                      <strong style={{ color: '#7e22ce', marginTop: '6px' }}>Distrital:</strong>
+                      <pre style={{ margin: 0, fontSize: '0.78rem', background: '#f1f5f9', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0', color: '#0f172a' }}>{JSON.stringify(parsedData.votos.distrital, null, 2)}</pre>
                     </div>
                   )}
                   {parsedData.filas && (
-                    <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
+                    <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse', marginTop: '8px' }}>
                       <thead>
-                        <tr>
-                          {parsedData.columnas?.map((c, i) => <th key={i} style={{ borderBottom: '1px solid #a855f7', padding: '4px' }}>{c}</th>)}
+                        <tr style={{ background: '#f1f5f9' }}>
+                          {parsedData.columnas?.map((c, i) => <th key={i} style={{ borderBottom: '2px solid #cbd5e1', padding: '6px', color: '#0f172a' }}>{c}</th>)}
                         </tr>
                       </thead>
                       <tbody>
                         {parsedData.filas.map((f, i) => (
-                          <tr key={i}>
-                            {Object.values(f).map((val, j) => <td key={j} style={{ padding: '4px', textAlign: 'center' }}>{String(val)}</td>)}
+                          <tr key={i} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                            {Object.values(f).map((val, j) => <td key={j} style={{ padding: '6px', textAlign: 'center', color: '#334155' }}>{String(val)}</td>)}
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   )}
                   {parsedData.textoExtraido && (
-                    <pre style={{ whiteSpace: 'pre-wrap', fontSize: '0.8rem', color: '#cbd5e1' }}>{parsedData.textoExtraido}</pre>
+                    <pre style={{ whiteSpace: 'pre-wrap', fontSize: '0.8rem', color: '#334155', background: '#f1f5f9', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0', marginTop: '8px' }}>{parsedData.textoExtraido}</pre>
                   )}
                 </div>
               ) : (
-                <div style={{ color: '#94a3b8' }}>{ocrRawDetail || 'No hay detalle disponible.'}</div>
+                <div style={{ color: '#64748b' }}>{ocrRawDetail || 'No hay detalle disponible.'}</div>
               )}
             </div>
           ) : (
@@ -126,11 +129,11 @@ export const OcrDetailModal = () => {
                 overflow: 'auto',
                 fontFamily: 'monospace',
                 fontSize: '0.8rem',
-                color: '#f1f5f9',
-                background: 'rgba(0,0,0,0.35)',
+                color: '#0f172a',
+                background: '#f8fafc',
                 padding: '12px',
                 borderRadius: '8px',
-                border: '1px solid rgba(255,255,255,0.08)',
+                border: '1px solid #e2e8f0',
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-all'
               }}

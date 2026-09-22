@@ -120,7 +120,7 @@ router.all('/voto-real', async (req, res) => {
       case 'obtener_personeros_por_colegio':
         return res.json(await postgresRepo.obtenerPersonerosPorColegio(payload));
       case 'obtener_confirmaciones_por_colegio':
-        return res.json(await postgresRepo.obtenerConfirmacionesPorColegio(payload.colegio || payload.local));
+        return res.json(await postgresRepo.obtenerConfirmacionesPorColegio(payload.colegio || payload.local, payload.distrito || payload.ubicacion));
       case 'obtener_mesas':
         return res.json(await postgresRepo.obtenerMesas());
       case 'obtener_coordenadas_colegio':

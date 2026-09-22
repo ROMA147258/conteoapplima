@@ -27,9 +27,9 @@ export const ManualCountingModal = ({
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(3, 7, 18, 0.88)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
+        backgroundColor: 'rgba(15, 23, 42, 0.6)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -47,11 +47,10 @@ export const ManualCountingModal = ({
           width: '100%',
           maxWidth: '820px',
           maxHeight: '94vh',
-          backgroundColor: '#0f172a',
-          backgroundImage: 'linear-gradient(160deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%)',
+          backgroundColor: '#ffffff',
           borderRadius: '18px',
-          border: '1px solid rgba(56, 189, 248, 0.25)',
-          boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 35px rgba(56, 189, 248, 0.15)',
+          border: '1px solid #cbd5e1',
+          boxShadow: '0 25px 60px -15px rgba(15, 23, 42, 0.25)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden'
@@ -61,11 +60,11 @@ export const ManualCountingModal = ({
         <div
           style={{
             padding: '14px 18px',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            borderBottom: '1px solid #e2e8f0',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: 'rgba(15, 23, 42, 0.8)'
+            background: '#f8fafc'
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -74,22 +73,22 @@ export const ManualCountingModal = ({
                 width: '36px',
                 height: '36px',
                 borderRadius: '10px',
-                background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(37, 99, 235, 0.3))',
-                border: '1px solid rgba(56, 189, 248, 0.4)',
+                background: 'rgba(2, 132, 199, 0.1)',
+                border: '1px solid rgba(2, 132, 199, 0.3)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#38bdf8'
+                color: '#0284c7'
               }}
             >
               <UserCheck size={20} />
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#f8fafc' }}>
+              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
                 Registro Manual de Votos
               </h3>
-              <div style={{ fontSize: '0.78rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
-                <span style={{ fontWeight: 600, color: '#38bdf8' }}>Mesa de sufragio: {mesaInput || '---'}</span>
+              <div style={{ fontSize: '0.78rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
+                <span style={{ fontWeight: 700, color: '#0284c7' }}>Mesa de sufragio: {mesaInput || '---'}</span>
                 <span>•</span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                   <MapPin size={12} /> {ubicacion || 'Lima'}
@@ -102,25 +101,25 @@ export const ManualCountingModal = ({
             type="button"
             onClick={onClose}
             style={{
-              background: 'rgba(255, 255, 255, 0.06)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              background: '#f1f5f9',
+              border: '1px solid #cbd5e1',
               borderRadius: '8px',
               width: '34px',
               height: '34px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#94a3b8',
+              color: '#475569',
               cursor: 'pointer',
               transition: 'all 0.15s ease'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
+              e.currentTarget.style.background = '#fee2e2';
               e.currentTarget.style.color = '#ef4444';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
-              e.currentTarget.style.color = '#94a3b8';
+              e.currentTarget.style.background = '#f1f5f9';
+              e.currentTarget.style.color = '#475569';
             }}
           >
             <X size={18} />

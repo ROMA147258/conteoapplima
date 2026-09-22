@@ -1,5 +1,5 @@
 import React from 'react';
-import { UserCheck, MapPin, Settings, LogOut } from 'lucide-react';
+import { UserCheck, MapPin, LogOut } from 'lucide-react';
 
 export const UserInfoBar = ({
   currentUser,
@@ -7,7 +7,6 @@ export const UserInfoBar = ({
   isLlegadaConfirmed,
   onConfirmarLlegada,
   isSuperAdmin,
-  onOpenConfig,
   onLogout
 }) => {
   return (
@@ -15,7 +14,9 @@ export const UserInfoBar = ({
       <div className="user-details">
         <UserCheck className="text-secondary user-avatar-icon" size={24} />
         <div>
-          <span className="user-label">Personero</span>
+          <span className="user-label">
+            {isSuperAdmin ? 'Super Administrador' : (currentUser?.rol || 'Personero')}
+          </span>
           <span id="user-display-name" className="user-name">{currentUser?.nombre || 'Personero'}</span>
           <span id="user-display-info" className="user-info-text">
             {currentUser?.dni ? `DNI: ${currentUser.dni} | Distrito: ${ubicacion}` : `Ubicación: ${ubicacion}`}
@@ -23,18 +24,6 @@ export const UserInfoBar = ({
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        {isSuperAdmin && (
-          <button
-            id="btn-open-config"
-            className="btn-icon-header"
-            type="button"
-            onClick={onOpenConfig}
-            title="Configurar API"
-          >
-            <Settings size={18} />
-          </button>
-        )}
-
         <button
           id="btn-logout"
           className="btn-logout-small"

@@ -19,20 +19,22 @@ export const MesaCard = ({
         flexDirection: 'column',
         gap: '10px',
         padding: '12px 14px',
-        borderRadius: '14px'
+        borderRadius: '14px',
+        background: '#ffffff',
+        border: '1px solid #e2e8f0'
       }}
     >
       {/* ======================================================== */}
-      {/* INSTALACIÓN DE MESA DE SUFRAGIO                          */}
+      {/* INSTALACIÓN DE MESA DE SUFRAGIO PARA PERSONEROS          */}
       {/* ======================================================== */}
       <div
         style={{
           background: isAttendanceConfirmed
-            ? 'linear-gradient(145deg, rgba(34, 197, 94, 0.09) 0%, rgba(15, 23, 42, 0.5) 100%)'
-            : 'linear-gradient(145deg, rgba(56, 189, 248, 0.08) 0%, rgba(15, 23, 42, 0.5) 100%)',
+            ? 'linear-gradient(145deg, #f0fdf4 0%, #dcfce7 100%)'
+            : 'linear-gradient(145deg, #f0f9ff 0%, #e0f2fe 100%)',
           border: isAttendanceConfirmed
-            ? '1px solid rgba(34, 197, 94, 0.35)'
-            : '1px solid rgba(56, 189, 248, 0.3)',
+            ? '1px solid #86efac'
+            : '1px solid #bae6fd',
           borderRadius: '12px',
           padding: '12px',
           display: 'flex',
@@ -44,9 +46,9 @@ export const MesaCard = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div
               style={{
-                background: isAttendanceConfirmed ? 'rgba(34, 197, 94, 0.2)' : 'rgba(2, 132, 199, 0.2)',
-                border: isAttendanceConfirmed ? '1px solid #22c55e' : '1px solid #0284c7',
-                color: isAttendanceConfirmed ? '#86efac' : '#38bdf8',
+                background: isAttendanceConfirmed ? '#dcfce7' : '#e0f2fe',
+                border: isAttendanceConfirmed ? '1px solid #16a34a' : '1px solid #0284c7',
+                color: isAttendanceConfirmed ? '#15803d' : '#0284c7',
                 borderRadius: '8px',
                 width: '26px',
                 height: '26px',
@@ -62,7 +64,7 @@ export const MesaCard = ({
               style={{
                 fontSize: '0.84rem',
                 fontWeight: 800,
-                color: isAttendanceConfirmed ? '#86efac' : '#38bdf8',
+                color: isAttendanceConfirmed ? '#15803d' : '#0369a1',
                 letterSpacing: '0.3px'
               }}
             >
@@ -74,11 +76,12 @@ export const MesaCard = ({
             <span
               style={{
                 fontSize: '0.7rem',
-                color: '#86efac',
-                fontWeight: 700,
-                background: 'rgba(34, 197, 94, 0.2)',
+                color: '#15803d',
+                fontWeight: 800,
+                background: '#dcfce7',
                 padding: '2px 8px',
                 borderRadius: '10px',
+                border: '1px solid #86efac',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '4px'
@@ -100,7 +103,7 @@ export const MesaCard = ({
         >
           {/* Campo Mesa */}
           <div style={{ flex: '1 1 110px', minWidth: '90px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <label htmlFor="input-mesa" style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8' }}>
+            <label htmlFor="input-mesa" style={{ fontSize: '0.72rem', fontWeight: 700, color: '#334155' }}>
               Mesa de sufragio:
             </label>
             <input
@@ -122,10 +125,10 @@ export const MesaCard = ({
                 padding: '7px 10px',
                 fontSize: '0.88rem',
                 borderRadius: '6px',
-                background: 'rgba(0, 0, 0, 0.25)',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                color: '#ffffff',
-                fontWeight: 600,
+                background: '#ffffff',
+                border: '1.5px solid #cbd5e1',
+                color: '#0f172a',
+                fontWeight: 700,
                 outline: 'none',
                 boxSizing: 'border-box'
               }}
@@ -134,7 +137,7 @@ export const MesaCard = ({
 
           {/* Campo Centro de Votacion */}
           <div style={{ flex: '2 1 180px', minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <label htmlFor="input-colegio" style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8' }}>
+            <label htmlFor="input-colegio" style={{ fontSize: '0.72rem', fontWeight: 700, color: '#334155' }}>
               Centro de votación:
             </label>
             <input
@@ -148,10 +151,10 @@ export const MesaCard = ({
                 padding: '7px 10px',
                 fontSize: '0.82rem',
                 borderRadius: '6px',
-                background: isColegioDetected ? 'rgba(34, 197, 94, 0.08)' : 'rgba(0,0,0,0.25)',
-                border: isColegioDetected ? '1px solid rgba(34, 197, 94, 0.4)' : '1px solid rgba(255,255,255,0.1)',
-                color: isColegioDetected ? '#4ade80' : '#94a3b8',
-                fontWeight: 600,
+                background: isColegioDetected ? '#f0fdf4' : '#f8fafc',
+                border: isColegioDetected ? '1px solid #86efac' : '1px solid #cbd5e1',
+                color: isColegioDetected ? '#15803d' : '#64748b',
+                fontWeight: 700,
                 outline: 'none',
                 boxSizing: 'border-box'
               }}
@@ -169,13 +172,13 @@ export const MesaCard = ({
               padding: '0 14px',
               borderRadius: '8px',
               border: isAttendanceConfirmed
-                ? '1px solid rgba(34, 197, 94, 0.45)'
-                : '1px solid rgba(56, 189, 248, 0.45)',
+                ? '1px solid #86efac'
+                : '1px solid #0284c7',
               background: isAttendanceConfirmed
-                ? 'rgba(34, 197, 94, 0.2)'
+                ? '#dcfce7'
                 : 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-              color: isAttendanceConfirmed ? '#86efac' : '#ffffff',
-              fontWeight: 700,
+              color: isAttendanceConfirmed ? '#15803d' : '#ffffff',
+              fontWeight: 800,
               fontSize: '0.82rem',
               display: 'flex',
               alignItems: 'center',
@@ -183,11 +186,11 @@ export const MesaCard = ({
               gap: '6px',
               cursor: isAttendanceConfirmed ? 'default' : 'pointer',
               whiteSpace: 'nowrap',
-              boxShadow: isAttendanceConfirmed ? 'none' : '0 2px 10px rgba(2, 132, 199, 0.3)',
+              boxShadow: isAttendanceConfirmed ? 'none' : '0 2px 10px rgba(2, 132, 199, 0.25)',
               flex: '0 0 auto'
             }}
           >
-            {isAttendanceConfirmed ? <CheckCircle2 size={16} color="#22c55e" /> : <Camera size={16} />}
+            {isAttendanceConfirmed ? <CheckCircle2 size={16} color="#16a34a" /> : <Camera size={16} />}
             <span>{isAttendanceConfirmed ? 'Foto OK ✓' : 'Tomar Foto'}</span>
           </button>
         </div>

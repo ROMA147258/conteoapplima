@@ -19,13 +19,32 @@ export const useVotes = () => {
   } = useApp();
 
   const isSuperAdmin = checkIsSuperAdmin(currentUser);
+  const isCoordinadorDistrital = Boolean(
+    (currentUser?.rol || '').toLowerCase().includes('distrital') ||
+    (currentUser?.tipo_interfaz || '') === 'coordinador_distrital'
+  );
+  const isCoordinadorZonal = Boolean(
+    (currentUser?.rol || '').toLowerCase().includes('zonal') ||
+    (currentUser?.tipo_interfaz || '') === 'coordinador_zonal' ||
+    (currentUser?.tabla_origen || '').includes('rcoordinadoresz')
+  );
+  const isCoordinadorLocal = Boolean(
+    (currentUser?.rol || '').toLowerCase().includes('local') ||
+    (currentUser?.tipo_interfaz || '') === 'coordinador_local' ||
+    (currentUser?.tabla_origen || '').includes('rcoordinadores')
+  );
+  const canSendMultipleTimes = isSuperAdmin || isCoordinadorDistrital || isCoordinadorZonal || isCoordinadorLocal;
+
   const [isTransmitting, setIsTransmitting] = useState(false);
 
-  // Bloqueo de Conteo Manual (solo 1 vez para usuarios normales)
+  // Bloqueo de Conteo Manual (solo 1 vez para personeros normales; coordinadores y admin pueden enviar múltiples veces)
   const [isManualLocked, setIsManualLocked] = useState(() => {
     try {
       const u = JSON.parse(sessionStorage.getItem('votoReal_user') || '{}');
-      if (checkIsSuperAdmin(u)) return false;
+      const uDistrital = (u.rol || '').toLowerCase().includes('distrital') || (u.tipo_interfaz || '') === 'coordinador_distrital';
+      const uZonal = (u.rol || '').toLowerCase().includes('zonal') || (u.tipo_interfaz || '') === 'coordinador_zonal' || (u.tabla_origen || '').includes('rcoordinadoresz');
+      const uLocal = (u.rol || '').toLowerCase().includes('local') || (u.tipo_interfaz || '') === 'coordinador_local' || (u.tabla_origen || '').includes('rcoordinadores');
+      if (checkIsSuperAdmin(u) || uDistrital || uZonal || uLocal) return false;
       if (u.voto_manual_enviado) return true;
       const mesaKey = u.mesa ? `votoReal_manualLocked_${u.dni}_${u.mesa}` : null;
       if (mesaKey && localStorage.getItem(mesaKey) === 'true') return true;
@@ -35,11 +54,14 @@ export const useVotes = () => {
     }
   });
 
-  // Bloqueo de Conteo por Imagen / OCR (solo 1 vez para usuarios normales)
+  // Bloqueo de Conteo por Imagen / OCR (solo 1 vez para personeros normales; coordinadores y admin pueden enviar múltiples veces)
   const [isOcrLocked, setIsOcrLocked] = useState(() => {
     try {
       const u = JSON.parse(sessionStorage.getItem('votoReal_user') || '{}');
-      if (checkIsSuperAdmin(u)) return false;
+      const uDistrital = (u.rol || '').toLowerCase().includes('distrital') || (u.tipo_interfaz || '') === 'coordinador_distrital';
+      const uZonal = (u.rol || '').toLowerCase().includes('zonal') || (u.tipo_interfaz || '') === 'coordinador_zonal' || (u.tabla_origen || '').includes('rcoordinadoresz');
+      const uLocal = (u.rol || '').toLowerCase().includes('local') || (u.tipo_interfaz || '') === 'coordinador_local' || (u.tabla_origen || '').includes('rcoordinadores');
+      if (checkIsSuperAdmin(u) || uDistrital || uZonal || uLocal) return false;
       if (u.voto_imagen_enviado) return true;
       const mesaKey = u.mesa ? `votoReal_ocrLocked_${u.dni}_${u.mesa}` : null;
       if (mesaKey && localStorage.getItem(mesaKey) === 'true') return true;
@@ -181,7 +203,18 @@ export const useVotes = () => {
     let isMounted = true;
     const syncVoteStatusFromDb = async () => {
       try {
-        const res = await apiPost({ action: 'obtener_asistencia_por_dni', dni: currentUser.dni }, apiUrl);
+        if (canSendMultipleTimes) {
+          setIsManualLocked(false);
+          setIsOcrLocked(false);
+          return;
+        }
+
+        const res = await apiPost({
+          action: 'obtener_estado_votos',
+          dni: currentUser.dni,
+          mesa: currentUser.mesa
+        }, apiUrl);
+
         if (res && res.success && isMounted) {
           // 1. Voto Manual
           const dbVotoManual = Boolean(res.voto_manual_enviado);
@@ -243,11 +276,11 @@ export const useVotes = () => {
 
     syncVoteStatusFromDb();
     return () => { isMounted = false; };
-  }, [currentUser?.dni, currentUser?.mesa, apiUrl, setCurrentUser, setCurrentVotes, setOcrVotes]);
+  }, [currentUser?.dni, currentUser?.mesa, apiUrl, setCurrentUser, setCurrentVotes, setOcrVotes, canSendMultipleTimes]);
 
   const handleVoteChange = (scope, key, val) => {
-    // Si está bloqueado y NO es superadmin, no permitir edición
-    if (isManualLocked && !isSuperAdmin) return;
+    // Si está bloqueado y NO es superadmin ni coordinador, no permitir edición
+    if (isManualLocked && !canSendMultipleTimes) return;
     const intVal = parseInt(val, 10);
     const safeVal = isNaN(intVal) || intVal < 0 ? 0 : intVal > 999 ? 999 : intVal;
 
@@ -260,11 +293,11 @@ export const useVotes = () => {
     }));
   };
 
-  const transmitVotes = async (mesaVal, colegioInput, ubicacion, origen = 'MANUAL', customVotes = null) => {
+  const transmitVotes = async (mesaVal, colegioInput, ubicacion, origen = 'MANUAL', customVotes = null, personeroOverride = null) => {
     if (isTransmitting) return;
 
-    // Validación de Bloqueo Único para personeros normales (Superadmin tiene permiso de modificación)
-    if (!isSuperAdmin) {
+    // Validación de Bloqueo Único para personeros normales (Superadmin y coordinadores tienen permiso de envíos múltiples)
+    if (!canSendMultipleTimes) {
       if (origen === 'MANUAL' && isManualLocked) {
         showToast('El registro manual ya fue transmitido y se encuentra bloqueado (solo 1 envío permitido).', 'warning');
         return;
@@ -272,6 +305,17 @@ export const useVotes = () => {
 
       if (origen === 'IMAGEN' && isOcrLocked) {
         showToast('El conteo por imagen ya fue transmitido y se encuentra bloqueado (solo 1 envío permitido).', 'warning');
+        return;
+      }
+    }
+
+    if (personeroOverride && !isSuperAdmin) {
+      if (origen === 'MANUAL' && personeroOverride.voto_manual_enviado) {
+        showToast('El registro manual para este personero ya fue transmitido y se encuentra bloqueado (solo 1 envío permitido).', 'warning');
+        return;
+      }
+      if (origen === 'IMAGEN' && personeroOverride.voto_imagen_enviado) {
+        showToast('El conteo por imagen para este personero ya fue transmitido y se encuentra bloqueado (solo 1 envío permitido).', 'warning');
         return;
       }
     }
@@ -293,6 +337,23 @@ export const useVotes = () => {
     }
 
     setIsTransmitting(true);
+
+    let targetBrigadista = currentUser?.nombre || '';
+    let targetDni = currentUser?.dni || '';
+
+    // Si un coordinador de Villa María del Triunfo está registrando los votos en nombre del personero de mesa
+    if (personeroOverride && (personeroOverride.dni || personeroOverride.DNI)) {
+      targetBrigadista = personeroOverride.nombre || personeroOverride.Nombres_y_Apellidos || targetBrigadista;
+      targetDni = personeroOverride.dni || personeroOverride.DNI || targetDni;
+    } else {
+      try {
+        const storedP = JSON.parse(localStorage.getItem('votoReal_personero_activo') || 'null');
+        if (storedP && (storedP.dni || storedP.DNI) && (!mesa || storedP.mesa === mesa)) {
+          targetBrigadista = storedP.nombre || storedP.Nombres_y_Apellidos || targetBrigadista;
+          targetDni = storedP.dni || storedP.DNI || targetDni;
+        }
+      } catch (e) {}
+    }
 
     const votesToSubmit = customVotes || ((origen === 'IMAGEN') ? ocrVotes : currentVotes);
     const provCandidates = obtenerListaCandidatosProvincial();
@@ -338,8 +399,8 @@ export const useVotes = () => {
 
     const payload = {
       action: 'registrar_votos',
-      brigadista: currentUser?.nombre,
-      dni: currentUser?.dni,
+      brigadista: targetBrigadista,
+      dni: targetDni,
       departamento: 'Lima',
       provincia: 'Lima',
       ubicacion: ubicacion,
@@ -365,9 +426,9 @@ export const useVotes = () => {
       } else {
         const res = await apiPost(payload, apiUrl);
         if (res && res.success) {
-          const isModifying = isSuperAdmin && (origen === 'MANUAL' ? isManualLocked : isOcrLocked);
+          const isModifying = canSendMultipleTimes;
           if (isModifying) {
-            showToast(`¡Modificación de votos (${origen === 'IMAGEN' ? 'Imagen' : 'Manual'}) guardada y actualizada en la BD exitosamente!`, 'success');
+            showToast(`¡Votos de Mesa ${mesa} (${origen === 'IMAGEN' ? 'Imagen OCR' : 'Manual'}) transmitidos y guardados con éxito!`, 'success');
           } else {
             showToast(`¡Votos de ${origen === 'IMAGEN' ? 'Imagen' : 'Manual'} registrados y transmitidos con éxito!`, 'success');
           }
@@ -376,43 +437,47 @@ export const useVotes = () => {
         }
       }
 
-      // Bloquear según el origen enviado
+      // Bloquear solo para personeros normales; coordinadores y superadmin quedan desbloqueados
       if (origen === 'MANUAL') {
-        setIsManualLocked(true);
         const savedManualObj = {
           provincial: { ...(votesToSubmit.provincial || {}), NULOS: pNulos, BLANCO: pBlanco, IMPUGNADOS: pImpugnados },
           distrital: { ...(votesToSubmit.distrital || {}), NULOS: dNulos, BLANCO: dBlanco, IMPUGNADOS: dImpugnados }
         };
         setCurrentVotes(savedManualObj);
-        if (currentUser?.dni) {
-          localStorage.setItem(`votoReal_manualLocked_${currentUser.dni}`, 'true');
-          localStorage.setItem(`votoReal_manualLocked_${currentUser.dni}_${mesa}`, 'true');
-          localStorage.setItem(`votoReal_manualVotes_${currentUser.dni}`, JSON.stringify(savedManualObj));
+        if (!canSendMultipleTimes) {
+          setIsManualLocked(true);
+          if (currentUser?.dni) {
+            localStorage.setItem(`votoReal_manualLocked_${currentUser.dni}`, 'true');
+            localStorage.setItem(`votoReal_manualLocked_${currentUser.dni}_${mesa}`, 'true');
+            localStorage.setItem(`votoReal_manualVotes_${currentUser.dni}`, JSON.stringify(savedManualObj));
+          }
+          setCurrentUser(prev => {
+            if (!prev) return prev;
+            const updated = { ...prev, voto_manual_enviado: true };
+            sessionStorage.setItem('votoReal_user', JSON.stringify(updated));
+            return updated;
+          });
         }
-        setCurrentUser(prev => {
-          if (!prev) return prev;
-          const updated = { ...prev, voto_manual_enviado: true };
-          sessionStorage.setItem('votoReal_user', JSON.stringify(updated));
-          return updated;
-        });
       } else if (origen === 'IMAGEN') {
-        setIsOcrLocked(true);
         const savedOcrObj = {
           provincial: { ...(votesToSubmit.provincial || {}), NULOS: pNulos, BLANCO: pBlanco, IMPUGNADOS: pImpugnados },
           distrital: { ...(votesToSubmit.distrital || {}), NULOS: dNulos, BLANCO: dBlanco, IMPUGNADOS: dImpugnados }
         };
         setOcrVotes(savedOcrObj);
-        if (currentUser?.dni) {
-          localStorage.setItem(`votoReal_ocrLocked_${currentUser.dni}`, 'true');
-          localStorage.setItem(`votoReal_ocrLocked_${currentUser.dni}_${mesa}`, 'true');
-          localStorage.setItem(`votoReal_ocrVotes_${currentUser.dni}`, JSON.stringify(savedOcrObj));
+        if (!canSendMultipleTimes) {
+          setIsOcrLocked(true);
+          if (currentUser?.dni) {
+            localStorage.setItem(`votoReal_ocrLocked_${currentUser.dni}`, 'true');
+            localStorage.setItem(`votoReal_ocrLocked_${currentUser.dni}_${mesa}`, 'true');
+            localStorage.setItem(`votoReal_ocrVotes_${currentUser.dni}`, JSON.stringify(savedOcrObj));
+          }
+          setCurrentUser(prev => {
+            if (!prev) return prev;
+            const updated = { ...prev, voto_imagen_enviado: true };
+            sessionStorage.setItem('votoReal_user', JSON.stringify(updated));
+            return updated;
+          });
         }
-        setCurrentUser(prev => {
-          if (!prev) return prev;
-          const updated = { ...prev, voto_imagen_enviado: true };
-          sessionStorage.setItem('votoReal_user', JSON.stringify(updated));
-          return updated;
-        });
       }
 
       setMesas(prev => [...new Set([...prev, mesa])]);
@@ -420,39 +485,43 @@ export const useVotes = () => {
     } catch (err) {
       console.warn('[useVotes] Fallback local:', err);
       if (origen === 'MANUAL') {
-        setIsManualLocked(true);
         const savedManualObj = {
           provincial: { ...(votesToSubmit.provincial || {}), NULOS: pNulos, BLANCO: pBlanco, IMPUGNADOS: pImpugnados },
           distrital: { ...(votesToSubmit.distrital || {}), NULOS: dNulos, BLANCO: dBlanco, IMPUGNADOS: dImpugnados }
         };
         setCurrentVotes(savedManualObj);
-        if (currentUser?.dni) {
-          localStorage.setItem(`votoReal_manualLocked_${currentUser.dni}`, 'true');
-          localStorage.setItem(`votoReal_manualVotes_${currentUser.dni}`, JSON.stringify(savedManualObj));
+        if (!canSendMultipleTimes) {
+          setIsManualLocked(true);
+          if (currentUser?.dni) {
+            localStorage.setItem(`votoReal_manualLocked_${currentUser.dni}`, 'true');
+            localStorage.setItem(`votoReal_manualVotes_${currentUser.dni}`, JSON.stringify(savedManualObj));
+          }
+          setCurrentUser(prev => {
+            if (!prev) return prev;
+            const updated = { ...prev, voto_manual_enviado: true };
+            sessionStorage.setItem('votoReal_user', JSON.stringify(updated));
+            return updated;
+          });
         }
-        setCurrentUser(prev => {
-          if (!prev) return prev;
-          const updated = { ...prev, voto_manual_enviado: true };
-          sessionStorage.setItem('votoReal_user', JSON.stringify(updated));
-          return updated;
-        });
       } else if (origen === 'IMAGEN') {
-        setIsOcrLocked(true);
         const savedOcrObj = {
           provincial: { ...(votesToSubmit.provincial || {}), NULOS: pNulos, BLANCO: pBlanco, IMPUGNADOS: pImpugnados },
           distrital: { ...(votesToSubmit.distrital || {}), NULOS: dNulos, BLANCO: dBlanco, IMPUGNADOS: dImpugnados }
         };
         setOcrVotes(savedOcrObj);
-        if (currentUser?.dni) {
-          localStorage.setItem(`votoReal_ocrLocked_${currentUser.dni}`, 'true');
-          localStorage.setItem(`votoReal_ocrVotes_${currentUser.dni}`, JSON.stringify(savedOcrObj));
+        if (!canSendMultipleTimes) {
+          setIsOcrLocked(true);
+          if (currentUser?.dni) {
+            localStorage.setItem(`votoReal_ocrLocked_${currentUser.dni}`, 'true');
+            localStorage.setItem(`votoReal_ocrVotes_${currentUser.dni}`, JSON.stringify(savedOcrObj));
+          }
+          setCurrentUser(prev => {
+            if (!prev) return prev;
+            const updated = { ...prev, voto_imagen_enviado: true };
+            sessionStorage.setItem('votoReal_user', JSON.stringify(updated));
+            return updated;
+          });
         }
-        setCurrentUser(prev => {
-          if (!prev) return prev;
-          const updated = { ...prev, voto_imagen_enviado: true };
-          sessionStorage.setItem('votoReal_user', JSON.stringify(updated));
-          return updated;
-        });
       }
       showToast(`Votos de ${origen === 'IMAGEN' ? 'Imagen' : 'Manual'} registrados localmente.`, 'success');
     } finally {

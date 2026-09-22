@@ -120,7 +120,6 @@ export const AppProvider = ({ children }) => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   // Modals & Popups State
-  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isScannerModalOpen, setIsScannerModalOpen] = useState(false);
   const [isOcrDetailModalOpen, setIsOcrDetailModalOpen] = useState(false);
   const [ocrRawDetail, setOcrRawDetail] = useState('');
@@ -340,7 +339,6 @@ export const AppProvider = ({ children }) => {
       mesasEstructura, setMesasEstructura,
       cachedUsers, setCachedUsers,
       isOnline,
-      isConfigModalOpen, setIsConfigModalOpen,
       isScannerModalOpen, setIsScannerModalOpen,
       isOcrDetailModalOpen, setIsOcrDetailModalOpen,
       ocrRawDetail, setOcrRawDetail,

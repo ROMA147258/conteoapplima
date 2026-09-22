@@ -12,16 +12,16 @@ export const AlertDialog = () => {
   const isWarning = alertDialog.type === 'warning';
   const isSuccess = alertDialog.type === 'success';
 
-  const borderColor = isError ? '#ef4444' : isWarning ? '#eab308' : isSuccess ? '#10b981' : '#38bdf8';
-  const glowColor = isError ? 'rgba(239, 68, 68, 0.35)' : isWarning ? 'rgba(234, 179, 8, 0.35)' : isSuccess ? 'rgba(16, 185, 129, 0.35)' : 'rgba(56, 189, 248, 0.35)';
-  const titleColor = isError ? '#f87171' : isWarning ? '#fde047' : isSuccess ? '#4ade80' : '#38bdf8';
-  const badgeBg = isError ? 'rgba(239, 68, 68, 0.15)' : isWarning ? 'rgba(234, 179, 8, 0.15)' : isSuccess ? 'rgba(16, 185, 129, 0.15)' : 'rgba(56, 189, 248, 0.15)';
+  const borderColor = isError ? '#ef4444' : isWarning ? '#f59e0b' : isSuccess ? '#16a34a' : '#0284c7';
+  const glowColor = isError ? 'rgba(239, 68, 68, 0.15)' : isWarning ? 'rgba(245, 158, 11, 0.15)' : isSuccess ? 'rgba(22, 163, 74, 0.15)' : 'rgba(2, 132, 199, 0.15)';
+  const titleColor = isError ? '#dc2626' : isWarning ? '#b45309' : isSuccess ? '#15803d' : '#0284c7';
+  const badgeBg = isError ? '#fee2e2' : isWarning ? '#fef3c7' : isSuccess ? '#dcfce7' : '#e0f2fe';
 
   const renderIcon = () => {
-    if (isError) return <AlertTriangle size={32} color="#ef4444" />;
-    if (isWarning) return <AlertCircle size={32} color="#eab308" />;
-    if (isSuccess) return <CheckCircle size={32} color="#10b981" />;
-    return <Info size={32} color="#38bdf8" />;
+    if (isError) return <AlertTriangle size={32} color="#dc2626" />;
+    if (isWarning) return <AlertCircle size={32} color="#d97706" />;
+    if (isSuccess) return <CheckCircle size={32} color="#16a34a" />;
+    return <Info size={32} color="#0284c7" />;
   };
 
   return createPortal(
@@ -37,9 +37,9 @@ export const AlertDialog = () => {
         width: '100%',
         height: '100%',
         minHeight: '100dvh',
-        background: 'rgba(5, 10, 20, 0.88)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
+        background: 'rgba(15, 23, 42, 0.65)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
         zIndex: 99999999,
         display: 'flex',
         alignItems: 'center',
@@ -56,7 +56,7 @@ export const AlertDialog = () => {
       <div
         className="modal-card alert-modal-card"
         style={{
-          background: 'linear-gradient(135deg, #1e1b2e, #0f172a)',
+          background: '#ffffff',
           border: `2px solid ${borderColor}`,
           borderRadius: '24px',
           padding: '28px 22px',
@@ -93,7 +93,7 @@ export const AlertDialog = () => {
             {alertDialog.title}
           </h3>
           <div
-            style={{ margin: 0, fontSize: '0.95rem', color: '#cbd5e1', lineHeight: '1.45', wordBreak: 'break-word' }}
+            style={{ margin: 0, fontSize: '0.95rem', color: '#334155', lineHeight: '1.45', wordBreak: 'break-word', fontWeight: 500 }}
             dangerouslySetInnerHTML={{ __html: alertDialog.message }}
           />
         </div>
@@ -110,11 +110,11 @@ export const AlertDialog = () => {
               style={{
                 flex: 1,
                 padding: '13px',
-                background: 'rgba(255, 255, 255, 0.08)',
-                color: '#cbd5e1',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
+                background: '#f1f5f9',
+                color: '#475569',
+                border: '1px solid #cbd5e1',
                 borderRadius: '12px',
-                fontWeight: 600,
+                fontWeight: 700,
                 fontSize: '0.95rem',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease'
@@ -133,7 +133,7 @@ export const AlertDialog = () => {
                 flex: 1.2,
                 padding: '13px',
                 background: 'linear-gradient(135deg, #0ea5e9, #0284c7)',
-                color: '#fff',
+                color: '#ffffff',
                 border: 'none',
                 borderRadius: '12px',
                 fontWeight: 700,
@@ -152,14 +152,14 @@ export const AlertDialog = () => {
             style={{
               width: '100%',
               padding: '13px',
-              background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
-              color: '#fff',
+              background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+              color: '#ffffff',
               border: 'none',
               borderRadius: '12px',
               fontWeight: 700,
               fontSize: '1rem',
               cursor: 'pointer',
-              boxShadow: '0 4px 15px rgba(139, 92, 246, 0.4)',
+              boxShadow: '0 4px 15px rgba(2, 132, 199, 0.35)',
               marginTop: '6px'
             }}
           >

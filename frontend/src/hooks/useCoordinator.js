@@ -8,15 +8,22 @@ export const useCoordinator = () => {
   const [personeros, setPersoneros] = useState([]);
   const [infoColegios, setInfoColegios] = useState([]);
   const [coordinadoresLocales, setCoordinadoresLocales] = useState([]);
+  const [coordinadoresZonales, setCoordinadoresZonales] = useState([]);
   const [asistencias, setAsistencias] = useState([]);
   const [confirmacionesCoord, setConfirmacionesCoord] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const fetchCoordinatorData = useCallback(async () => {
+  const fetchCoordinatorData = useCallback(async (isBackground = false) => {
     if (!currentUser) return;
-    setIsLoading(true);
+    if (!isBackground) setIsLoading(true);
     try {
-      const colQuery = currentUser.colegio || currentUser.local || '';
+      const tablaOrigen = (currentUser.tabla_origen || currentUser.origenHoja || '').toString().toLowerCase();
+      const rolUser = (currentUser.rol || '').toString().toLowerCase();
+      const userDni = (currentUser.dni || '').toString().trim();
+      const isZonalOrDistrital = tablaOrigen === 'rcoordinadoresz' || tablaOrigen === 'rcoordinadoresd' || rolUser.includes('zonal') || rolUser.includes('distrital') || userDni === '43310677';
+
+      // Para Distrital y Zonal dejamos colQuery vacío para traer todos los personeros del distrito
+      const colQuery = isZonalOrDistrital ? '' : (currentUser.colegio || currentUser.local || '');
       const distQuery = currentUser.ubicacion || currentUser.distrito || '';
       const origenQuery = currentUser.origenHoja || currentUser.tabla_origen || '';
 
@@ -31,27 +38,33 @@ export const useCoordinator = () => {
           tabla_origen: origenQuery
         }, apiUrl),
         apiGet({ action: 'obtener_asistencia' }, apiUrl),
-        apiGet({ action: 'obtener_confirmaciones_por_colegio', colegio: colQuery, local: colQuery }, apiUrl)
+        apiGet({ action: 'obtener_confirmaciones_por_colegio', colegio: colQuery, local: colQuery, distrito: distQuery, ubicacion: distQuery }, apiUrl)
       ]);
 
       if (resPersoneros?.personeros) setPersoneros(resPersoneros.personeros);
       if (resPersoneros?.info_colegios) setInfoColegios(resPersoneros.info_colegios);
       if (resPersoneros?.coordinadores_locales) setCoordinadoresLocales(resPersoneros.coordinadores_locales);
+      if (resPersoneros?.coordinadores_zonales) setCoordinadoresZonales(resPersoneros.coordinadores_zonales);
       if (resAsist?.asistencia) setAsistencias(resAsist.asistencia);
       if (resConf?.confirmaciones) setConfirmacionesCoord(resConf.confirmaciones);
     } catch (e) {
       console.warn('[useCoordinator] Error:', e);
     } finally {
-      setIsLoading(false);
+      if (!isBackground) setIsLoading(false);
     }
   }, [currentUser, apiUrl]);
 
   useEffect(() => {
-    fetchCoordinatorData();
+    fetchCoordinatorData(false);
+    // Polling automático continuo en segundo plano cada 8 segundos (sin necesidad de presionar nada)
+    const interval = setInterval(() => {
+      fetchCoordinatorData(true);
+    }, 8000);
+    return () => clearInterval(interval);
   }, [fetchCoordinatorData]);
 
   // Confirmación directa mediante Checkbox / Check
-  const confirmPersoneroDirect = async (personero) => {
+  const confirmPersoneroDirect = async (personero, targetColegio = '') => {
     if (!personero) return false;
 
     const pDni = (personero.dni || personero.DNI || '').toString().trim();
@@ -62,12 +75,13 @@ export const useCoordinator = () => {
     }
 
     try {
+      const localName = personero.colegio || targetColegio || currentUser?.colegio || '';
       const payload = {
         action: 'confirmar_coordinador',
         personeroNombre: personero.nombre,
         personeroDni: pDni,
-        distrito: currentUser?.ubicacion || '',
-        local: currentUser?.colegio || '',
+        distrito: personero.ubicacion || personero.distrito || currentUser?.ubicacion || '',
+        local: localName,
         coordinadorNombre: currentUser?.nombre || '',
         coordinadorDni: currentUser?.dni || '',
         confirmacion: 'SI',
@@ -153,8 +167,10 @@ export const useCoordinator = () => {
 
   return {
     personeros,
+    setPersoneros,
     infoColegios,
     coordinadoresLocales,
+    coordinadoresZonales,
     asistencias,
     confirmacionesCoord,
     isLoading,
