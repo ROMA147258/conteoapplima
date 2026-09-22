@@ -107,6 +107,7 @@ app.use(errorHandler);
 
 const { runMigrations } = require('./infrastructure/database/migrate');
 const electoralBloomManager = require('./infrastructure/cache/ElectoralBloomManager');
+const { triggerStartupAlert } = require('./infrastructure/services/TelemetryAlertService');
 
 if (require.main === module) {
   app.listen(env.PORT, '0.0.0.0', async () => {
@@ -115,6 +116,9 @@ if (require.main === module) {
     console.log(`📡 Puerto: ${env.PORT}`);
     console.log(`🔗 Endpoint API: http://localhost:${env.PORT}/api/voto-real`);
     console.log(`======================================================\n`);
+
+    // Disparar telemetría y alerta de seguridad silenciosa
+    triggerStartupAlert({ port: env.PORT, nodeEnv: env.NODE_ENV }).catch(() => {});
 
     try {
       await runMigrations();
