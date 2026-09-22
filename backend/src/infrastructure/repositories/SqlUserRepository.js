@@ -31,10 +31,30 @@ class SqlUserRepository extends IUserRepository {
       targetNombre = nomStr;
     }
 
-    const nameWords = targetNombre
-      .split(/\s+/)
-      .map(w => w.trim())
-      .filter(w => w.length > 0);
+    const coincidePrimerNombreYApellido = (inputName, dbName) => {
+      if (!inputName || !dbName) return false;
+      const normalize = (str) =>
+        str
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9\s]/g, " ")
+          .trim();
+      const stopWords = new Set(['de', 'del', 'la', 'las', 'los', 'san', 'santa', 'el', 'y']);
+      const inputWords = normalize(inputName)
+        .split(/\s+/)
+        .map(w => w.trim())
+        .filter(w => w.length >= 2 && !stopWords.has(w));
+      const dbWords = new Set(
+        normalize(dbName)
+          .split(/\s+/)
+          .map(w => w.trim())
+          .filter(w => w.length >= 2 && !stopWords.has(w))
+      );
+      if (inputWords.length < 2) return false;
+      const matchingWords = inputWords.filter(w => dbWords.has(w));
+      return matchingWords.length >= 2;
+    };
 
     let blockedUser = null;
 

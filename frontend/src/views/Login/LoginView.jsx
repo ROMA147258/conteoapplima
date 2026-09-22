@@ -54,7 +54,7 @@ export const LoginView = () => {
                 id="login-dni"
                 value={dni}
                 onChange={(e) => setDni(e.target.value)}
-                placeholder="Ingresa tu Clave de acceso o DNI"
+                placeholder="DNI (o Clave si eres Coordinador)"
                 autoComplete="current-password"
                 maxLength="30"
                 style={{ paddingRight: '44px' }}
