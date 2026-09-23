@@ -5,15 +5,41 @@ import { compressImage } from '../utils/imageCompressor';
 
 export const useCoordinator = () => {
   const { currentUser, apiUrl, showToast, setAttendanceSyncLoader } = useApp();
-  const [personeros, setPersoneros] = useState([]);
-  const [infoColegios, setInfoColegios] = useState([]);
-  const [coordinadoresLocales, setCoordinadoresLocales] = useState([]);
-  const [coordinadoresZonales, setCoordinadoresZonales] = useState([]);
+  const [personeros, setPersoneros] = useState(() => {
+    try {
+      const saved = localStorage.getItem('votoReal_personerosCache');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) { return []; }
+  });
+  const [infoColegios, setInfoColegios] = useState(() => {
+    try {
+      const saved = localStorage.getItem('votoReal_colegiosCache');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) { return []; }
+  });
+  const [coordinadoresLocales, setCoordinadoresLocales] = useState(() => {
+    try {
+      const saved = localStorage.getItem('votoReal_coordLocalesCache');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) { return []; }
+  });
+  const [coordinadoresZonales, setCoordinadoresZonales] = useState(() => {
+    try {
+      const saved = localStorage.getItem('votoReal_coordZonalesCache');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) { return []; }
+  });
+  const [coordinadoresDistritales, setCoordinadoresDistritales] = useState(() => {
+    try {
+      const saved = localStorage.getItem('votoReal_coordDistritalesCache');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) { return []; }
+  });
   const [asistencias, setAsistencias] = useState([]);
   const [confirmacionesCoord, setConfirmacionesCoord] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const fetchCoordinatorData = useCallback(async (isBackground = false) => {
+  const fetchCoordinatorData = useCallback(async (isBackground = false, forceRefresh = false) => {
     if (!currentUser) return;
     if (!isBackground) setIsLoading(true);
     try {
@@ -27,13 +53,13 @@ export const useCoordinator = () => {
       const distQuery = currentUser.ubicacion || currentUser.distrito || '';
       const origenQuery = currentUser.origenHoja || currentUser.tabla_origen || '';
 
-      // Solo en la carga inicial traemos el catálogo completo de colegios y personeros
       const promises = [
         apiGet({ action: 'obtener_asistencia' }, apiUrl),
         apiGet({ action: 'obtener_confirmaciones_por_colegio', colegio: colQuery, local: colQuery, distrito: distQuery, ubicacion: distQuery }, apiUrl)
       ];
 
-      if (!isBackground) {
+      const hasCachedCatalog = Boolean(localStorage.getItem('votoReal_colegiosCache') && localStorage.getItem('votoReal_personerosCache'));
+      if (!isBackground && (!hasCachedCatalog || forceRefresh)) {
         promises.push(
           apiGet({
             action: 'obtener_personeros_por_colegio',
@@ -50,13 +76,28 @@ export const useCoordinator = () => {
       const results = await Promise.all(promises);
       const resAsist = results[0];
       const resConf = results[1];
-      const resPersoneros = !isBackground ? results[2] : null;
+      const resPersoneros = (!isBackground && (!hasCachedCatalog || forceRefresh)) ? results[2] : null;
 
-      if (resPersoneros?.personeros) setPersoneros(resPersoneros.personeros);
-      if (resPersoneros?.info_colegios) setInfoColegios(resPersoneros.info_colegios);
-      if (resPersoneros?.coordinadores_locales) setCoordinadoresLocales(resPersoneros.coordinadores_locales);
-      if (resPersoneros?.coordinadores_zonales) setCoordinadoresZonales(resPersoneros.coordinadores_zonales);
-      if (resPersoneros?.coordinadores_distritales) setCoordinadoresDistritales(resPersoneros.coordinadores_distritales);
+      if (resPersoneros?.personeros) {
+        setPersoneros(resPersoneros.personeros);
+        localStorage.setItem('votoReal_personerosCache', JSON.stringify(resPersoneros.personeros));
+      }
+      if (resPersoneros?.info_colegios) {
+        setInfoColegios(resPersoneros.info_colegios);
+        localStorage.setItem('votoReal_colegiosCache', JSON.stringify(resPersoneros.info_colegios));
+      }
+      if (resPersoneros?.coordinadores_locales) {
+        setCoordinadoresLocales(resPersoneros.coordinadores_locales);
+        localStorage.setItem('votoReal_coordLocalesCache', JSON.stringify(resPersoneros.coordinadores_locales));
+      }
+      if (resPersoneros?.coordinadores_zonales) {
+        setCoordinadoresZonales(resPersoneros.coordinadores_zonales);
+        localStorage.setItem('votoReal_coordZonalesCache', JSON.stringify(resPersoneros.coordinadores_zonales));
+      }
+      if (resPersoneros?.coordinadores_distritales) {
+        setCoordinadoresDistritales(resPersoneros.coordinadores_distritales);
+        localStorage.setItem('votoReal_coordDistritalesCache', JSON.stringify(resPersoneros.coordinadores_distritales));
+      }
       if (resAsist?.asistencia) setAsistencias(resAsist.asistencia);
       if (resConf?.confirmaciones) setConfirmacionesCoord(resConf.confirmaciones);
     } catch (e) {
