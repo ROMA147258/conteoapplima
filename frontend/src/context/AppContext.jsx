@@ -327,13 +327,13 @@ export const AppProvider = ({ children }) => {
     if (!currentUser) return;
 
     let inactivityTimer;
-    const INACTIVITY_TIMEOUT = 3 * 60 * 1000; // 3 minutos sin tocar la pantalla / mouse
+    const INACTIVITY_TIMEOUT = 90 * 1000; // 1.5 minutos (90 segundos) sin tocar la pantalla / mouse
 
     const resetInactivity = () => {
       clearTimeout(inactivityTimer);
       inactivityTimer = setTimeout(() => {
         logout();
-        showToast('Sesión cerrada por inactividad (3 min).', 'warning');
+        showToast('Sesión cerrada por inactividad (90s).', 'warning');
       }, INACTIVITY_TIMEOUT);
     };
 
@@ -342,14 +342,14 @@ export const AppProvider = ({ children }) => {
     events.forEach(event => window.addEventListener(event, resetInactivity, { passive: true }));
     resetInactivity();
 
-    // Si la persona cambia de app, bloquea el celular o minimiza la pestaña (45 segundos)
+    // Si la persona cambia de app, bloquea el celular o minimiza la pestaña (25 segundos)
     let hiddenTimer;
     const handleVisibility = () => {
       if (document.hidden) {
         hiddenTimer = setTimeout(() => {
           logout();
           showToast('Sesión cerrada automáticamente al salir de la aplicación.', 'info');
-        }, 45 * 1000); // 45 segundos en segundo plano
+        }, 25 * 1000); // 25 segundos en segundo plano
       } else {
         clearTimeout(hiddenTimer);
       }
