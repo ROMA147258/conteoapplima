@@ -35,32 +35,38 @@ export function buscarBrigadista(dni, nombre, cachedUsers = null) {
       if (!isConfirmed || !isAprobado) return false;
     }
 
-    // Match por Clave de Acceso (ej: ZN7942 o ZN5019 o SP7845)
+    // Match por Clave de Acceso (ej: ZN7942, ZN5019, SP7845)
     const uClave = normStr(u.clave_acceso || u.clave || '');
+    let matchedByKeyOrDni = false;
+
     if (uClave && searchKey && (uClave === searchKey || searchKey.includes(uClave))) {
-      return true;
+      matchedByKeyOrDni = true;
     }
 
     const uDniDigits = cleanDigits(u.dni || u.DNI);
     const uNameNorm = normStr(u.nombre || u.Nombres_y_Apellidos);
 
-    if (targetDigits.length >= 6 && uDniDigits.length >= 6) {
+    if (!matchedByKeyOrDni && targetDigits.length >= 6 && uDniDigits.length >= 6) {
       const targetPadded = targetDigits.padStart(8, '0');
       const uPadded = uDniDigits.padStart(8, '0');
       if (uDniDigits === targetDigits || uPadded === targetPadded) {
-        return true;
+        matchedByKeyOrDni = true;
       }
     }
 
-    if (targetNombre) {
+    // Debe coincidir DNI o Clave obligatoriamente
+    if (!matchedByKeyOrDni) return false;
+
+    // Si además el usuario ingresó palabras de su nombre, verificar que coincidan
+    if (targetNombre && targetNombre !== normStr(rawDni)) {
       const typedWords = targetNombre.split(/\s+/).filter(w => w.length >= 2);
       if (typedWords.length > 0) {
-        const allWordsMatch = typedWords.every(word => uNameNorm.includes(word));
-        if (allWordsMatch) return true;
+        const matchesAnyWord = typedWords.some(word => uNameNorm.includes(word));
+        if (!matchesAnyWord) return false;
       }
     }
 
-    return false;
+    return true;
   };
 
   // 1. Memoria / Caché provisto

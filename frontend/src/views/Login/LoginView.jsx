@@ -11,7 +11,9 @@ export const LoginView = () => {
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
-    if (isLoading) return;
+    if (!nombre.trim() && !dni.trim()) {
+      return;
+    }
 
     setIsLoading(true);
     try {

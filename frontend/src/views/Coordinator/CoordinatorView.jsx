@@ -598,7 +598,7 @@ export const CoordinatorView = () => {
           <button
             type="button"
             className="btn-icon-header"
-            onClick={fetchCoordinatorData}
+            onClick={() => fetchCoordinatorData(false, true)}
             title="Refrescar datos"
             disabled={isLoading}
             style={{ borderRadius: '10px', padding: '8px' }}

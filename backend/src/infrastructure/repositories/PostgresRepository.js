@@ -335,24 +335,6 @@ class PostgresRepository {
           WHERE TRIM(dni) = $1
           LIMIT 1
         `, [targetDni]);
-      } else if (cleanInputName) {
-        resC = await query(`
-          SELECT 
-            dni,
-            nombres_y_apellidos AS nombre,
-            COALESCE(NULLIF(rol_a_desempenar, ''), 'Coordinador de Local') AS rol,
-            COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion,
-            COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio,
-            '' AS mesa,
-            credenciales,
-            preguntas,
-            token_verificacion,
-            clave_acceso,
-            'rcoordinadores' AS tabla_origen
-          FROM rcoordinadores
-          WHERE nombres_y_apellidos ILIKE $1
-          LIMIT 1
-        `, [`%${cleanInputName}%`]);
       }
       if (resC && resC.rows && resC.rows.length > 0) {
         usuarioEncontrado = resC.rows[0];
@@ -381,24 +363,6 @@ class PostgresRepository {
             WHERE TRIM(dni) = $1
             LIMIT 1
           `, [targetDni]);
-        } else if (cleanInputName) {
-          resP = await query(`
-            SELECT 
-              dni,
-              nombres_y_apellidos AS nombre,
-              COALESCE(NULLIF(rol_a_desempenar, ''), 'Personero') AS rol,
-              COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion,
-              COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio,
-              COALESCE(NULLIF(mesa_asignada, ''), mesa_de_sufragio) AS mesa,
-              credenciales,
-              preguntas,
-              token_verificacion,
-              clave_acceso,
-              'rpersoneros' AS tabla_origen
-            FROM rpersoneros
-            WHERE nombres_y_apellidos ILIKE $1
-            LIMIT 1
-          `, [`%${cleanInputName}%`]);
         }
         if (resP && resP.rows && resP.rows.length > 0) {
           usuarioEncontrado = resP.rows[0];

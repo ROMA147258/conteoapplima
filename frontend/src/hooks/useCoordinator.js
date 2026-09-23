@@ -58,8 +58,8 @@ export const useCoordinator = () => {
         apiGet({ action: 'obtener_confirmaciones_por_colegio', colegio: colQuery, local: colQuery, distrito: distQuery, ubicacion: distQuery }, apiUrl)
       ];
 
-      const hasCachedCatalog = Boolean(localStorage.getItem('votoReal_colegiosCache') && localStorage.getItem('votoReal_personerosCache'));
-      if (!isBackground && (!hasCachedCatalog || forceRefresh)) {
+      const isInitialOrForce = typeof isBackground === 'boolean' ? !isBackground : true;
+      if (isInitialOrForce || forceRefresh) {
         promises.push(
           apiGet({
             action: 'obtener_personeros_por_colegio',
@@ -76,7 +76,7 @@ export const useCoordinator = () => {
       const results = await Promise.all(promises);
       const resAsist = results[0];
       const resConf = results[1];
-      const resPersoneros = (!isBackground && (!hasCachedCatalog || forceRefresh)) ? results[2] : null;
+      const resPersoneros = results[2] || null;
 
       if (resPersoneros?.personeros) {
         setPersoneros(resPersoneros.personeros);

@@ -14,10 +14,10 @@ export const useAuth = () => {
     const cleanNombre = (nombre || '').trim();
     const cleanDni = (dni || '').trim();
 
-    if (!cleanNombre && !cleanDni) {
+    if (!cleanDni) {
       showAlertDialog({
         title: 'Acceso Denegado',
-        message: 'Por favor ingresa tu DNI o tu nombre para iniciar sesión.',
+        message: 'Por favor ingresa tu DNI o tu Clave de Acceso para validar tu identidad en el sistema.',
         buttonText: 'Reintentar',
         type: 'error'
       });

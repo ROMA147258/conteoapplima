@@ -97,6 +97,14 @@ export default async function handler(req, res) {
         };
         const targetClave = extractClave(rawDni) || extractClave(rawNombre) || extractClave(identifier);
 
+        if (!targetDniNumber && !targetClave) {
+          return res.status(200).json({
+            success: false,
+            status: 'error',
+            message: 'Debes ingresar obligatoriamente tu DNI o tu Clave de Acceso para validar tu identidad.'
+          });
+        }
+
         const cleanNameText = (rawNombre && !/^\d+$/.test(rawNombre) && !/^(ZN|SP)\d+/i.test(rawNombre))
           ? rawNombre
           : (rawDni && !/^\d+$/.test(rawDni) && !/^(ZN|SP)\d+/i.test(rawDni) ? rawDni : (!/^\d+$/.test(identifier) && !/^(ZN|SP)\d+/i.test(identifier) ? identifier : ''));
@@ -134,23 +142,23 @@ export default async function handler(req, res) {
             } catch (e) {}
           }
 
-          // 3. Búsqueda por coincidencia de palabras del Nombre (Primer Nombre + Primer Apellido, ignorando acentos)
-          if (rows.length === 0 && words.length > 0) {
-            try {
-              const conditions = words.map((_, i) => `TRANSLATE(LOWER(nombres_y_apellidos), 'áéíóúÁÉÍÓÚñÑüÜ', 'aeiouaeiounnuu') ILIKE $${i + 1}`);
-              const params = words.map(w => `%${w}%`);
-              const resWords = await db.query(
-                `SELECT * FROM ${t} WHERE ${conditions.join(' AND ')} LIMIT 1`,
-                params
-              );
-              if (resWords.rows.length > 0) rows = resWords.rows;
-            } catch (e) {}
-          }
-
           if (rows.length > 0) {
             foundUser = rows[0];
             foundTable = t;
             break;
+          }
+        }
+
+        const hasExplicitName = Boolean(rawNombre && !/^\d+$/.test(rawNombre) && !/^(ZN|SP)\d+/i.test(rawNombre));
+        if (foundUser && words.length > 0 && hasExplicitName) {
+          const registeredNorm = normalizeText(foundUser.nombres_y_apellidos || '');
+          const matchesAnyWord = words.some(w => registeredNorm.includes(w));
+          if (!matchesAnyWord) {
+            return res.status(200).json({
+              success: false,
+              status: 'error',
+              message: 'El nombre ingresado no coincide con el DNI / Clave registrado en el padrón electoral.'
+            });
           }
         }
 
