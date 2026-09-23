@@ -243,76 +243,117 @@ class PostgresRepository {
     }
 
     // =========================================================================
-    // 2. BLOQUEO: Si un Coordinador Zonal o Distrital intenta ingresar solo con su DNI
+    // 2. COORDINADORES ZONALES Y DISTRITALES POR DNI O CLAVE
     // =========================================================================
     if (targetDni) {
       try {
-        const checkZonal = await query(`SELECT dni, clave_acceso FROM rcoordinadoresz WHERE TRIM(dni) = $1 LIMIT 1`, [targetDni]);
+        const checkZonal = await query(`
+          SELECT 
+            dni,
+            nombres_y_apellidos AS nombre,
+            COALESCE(NULLIF(rol_a_desempenar, ''), 'Coordinador Zonal') AS rol,
+            COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion,
+            COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio,
+            '' AS mesa,
+            credenciales,
+            preguntas,
+            token_verificacion,
+            clave_acceso,
+            'rcoordinadoresz' AS tabla_origen
+          FROM rcoordinadoresz 
+          WHERE TRIM(dni) = $1 OR TRIM(clave_acceso) ILIKE $1
+          LIMIT 1
+        `, [targetDni]);
         if (checkZonal && checkZonal.rows && checkZonal.rows.length > 0) {
-          return {
-            success: false,
-            status: 'blocked',
-            rol: 'Coordinador Zonal',
-            message: 'Acceso Denegado: Los Coordinadores Zonales deben ingresar obligatoriamente con su Clave de Acceso asignada (ej. ZN....), no con su DNI.'
-          };
+          const validResult = validarAcceso(checkZonal.rows[0], 'Coordinador Zonal', 'rcoordinadoresz');
+          if (validResult.valid) {
+            const enriched = await this.enriquecerEstadoUsuario(validResult.user);
+            return { success: true, status: 'success', usuario: enriched, user: enriched, data: enriched };
+          }
+          if (usuarioBloqueado) {
+            return { success: false, status: 'blocked', message: usuarioBloqueado.message };
+          }
         }
 
-        const checkDistrital = await query(`SELECT dni, clave_acceso FROM rcoordinadoresd WHERE TRIM(dni) = $1 LIMIT 1`, [targetDni]);
+        const checkDistrital = await query(`
+          SELECT 
+            dni,
+            nombres_y_apellidos AS nombre,
+            COALESCE(NULLIF(rol_a_desempenar, ''), 'Coordinador Distrital') AS rol,
+            COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion,
+            COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio,
+            '' AS mesa,
+            credenciales,
+            preguntas,
+            token_verificacion,
+            clave_acceso,
+            'rcoordinadoresd' AS tabla_origen
+          FROM rcoordinadoresd 
+          WHERE TRIM(dni) = $1 OR TRIM(clave_acceso) ILIKE $1
+          LIMIT 1
+        `, [targetDni]);
         if (checkDistrital && checkDistrital.rows && checkDistrital.rows.length > 0) {
-          return {
-            success: false,
-            status: 'blocked',
-            rol: 'Coordinador Distrital',
-            message: 'Acceso Denegado: Los Coordinadores Distritales deben ingresar obligatoriamente con su Clave de Acceso asignada (ej. SP.... / CD....), no con su DNI.'
-          };
+          const validResult = validarAcceso(checkDistrital.rows[0], 'Coordinador Distrital', 'rcoordinadoresd');
+          if (validResult.valid) {
+            const enriched = await this.enriquecerEstadoUsuario(validResult.user);
+            return { success: true, status: 'success', usuario: enriched, user: enriched, data: enriched };
+          }
+          if (usuarioBloqueado) {
+            return { success: false, status: 'blocked', message: usuarioBloqueado.message };
+          }
         }
       } catch (e) {}
     }
 
     // =========================================================================
-    // 3. AUTENTICACIÓN ESTRICTA: PRIMER NOMBRE Y PRIMER APELLIDO + DNI
+    // 3. AUTENTICACIÓN FLEXIBLE POR DNI O NOMBRE
     // (Aplica a Personeros y Coordinadores de Local)
     // =========================================================================
-    if (!targetDni || !/^\d{7,10}$/.test(targetDni)) {
-      return {
-        success: false,
-        status: 'error',
-        message: 'Acceso Denegado: Debes ingresar tu número de DNI válido junto con tu primer nombre y primer apellido.'
-      };
-    }
-
     const cleanInputName = (targetNombre || '').trim();
-    const inputWords = cleanInputName.split(/\s+/).filter(w => w.length >= 2);
-    if (inputWords.length < 2) {
-      return {
-        success: false,
-        status: 'error',
-        message: 'Acceso Denegado: Debes ingresar tu primer nombre y tu primer apellido completo para autenticarte.'
-      };
-    }
 
-    // 3.1 Buscar registro del titular correspondiente a ese DNI
+    // 3.1 Buscar registro del titular correspondiente
     let usuarioEncontrado = null;
 
     // Buscar en rcoordinadores (Coordinador de Local)
     try {
-      const resC = await query(`
-        SELECT 
-          dni,
-          nombres_y_apellidos AS nombre,
-          COALESCE(NULLIF(rol_a_desempenar, ''), 'Coordinador de Local') AS rol,
-          COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion,
-          COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio,
-          '' AS mesa,
-          credenciales,
-          preguntas,
-          token_verificacion,
-          clave_acceso,
-          'rcoordinadores' AS tabla_origen
-        FROM rcoordinadores
-        WHERE TRIM(dni) = $1
-        LIMIT 1
-      `, [targetDni]);
+      let resC = null;
+      if (targetDni && /^\d+$/.test(targetDni)) {
+        resC = await query(`
+          SELECT 
+            dni,
+            nombres_y_apellidos AS nombre,
+            COALESCE(NULLIF(rol_a_desempenar, ''), 'Coordinador de Local') AS rol,
+            COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion,
+            COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio,
+            '' AS mesa,
+            credenciales,
+            preguntas,
+            token_verificacion,
+            clave_acceso,
+            'rcoordinadores' AS tabla_origen
+          FROM rcoordinadores
+          WHERE TRIM(dni) = $1
+          LIMIT 1
+        `, [targetDni]);
+      } else if (cleanInputName) {
+        resC = await query(`
+          SELECT 
+            dni,
+            nombres_y_apellidos AS nombre,
+            COALESCE(NULLIF(rol_a_desempenar, ''), 'Coordinador de Local') AS rol,
+            COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion,
+            COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio,
+            '' AS mesa,
+            credenciales,
+            preguntas,
+            token_verificacion,
+            clave_acceso,
+            'rcoordinadores' AS tabla_origen
+          FROM rcoordinadores
+          WHERE nombres_y_apellidos ILIKE $1
+          LIMIT 1
+        `, [`%${cleanInputName}%`]);
+      }
       if (resC && resC.rows && resC.rows.length > 0) {
         usuarioEncontrado = resC.rows[0];
       }
@@ -321,23 +362,44 @@ class PostgresRepository {
     // Buscar en rpersoneros (Personeros) si no se encontró en coordinadores
     if (!usuarioEncontrado) {
       try {
-        const resP = await query(`
-          SELECT 
-            dni,
-            nombres_y_apellidos AS nombre,
-            COALESCE(NULLIF(rol_a_desempenar, ''), 'Personero') AS rol,
-            COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion,
-            COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio,
-            COALESCE(NULLIF(mesa_asignada, ''), mesa_de_sufragio) AS mesa,
-            credenciales,
-            preguntas,
-            token_verificacion,
-            clave_acceso,
-            'rpersoneros' AS tabla_origen
-          FROM rpersoneros
-          WHERE TRIM(dni) = $1
-          LIMIT 1
-        `, [targetDni]);
+        let resP = null;
+        if (targetDni && /^\d+$/.test(targetDni)) {
+          resP = await query(`
+            SELECT 
+              dni,
+              nombres_y_apellidos AS nombre,
+              COALESCE(NULLIF(rol_a_desempenar, ''), 'Personero') AS rol,
+              COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion,
+              COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio,
+              COALESCE(NULLIF(mesa_asignada, ''), mesa_de_sufragio) AS mesa,
+              credenciales,
+              preguntas,
+              token_verificacion,
+              clave_acceso,
+              'rpersoneros' AS tabla_origen
+            FROM rpersoneros
+            WHERE TRIM(dni) = $1
+            LIMIT 1
+          `, [targetDni]);
+        } else if (cleanInputName) {
+          resP = await query(`
+            SELECT 
+              dni,
+              nombres_y_apellidos AS nombre,
+              COALESCE(NULLIF(rol_a_desempenar, ''), 'Personero') AS rol,
+              COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion,
+              COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio,
+              COALESCE(NULLIF(mesa_asignada, ''), mesa_de_sufragio) AS mesa,
+              credenciales,
+              preguntas,
+              token_verificacion,
+              clave_acceso,
+              'rpersoneros' AS tabla_origen
+            FROM rpersoneros
+            WHERE nombres_y_apellidos ILIKE $1
+            LIMIT 1
+          `, [`%${cleanInputName}%`]);
+        }
         if (resP && resP.rows && resP.rows.length > 0) {
           usuarioEncontrado = resP.rows[0];
         }
@@ -348,25 +410,31 @@ class PostgresRepository {
       return {
         success: false,
         status: 'error',
-        message: `Acceso Denegado: El DNI '${targetDni}' no se encuentra registrado en el padrón electoral.`
+        message: `Acceso Denegado: Los datos ingresados (${targetDni || cleanInputName}) no se encuentran registrados en el padrón electoral.`
       };
     }
 
-    // 3.2 Validar coincidencia de Primer Nombre y Primer Apellido con el titular del DNI
-    const nombreRegistrado = usuarioEncontrado.nombre || usuarioEncontrado.nombres_y_apellidos || '';
-    const coincide = coincidePrimerNombreYApellido(cleanInputName, nombreRegistrado);
+    // 3.2 Si se ingresó nombre Y DNI a la vez, validar coincidencia flexible
+    if (cleanInputName && targetDni && usuarioEncontrado.nombres_y_apellidos) {
+      const nombreRegistrado = usuarioEncontrado.nombre || usuarioEncontrado.nombres_y_apellidos || '';
+      const normReg = nombreRegistrado.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const normInput = cleanInputName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const inputWords = normInput.split(/\s+/).filter(w => w.length >= 3);
+      const matchesAny = inputWords.length === 0 || inputWords.some(w => normReg.includes(w));
 
-    if (!coincide) {
-      return {
-        success: false,
-        status: 'error',
-        message: `Acceso Denegado: El nombre y apellido ingresados ('${cleanInputName}') no coinciden con el titular del DNI '${targetDni}'. Verifica tus datos.`
-      };
+      if (!matchesAny) {
+        return {
+          success: false,
+          status: 'error',
+          message: `Acceso Denegado: El nombre ingresado ('${cleanInputName}') no coincide con el DNI '${targetDni}'.`
+        };
+      }
     }
 
     // 3.3 Validar estado de credenciales y evaluación (Confirmado / Aprobado)
     const defaultRol = (usuarioEncontrado.rol || '').toLowerCase().includes('coordinador') ? 'Coordinador de Local' : 'Personero';
     const validResult = validarAcceso(usuarioEncontrado, defaultRol, usuarioEncontrado.tabla_origen);
+
 
     if (!validResult.valid) {
       if (usuarioBloqueado) {

@@ -1,6 +1,9 @@
 // --- BASE DE DATOS DE BRIGADISTAS (RPERSONEROS Y RCOORDINADORES) ---
 export const BRIGADISTAS_DB = [
   { dni: "Admin#2026$Secure!VotoReal", nombre: "Super Administrador", ubicacion: "", rol: "Admin", credenciales: "Confirmado", preguntas: "Aprobado", origenHoja: "Rpersoneros" },
+  { dni: "45804148", clave_acceso: "ZN7942", nombre: "Carmen Patricia Arias Baldeon", ubicacion: "Villa María del Triunfo", colegio: "IE 6093 JUAN VALER SANDOVAL", colegios: "IE 6093 JUAN VALER SANDOVAL, IE EMBLEMATICA JUAN GUERRERO QUIMPER, IE 6015 SANTISIMO SAGRADO CORAZON DE JESUS", mesa: "", rol: "Coordinador Zonal", tipo_interfaz: "coordinador_zonal", credenciales: "Confirmado", preguntas: "Aprobado", origenHoja: "rcoordinadoresz" },
+  { dni: "10229164", nombre: "ANTONIA ROMERO LINARES", ubicacion: "Villa María del Triunfo", colegio: "IE 6093 JUAN VALER SANDOVAL", mesa: "", rol: "Coordinador de Local", tipo_interfaz: "coordinador_local", credenciales: "Confirmado", preguntas: "Aprobado", origenHoja: "rcoordinadores" },
+  { dni: "20902097", nombre: "SILVIA PAULINA PORTILLO VICTORIO", ubicacion: "Villa María del Triunfo", colegio: "IE 6093 JUAN VALER SANDOVAL", mesa: "No aplica", rol: "Personero", tipo_interfaz: "personero_asistencia", credenciales: "Confirmado", preguntas: "Aprobado", origenHoja: "rpersoneros" },
   { dni: "25869378", nombre: "Diego Salas", ubicacion: "Los Olivos", colegio: "IE 2025 INMACULADA CONCEPCION", mesa: "578858", rol: "Personero", credenciales: "Confirmado", preguntas: "Aprobado", origenHoja: "Rpersoneros" },
   { dni: "77889900", nombre: "Juan Perez Prueba", ubicacion: "Surco", colegio: "Colegio San Jose", mesa: "123456", rol: "Personero", credenciales: "Confirmado", preguntas: "Aprobado", origenHoja: "Rpersoneros" }
 ];
@@ -12,8 +15,9 @@ export function buscarBrigadista(dni, nombre, cachedUsers = null) {
   const rawDni = (dni || "").toString().trim();
   const rawNombre = (nombre || "").toString().trim();
 
-  const targetDigits = cleanDigits(rawDni);
-  const targetNombre = rawNombre ? normStr(rawNombre) : null;
+  const targetDigits = cleanDigits(rawDni) || cleanDigits(rawNombre);
+  const targetNombre = rawNombre ? normStr(rawNombre) : (rawDni ? normStr(rawDni) : null);
+  const searchKey = normStr(rawDni) || normStr(rawNombre);
 
   const matchesUser = (u) => {
     if (!u) return false;
@@ -24,6 +28,7 @@ export function buscarBrigadista(dni, nombre, cachedUsers = null) {
       u.origenHoja === 'rpersoneros' ||
       u.origenHoja === 'Rcoordinadores' ||
       u.origenHoja === 'rcoordinadores' ||
+      u.origenHoja === 'rcoordinadoresz' ||
       u.Credenciales !== undefined ||
       u.credenciales !== undefined ||
       u.Preguntas !== undefined ||
@@ -38,26 +43,32 @@ export function buscarBrigadista(dni, nombre, cachedUsers = null) {
       if (!isConfirmed || !isAprobado) return false;
     }
 
+    // Match por Clave de Acceso (ej: ZN7942)
+    const uClave = normStr(u.clave_acceso || u.clave || '');
+    if (uClave && searchKey && (uClave === searchKey || searchKey.includes(uClave))) {
+      return true;
+    }
+
     const uDniDigits = cleanDigits(u.dni || u.DNI);
     const uNameNorm = normStr(u.nombre || u.Nombres_y_Apellidos);
 
-    if (targetDigits.length > 0) {
+    if (targetDigits.length > 0 && uDniDigits.length > 0) {
       const targetPadded = targetDigits.padStart(8, '0');
       const uPadded = uDniDigits.padStart(8, '0');
-      if (uDniDigits !== targetDigits && uPadded !== targetPadded) {
-        return false;
+      if (uDniDigits === targetDigits || uPadded === targetPadded) {
+        return true;
       }
     }
 
     if (targetNombre) {
-      const typedWords = targetNombre.split(/\s+/).filter(w => w.length >= 2);
+      const typedWords = targetNombre.split(/\s+/).filter(w => w.length >= 3);
       if (typedWords.length > 0) {
-        const allWordsMatch = typedWords.every(word => uNameNorm.includes(word));
-        if (!allWordsMatch) return false;
+        const anyWordMatch = typedWords.some(word => uNameNorm.includes(word));
+        if (anyWordMatch) return true;
       }
     }
 
-    return true;
+    return false;
   };
 
   // 1. Memoria / Caché provisto
