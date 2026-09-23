@@ -898,6 +898,244 @@ export default async function handler(req, res) {
         });
       }
 
+      // 7. OBTENER PERSONEROS POR COLEGIO Y DISTRITO (VISTA COORDINADOR)
+      case 'obtener_personeros_por_colegio': {
+        let colQuery = (payload.colegio || payload.local || '').toString().trim();
+        if (colQuery.toLowerCase() === 'no aplica' || colQuery.toLowerCase() === 'todos') {
+          colQuery = '';
+        }
+        const distQuery = (payload.distrito || payload.ubicacion || '').toString().trim();
+
+        const params = [];
+        let sql = `
+          SELECT 
+            p.dni, 
+            p.nombres_y_apellidos AS nombre, 
+            'Personero' AS rol, 
+            COALESCE(NULLIF(p.distrito_asignado, ''), p.distrito_donde_vota) AS ubicacion, 
+            COALESCE(NULLIF(p.local_de_votacion_asignado, ''), p.local_de_votacion) AS colegio, 
+            COALESCE(NULLIF(p.mesa_asignada, ''), p.mesa_de_sufragio) AS mesa, 
+            p.celular,
+            p.credenciales,
+            p.preguntas,
+            'Rpersoneros' AS "origenHoja", 
+            'rpersoneros' AS tabla_origen,
+            CASE 
+              WHEN l.id IS NOT NULL THEN 'LLEGADA_GPS'
+              WHEN a.id IS NOT NULL THEN 'LLEGADA_FOTO'
+              ELSE 'PENDIENTE'
+            END AS estado_llegada,
+            CASE WHEN (l.id IS NOT NULL OR a.id IS NOT NULL) THEN TRUE ELSE FALSE END AS ha_llegado,
+            COALESCE(l.fecha_registro, a.fecha_hora) AS fecha_llegada,
+            l.distancia_metros,
+            a.foto_url,
+            CASE WHEN c.id IS NOT NULL THEN TRUE ELSE FALSE END AS confirmado_coordinador,
+            c.fecha_hora AS fecha_confirmacion,
+            c.coordinador_nombre,
+            CASE WHEN vm.id IS NOT NULL THEN TRUE ELSE FALSE END AS voto_manual_enviado,
+            vm.fecha_hora AS fecha_voto_manual,
+            CASE WHEN vi.id IS NOT NULL THEN TRUE ELSE FALSE END AS voto_imagen_enviado,
+            vi.fecha_hora AS fecha_voto_imagen,
+            COALESCE(vm.p_total_votos, vi.p_total_votos, 0) AS total_votos_mesa
+          FROM rpersoneros p
+          LEFT JOIN LATERAL (
+            SELECT id, fecha_registro, distancia_metros 
+            FROM asistenciallegada 
+            WHERE TRIM(dni) = TRIM(p.dni) 
+            ORDER BY id DESC LIMIT 1
+          ) l ON TRUE
+          LEFT JOIN LATERAL (
+            SELECT id, fecha_hora, foto_url 
+            FROM asistencia 
+            WHERE TRIM(dni) = TRIM(p.dni) 
+            ORDER BY id DESC LIMIT 1
+          ) a ON TRUE
+          LEFT JOIN LATERAL (
+            SELECT id, fecha_hora, coordinador_nombre 
+            FROM coordinadores 
+            WHERE TRIM(personero_dni) = TRIM(p.dni) 
+            ORDER BY id DESC LIMIT 1
+          ) c ON TRUE
+          LEFT JOIN LATERAL (
+            SELECT id, fecha_hora, p_total_votos 
+            FROM votos_detalle 
+            WHERE ((NULLIF(TRIM(p.dni), '') IS NOT NULL AND TRIM(dni) = TRIM(p.dni))
+              OR (COALESCE(NULLIF(p.mesa_asignada, ''), p.mesa_de_sufragio, '') ~ '^[0-9]{3,}$'
+                AND COALESCE(NULLIF(p.mesa_asignada, ''), p.mesa_de_sufragio, '') NOT IN ('000000', '00000', '0000', '000')
+                AND numero_mesa = TRIM(COALESCE(NULLIF(p.mesa_asignada, ''), p.mesa_de_sufragio, ''))
+              ))
+              AND UPPER(origen) = 'MANUAL' 
+            ORDER BY id DESC LIMIT 1
+          ) vm ON TRUE
+          LEFT JOIN LATERAL (
+            SELECT id, fecha_hora, p_total_votos 
+            FROM votos_detalle 
+            WHERE ((NULLIF(TRIM(p.dni), '') IS NOT NULL AND TRIM(dni) = TRIM(p.dni))
+              OR (COALESCE(NULLIF(p.mesa_asignada, ''), p.mesa_de_sufragio, '') ~ '^[0-9]{3,}$'
+                AND COALESCE(NULLIF(p.mesa_asignada, ''), p.mesa_de_sufragio, '') NOT IN ('000000', '00000', '0000', '000')
+                AND numero_mesa = TRIM(COALESCE(NULLIF(p.mesa_asignada, ''), p.mesa_de_sufragio, ''))
+              ))
+              AND UPPER(origen) = 'IMAGEN' 
+            ORDER BY id DESC LIMIT 1
+          ) vi ON TRUE
+          WHERE 1=1
+        `;
+
+        sql += ` AND (p.preguntas ILIKE '%aprobad%' OR p.preguntas = 'SI' OR p.preguntas = '1' OR p.credenciales ILIKE '%confirmad%' OR p.credenciales = 'SI' OR p.credenciales = '1' OR p.credenciales ILIKE '%aprobad%')`;
+
+        if (colQuery) {
+          const colList = colQuery.split(',').map(c => c.trim()).filter(Boolean);
+          if (colList.length > 1) {
+            const colConds = colList.map(c => {
+              params.push(`%${c}%`);
+              return `(COALESCE(NULLIF(p.local_de_votacion_asignado, ''), p.local_de_votacion) ILIKE $${params.length})`;
+            });
+            sql += ` AND (${colConds.join(' OR ')})`;
+          } else {
+            params.push(`%${colQuery}%`);
+            sql += ` AND (COALESCE(NULLIF(p.local_de_votacion_asignado, ''), p.local_de_votacion) ILIKE $${params.length})`;
+          }
+        }
+
+        const distClean = distQuery.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        if (distQuery) {
+          params.push(`%${distQuery}%`, `%${distClean}%`);
+          const p1 = params.length - 1;
+          const p2 = params.length;
+          sql += ` AND (COALESCE(NULLIF(p.distrito_asignado, ''), p.distrito_donde_vota) ILIKE $${p1} OR COALESCE(NULLIF(p.distrito_asignado, ''), p.distrito_donde_vota) ILIKE $${p2})`;
+        }
+
+        sql += ` ORDER BY p.mesa_asignada ASC, p.nombres_y_apellidos ASC`;
+
+        let personerosList = [];
+        try {
+          const resPers = await db.query(sql, params);
+          personerosList = resPers.rows;
+        } catch (e) {
+          console.warn('[obtener_personeros_por_colegio] Fallback:', e.message);
+        }
+
+        // Coordinadores Locales
+        let coordinadoresLocales = [];
+        try {
+          let coordSql = `
+            SELECT 
+              c.dni,
+              c.nombres_y_apellidos AS nombre,
+              COALESCE(NULLIF(c.rol_a_desempenar, ''), 'Coordinador de Local') AS rol,
+              COALESCE(NULLIF(c.distrito_asignado, ''), c.distrito_donde_vota) AS distrito,
+              COALESCE(NULLIF(c.local_de_votacion_asignado, ''), c.local_de_votacion) AS colegio,
+              c.celular,
+              c.correo_electronico,
+              c.credenciales,
+              c.preguntas,
+              'Rcoordinadores' AS "origenHoja",
+              'rcoordinadores' AS tabla_origen
+            FROM rcoordinadores c
+            WHERE (c.preguntas ILIKE '%aprobad%' OR c.preguntas = 'SI' OR c.preguntas = '1' OR c.credenciales ILIKE '%confirmad%')
+          `;
+          const cParams = [];
+          if (distQuery) {
+            cParams.push(`%${distQuery}%`, `%${distClean}%`);
+            coordSql += ` AND (c.distrito_asignado ILIKE $1 OR c.distrito_donde_vota ILIKE $1 OR c.distrito_asignado ILIKE $2 OR c.distrito_donde_vota ILIKE $2)`;
+          }
+          const cRes = await db.query(coordSql, cParams);
+          coordinadoresLocales = cRes.rows;
+        } catch (e) {}
+
+        // Coordinadores Zonales
+        let coordinadoresZonales = [];
+        try {
+          let zSql = `
+            SELECT 
+              z.dni,
+              z.nombres_y_apellidos AS nombre,
+              COALESCE(NULLIF(z.rol_a_desempenar, ''), 'Coordinador Zonal') AS rol,
+              COALESCE(NULLIF(z.distrito_asignado, ''), z.distrito_donde_vota) AS distrito,
+              COALESCE(NULLIF(z.local_de_votacion_asignado, ''), z.local_de_votacion) AS colegios,
+              z.celular,
+              z.correo_electronico,
+              z.credenciales,
+              z.preguntas,
+              'Rcoordinadoresz' AS "origenHoja",
+              'rcoordinadoresz' AS tabla_origen
+            FROM rcoordinadoresz z
+            WHERE (z.preguntas ILIKE '%aprobad%' OR z.preguntas = 'SI' OR z.preguntas = '1' OR z.credenciales ILIKE '%confirmad%')
+          `;
+          const zParams = [];
+          if (distQuery) {
+            zParams.push(`%${distQuery}%`, `%${distClean}%`);
+            zSql += ` AND (z.distrito_asignado ILIKE $1 OR z.distrito_donde_vota ILIKE $1 OR z.distrito_asignado ILIKE $2 OR z.distrito_donde_vota ILIKE $2)`;
+          }
+          const zRes = await db.query(zSql, zParams);
+          coordinadoresZonales = zRes.rows;
+        } catch (e) {}
+
+        return res.status(200).json({
+          success: true,
+          personeros: personerosList,
+          info_colegios: [],
+          coordinadores_locales: coordinadoresLocales,
+          coordinadores_zonales: coordinadoresZonales
+        });
+      }
+
+      // 8. OBTENER ASISTENCIA (TODOS)
+      case 'obtener_asistencia': {
+        const asisRes = await db.query('SELECT * FROM asistencia ORDER BY id DESC');
+        return res.status(200).json({ success: true, asistencia: asisRes.rows });
+      }
+
+      // 9. OBTENER CONFIRMACIONES POR COLEGIO
+      case 'obtener_confirmaciones_por_colegio': {
+        const colegio = (payload.colegio || payload.local || '').toString().trim();
+        const distrito = (payload.distrito || payload.ubicacion || '').toString().trim();
+        let sql = `
+          SELECT c.*, a.mesa AS personero_mesa
+          FROM coordinadores c
+          LEFT JOIN asistencia a ON a.dni = c.personero_dni
+        `;
+        const cParams = [];
+        if (colegio) {
+          cParams.push(`%${colegio}%`);
+          sql += ` WHERE c.local ILIKE $1`;
+        } else if (distrito) {
+          cParams.push(`%${distrito}%`);
+          sql += ` WHERE c.distrito ILIKE $1`;
+        }
+        sql += ` ORDER BY c.fecha_hora DESC`;
+        const confRes = await db.query(sql, cParams);
+        return res.status(200).json({ success: true, confirmaciones: confRes.rows });
+      }
+
+      // 10. CONFIRMAR PERSONERO POR COORDINADOR
+      case 'confirmar_personero_coordinador': {
+        const { coordinador_dni, coordinador_nombre, personero_dni, personero_nombre, local, distrito, confirmacion } = payload;
+        await db.query(`
+          INSERT INTO coordinadores (coordinador_dni, coordinador_nombre, personero_dni, personero_nombre, local, distrito, confirmacion, fecha_hora)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
+        `, [coordinador_dni || '', coordinador_nombre || '', personero_dni || '', personero_nombre || '', local || '', distrito || '', confirmacion || 'SI']);
+        return res.status(200).json({ success: true, message: 'Personero confirmado por el coordinador.' });
+      }
+
+      // 11. OBTENER MESAS
+      case 'obtener_mesas': {
+        const mesasRes = await db.query('SELECT * FROM mesas ORDER BY colegio ASC, numero_mesa ASC');
+        return res.status(200).json({ success: true, mesas: mesasRes.rows });
+      }
+
+      // 12. OBTENER USUARIOS
+      case 'obtener_usuarios': {
+        const persRes = await db.query(`
+          SELECT dni, nombres_y_apellidos AS nombre, 'Personero' AS rol, COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion, COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio, COALESCE(NULLIF(mesa_asignada, ''), mesa_de_sufragio) AS mesa, 'rpersoneros' AS "origenHoja"
+          FROM rpersoneros WHERE credenciales ILIKE '%confirmad%'
+          UNION ALL
+          SELECT dni, nombres_y_apellidos AS nombre, 'Coordinador' AS rol, COALESCE(NULLIF(distrito_asignado, ''), distrito_donde_vota) AS ubicacion, COALESCE(NULLIF(local_de_votacion_asignado, ''), local_de_votacion) AS colegio, '' AS mesa, 'rcoordinadores' AS "origenHoja"
+          FROM rcoordinadores WHERE credenciales ILIKE '%confirmad%'
+        `);
+        return res.status(200).json({ success: true, usuarios: persRes.rows });
+      }
+
       default:
         return res.status(200).json({ success: false, message: `Acción '${action}' no reconocida` });
     }
