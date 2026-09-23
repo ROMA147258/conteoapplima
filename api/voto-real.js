@@ -117,11 +117,6 @@ export default async function handler(req, res) {
             const votoManualRes = await db.query(`SELECT numero_mesa, origen FROM votos_detalle WHERE TRIM(dni) = $1 AND origen = 'MANUAL' LIMIT 1`, [userDni]);
             const votoImagenRes = await db.query(`SELECT numero_mesa, origen FROM votos_detalle WHERE TRIM(dni) = $1 AND origen = 'IMAGEN' LIMIT 1`, [userDni]);
 
-            return res.status(200).json({
-              success: true,
-              status: 'success',
-              role: rol,
-              token: `TOKEN-${userDni}`,
             const userObj = {
               dni: userDni,
               nombre: u.nombres_y_apellidos,
