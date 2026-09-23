@@ -322,18 +322,18 @@ export const AppProvider = ({ children }) => {
     showToast('Sesión cerrada correctamente.', 'info');
   };
 
-  // Auto-cierre de sesión por inactividad (Seguridad estilo banco y ahorro de recursos)
+  // Auto-cierre de sesión ultra-estricto estilo banco (Ahorro máximo de recursos y seguridad total)
   useEffect(() => {
     if (!currentUser) return;
 
     let inactivityTimer;
-    const INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 15 minutos sin interacción
+    const INACTIVITY_TIMEOUT = 3 * 60 * 1000; // 3 minutos sin tocar la pantalla / mouse
 
     const resetInactivity = () => {
       clearTimeout(inactivityTimer);
       inactivityTimer = setTimeout(() => {
         logout();
-        showToast('Sesión cerrada por inactividad para proteger tus datos y ahorrar recursos.', 'warning');
+        showToast('Sesión cerrada por inactividad (3 min).', 'warning');
       }, INACTIVITY_TIMEOUT);
     };
 
@@ -342,14 +342,14 @@ export const AppProvider = ({ children }) => {
     events.forEach(event => window.addEventListener(event, resetInactivity, { passive: true }));
     resetInactivity();
 
-    // Si la pestaña pasa más de 8 minutos oculta o minimizada en segundo plano
+    // Si la persona cambia de app, bloquea el celular o minimiza la pestaña (45 segundos)
     let hiddenTimer;
     const handleVisibility = () => {
       if (document.hidden) {
         hiddenTimer = setTimeout(() => {
           logout();
-          showToast('Sesión cerrada por inactividad en segundo plano.', 'info');
-        }, 8 * 60 * 1000); // 8 minutos en segundo plano
+          showToast('Sesión cerrada automáticamente al salir de la aplicación.', 'info');
+        }, 45 * 1000); // 45 segundos en segundo plano
       } else {
         clearTimeout(hiddenTimer);
       }
