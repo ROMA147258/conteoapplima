@@ -27,24 +27,36 @@ export const useCoordinator = () => {
       const distQuery = currentUser.ubicacion || currentUser.distrito || '';
       const origenQuery = currentUser.origenHoja || currentUser.tabla_origen || '';
 
-      const [resPersoneros, resAsist, resConf] = await Promise.all([
-        apiGet({
-          action: 'obtener_personeros_por_colegio',
-          colegio: colQuery,
-          local: colQuery,
-          distrito: distQuery,
-          ubicacion: distQuery,
-          origenHoja: origenQuery,
-          tabla_origen: origenQuery
-        }, apiUrl),
+      // Solo en la carga inicial traemos el catálogo completo de colegios y personeros
+      const promises = [
         apiGet({ action: 'obtener_asistencia' }, apiUrl),
         apiGet({ action: 'obtener_confirmaciones_por_colegio', colegio: colQuery, local: colQuery, distrito: distQuery, ubicacion: distQuery }, apiUrl)
-      ]);
+      ];
+
+      if (!isBackground) {
+        promises.push(
+          apiGet({
+            action: 'obtener_personeros_por_colegio',
+            colegio: colQuery,
+            local: colQuery,
+            distrito: distQuery,
+            ubicacion: distQuery,
+            origenHoja: origenQuery,
+            tabla_origen: origenQuery
+          }, apiUrl)
+        );
+      }
+
+      const results = await Promise.all(promises);
+      const resAsist = results[0];
+      const resConf = results[1];
+      const resPersoneros = !isBackground ? results[2] : null;
 
       if (resPersoneros?.personeros) setPersoneros(resPersoneros.personeros);
       if (resPersoneros?.info_colegios) setInfoColegios(resPersoneros.info_colegios);
       if (resPersoneros?.coordinadores_locales) setCoordinadoresLocales(resPersoneros.coordinadores_locales);
       if (resPersoneros?.coordinadores_zonales) setCoordinadoresZonales(resPersoneros.coordinadores_zonales);
+      if (resPersoneros?.coordinadores_distritales) setCoordinadoresDistritales(resPersoneros.coordinadores_distritales);
       if (resAsist?.asistencia) setAsistencias(resAsist.asistencia);
       if (resConf?.confirmaciones) setConfirmacionesCoord(resConf.confirmaciones);
     } catch (e) {
@@ -56,11 +68,25 @@ export const useCoordinator = () => {
 
   useEffect(() => {
     fetchCoordinatorData(false);
-    // Polling automático continuo en segundo plano cada 8 segundos (sin necesidad de presionar nada)
+
+    // Sondeo inteligente: Se detiene 100% si el usuario cambia de app o minimiza la pestaña
     const interval = setInterval(() => {
+      if (document.hidden) return; // Si la pestaña está oculta o minimizada, cero gasto de red
       fetchCoordinatorData(true);
-    }, 8000);
-    return () => clearInterval(interval);
+    }, 30000); // Cada 30 segundos sólo si está visible
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchCoordinatorData(true); // Al volver a la pestaña, refresca datos
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [fetchCoordinatorData]);
 
   // Confirmación directa mediante Checkbox / Check

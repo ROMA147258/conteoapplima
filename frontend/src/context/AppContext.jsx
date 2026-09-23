@@ -322,6 +322,49 @@ export const AppProvider = ({ children }) => {
     showToast('Sesión cerrada correctamente.', 'info');
   };
 
+  // Auto-cierre de sesión por inactividad (Seguridad estilo banco y ahorro de recursos)
+  useEffect(() => {
+    if (!currentUser) return;
+
+    let inactivityTimer;
+    const INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 15 minutos sin interacción
+
+    const resetInactivity = () => {
+      clearTimeout(inactivityTimer);
+      inactivityTimer = setTimeout(() => {
+        logout();
+        showToast('Sesión cerrada por inactividad para proteger tus datos y ahorrar recursos.', 'warning');
+      }, INACTIVITY_TIMEOUT);
+    };
+
+    // Eventos de interacción del usuario
+    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
+    events.forEach(event => window.addEventListener(event, resetInactivity, { passive: true }));
+    resetInactivity();
+
+    // Si la pestaña pasa más de 8 minutos oculta o minimizada en segundo plano
+    let hiddenTimer;
+    const handleVisibility = () => {
+      if (document.hidden) {
+        hiddenTimer = setTimeout(() => {
+          logout();
+          showToast('Sesión cerrada por inactividad en segundo plano.', 'info');
+        }, 8 * 60 * 1000); // 8 minutos en segundo plano
+      } else {
+        clearTimeout(hiddenTimer);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearTimeout(inactivityTimer);
+      clearTimeout(hiddenTimer);
+      events.forEach(event => window.removeEventListener(event, resetInactivity));
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [currentUser]);
+
   return (
     <AppContext.Provider value={{
       apiUrl, setApiUrl,
