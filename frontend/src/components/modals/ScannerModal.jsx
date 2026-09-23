@@ -119,8 +119,8 @@ const PhotoSlotCard = ({
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '6px',
-            color: '#475569',
+            gap: '4px',
+            color: '#334155',
             fontSize: '0.74rem',
             fontWeight: 700,
             cursor: (isLocked || isProcessing) ? 'not-allowed' : 'pointer',
@@ -129,7 +129,8 @@ const PhotoSlotCard = ({
           }}
         >
           <Camera size={22} color={color} style={{ opacity: 0.9 }} />
-          <span>Tomar / Subir Foto {slotNumber}</span>
+          <span style={{ fontWeight: 800 }}>Tomar o Mandar Foto {slotNumber}</span>
+          <span style={{ fontSize: '0.66rem', color: '#64748b', fontWeight: 500 }}>Cámara o Galería</span>
         </label>
       )}
 
