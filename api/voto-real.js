@@ -60,131 +60,153 @@ export default async function handler(req, res) {
       case 'login': {
         const identifier = (payload.usuario || payload.dni || payload.user || payload.nombre || '').toString().trim();
         const rawNombre = (payload.nombre || '').toString().trim();
-        if (!identifier && !rawNombre) {
+        const rawDni = (payload.dni || payload.usuario || payload.user || '').toString().trim();
+
+        if (!identifier && !rawNombre && !rawDni) {
           return res.status(200).json({ success: false, status: 'error', message: 'Por favor ingresa tu DNI o tu nombre.' });
         }
 
         // Admin check
-        const allInputs = `${identifier} ${rawNombre}`.toLowerCase();
-        if (allInputs.includes('admin#2026$secure!votoreal') || identifier === '99999999' || identifier === '12345678') {
+        const allInputs = `${identifier} ${rawNombre} ${rawDni}`.toLowerCase();
+        if (allInputs.includes('admin#2026$secure!votoreal') || identifier === '99999999' || identifier === '12345678' || rawDni === '99999999') {
           return res.status(200).json({
             success: true,
             status: 'success',
             role: 'Admin',
             token: 'TOKEN-ADMIN-2026',
-            user: { dni: identifier || '99999999', nombre: 'Super Administrador', rol: 'Admin', ubicacion: 'Lima', colegio: 'CENTRAL', mesa: '' }
+            user: { dni: identifier || rawDni || '99999999', nombre: 'Super Administrador', rol: 'Admin', ubicacion: 'Lima', colegio: 'CENTRAL', mesa: '' }
           });
         }
 
-        let targetDni = /^\d+$/.test(identifier) ? identifier : /^\d+$/.test(rawNombre) ? rawNombre : '';
-        let targetNombre = targetDni ? (identifier === targetDni ? rawNombre : identifier) : (identifier || rawNombre);
+        // Helper de normalización
+        const normalizeText = (str) => (str || '')
+          .toString()
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9\s]/g, ' ')
+          .trim();
 
-        // 1. Buscar en rcoordinadoresz / rcoordinadores
-        const tablasCoord = ['rcoordinadoresz', 'rcoordinadores'];
-        for (const t of tablasCoord) {
-          let coordRes = null;
-          try {
-            if (t === 'rcoordinadoresz') {
-              coordRes = await db.query(
-                `SELECT * FROM rcoordinadoresz 
-                 WHERE TRIM(clave_acceso) ILIKE $1 
-                    OR TRIM(token_verificacion) ILIKE $1 
-                    OR TRIM(dni) = $1 
-                    OR TRIM(clave_acceso) ILIKE $2 
-                    OR TRIM(token_verificacion) ILIKE $2 
-                    OR TRIM(dni) = $2 
-                    OR (nombres_y_apellidos ILIKE $3 AND length($3) > 4) 
-                 LIMIT 1`,
-                [identifier, targetDni || identifier, `%${targetNombre || ''}%`]
+        const digitsDni = rawDni.replace(/\D/g, '');
+        const digitsNombre = rawNombre.replace(/\D/g, '');
+        const targetDniNumber = digitsDni.length >= 6 ? digitsDni : (digitsNombre.length >= 6 ? digitsNombre : '');
+
+        const extractClave = (s) => {
+          const m = (s || '').match(/\b(ZN\d+|[A-Z0-9]{5,10})\b/i);
+          return m ? m[1].toUpperCase() : '';
+        };
+        const targetClave = extractClave(rawDni) || extractClave(rawNombre) || extractClave(identifier);
+
+        const cleanNameText = (rawNombre && !/^\d+$/.test(rawNombre) && !/^ZN\d+/i.test(rawNombre))
+          ? rawNombre
+          : (rawDni && !/^\d+$/.test(rawDni) && !/^ZN\d+/i.test(rawDni) ? rawDni : (!/^\d+$/.test(identifier) && !/^ZN\d+/i.test(identifier) ? identifier : ''));
+
+        const normName = normalizeText(cleanNameText);
+        const words = normName.split(/\s+/).filter(w => w.length >= 2);
+
+        const tablas = ['rcoordinadoresz', 'rcoordinadores', 'rpersoneros'];
+
+        let foundUser = null;
+        let foundTable = null;
+
+        for (const t of tablas) {
+          let rows = [];
+
+          // 1. Búsqueda por DNI numérico exacto
+          if (targetDniNumber) {
+            try {
+              const resDni = await db.query(
+                `SELECT * FROM ${t} WHERE TRIM(dni) = $1 OR TRIM(dni) = $2 LIMIT 1`,
+                [targetDniNumber, targetDniNumber.padStart(8, '0')]
               );
-            } else if (targetDni) {
-              coordRes = await db.query(`SELECT * FROM ${t} WHERE TRIM(clave_acceso) ILIKE $1 OR TRIM(token_verificacion) ILIKE $1 OR TRIM(dni) = $1 LIMIT 1`, [targetDni]);
-            } else if (targetNombre) {
-              coordRes = await db.query(`SELECT * FROM ${t} WHERE nombres_y_apellidos ILIKE $1 LIMIT 1`, [`%${targetNombre}%`]);
-            }
-          } catch (e) {}
+              if (resDni.rows.length > 0) rows = resDni.rows;
+            } catch (e) {}
+          }
 
-          if (coordRes && coordRes.rows && coordRes.rows.length > 0) {
-            const u = coordRes.rows[0];
-            const isZonal = t === 'rcoordinadoresz' || (u.rol_a_desempenar || '').toLowerCase().includes('zonal');
-            const rol = u.rol_a_desempenar || (isZonal ? 'Coordinador Zonal' : 'Coordinador de Local');
-            
-            // Restricción Zonal solo VMT
-            if (isZonal) {
-              const ubNorm = (u.distrito_asignado || u.distrito_donde_vota || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-              if (!ubNorm.includes('villa maria del triunfo') && !ubNorm.includes('vmt')) {
-                return res.status(200).json({
-                  success: false,
-                  status: 'blocked',
-                  message: 'Acceso Restringido: La interfaz de Coordinador Zonal está habilitada únicamente para Villa María del Triunfo.'
-                });
-              }
-            }
+          // 2. Búsqueda por Clave de Acceso o Token (ej: ZN5019)
+          if (rows.length === 0 && targetClave) {
+            try {
+              const resClave = await db.query(
+                `SELECT * FROM ${t} WHERE TRIM(clave_acceso) ILIKE $1 OR TRIM(token_verificacion) ILIKE $1 LIMIT 1`,
+                [targetClave]
+              );
+              if (resClave.rows.length > 0) rows = resClave.rows;
+            } catch (e) {}
+          }
 
-            const userDni = (u.dni || '').toString().trim();
-            const votoManualRes = await db.query(`SELECT numero_mesa, origen FROM votos_detalle WHERE TRIM(dni) = $1 AND origen = 'MANUAL' LIMIT 1`, [userDni]);
-            const votoImagenRes = await db.query(`SELECT numero_mesa, origen FROM votos_detalle WHERE TRIM(dni) = $1 AND origen = 'IMAGEN' LIMIT 1`, [userDni]);
+          // 3. Búsqueda por coincidencia de palabras del Nombre (Primer Nombre + Primer Apellido, ignorando acentos)
+          if (rows.length === 0 && words.length > 0) {
+            try {
+              const conditions = words.map((_, i) => `TRANSLATE(LOWER(nombres_y_apellidos), 'áéíóúÁÉÍÓÚñÑüÜ', 'aeiouaeiounnuu') ILIKE $${i + 1}`);
+              const params = words.map(w => `%${w}%`);
+              const resWords = await db.query(
+                `SELECT * FROM ${t} WHERE ${conditions.join(' AND ')} LIMIT 1`,
+                params
+              );
+              if (resWords.rows.length > 0) rows = resWords.rows;
+            } catch (e) {}
+          }
 
-            const userObj = {
-              dni: userDni,
-              nombre: u.nombres_y_apellidos,
-              rol: rol,
-              ubicacion: u.distrito_asignado || u.distrito_donde_vota || 'Lima',
-              colegio: u.local_de_votacion_asignado || u.local_de_votacion || '',
-              mesa: '',
-              tabla_origen: t,
-              origenHoja: t,
-              tipo_interfaz: isZonal ? 'coordinador_zonal' : 'coordinador_local',
-              voto_manual_enviado: votoManualRes.rows.length > 0,
-              voto_imagen_enviado: votoImagenRes.rows.length > 0
-            };
-
-            return res.status(200).json({
-              success: true,
-              status: 'success',
-              role: rol,
-              token: `TOKEN-${userDni}`,
-              user: userObj,
-              usuario: userObj,
-              data: userObj
-            });
+          if (rows.length > 0) {
+            foundUser = rows[0];
+            foundTable = t;
+            break;
           }
         }
 
-        // 2. Buscar en rpersoneros
-        let rpersRes = null;
-        try {
-          if (targetDni) {
-            rpersRes = await db.query('SELECT * FROM rpersoneros WHERE TRIM(dni) = $1 LIMIT 1', [targetDni]);
-          } else if (targetNombre) {
-            rpersRes = await db.query('SELECT * FROM rpersoneros WHERE nombres_y_apellidos ILIKE $1 LIMIT 1', [`%${targetNombre}%`]);
+        if (foundUser) {
+          const u = foundUser;
+          const t = foundTable;
+          const userDni = (u.dni || '').toString().trim();
+          const isZonal = t === 'rcoordinadoresz' || (u.rol_a_desempenar || '').toLowerCase().includes('zonal');
+          const rol = u.rol_a_desempenar || (isZonal ? 'Coordinador Zonal' : t === 'rcoordinadores' ? 'Coordinador de Local' : 'Personero');
+
+          // Restricción Zonal solo VMT
+          if (isZonal) {
+            const ubNorm = (u.distrito_asignado || u.distrito_donde_vota || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+            if (!ubNorm.includes('villa maria del triunfo') && !ubNorm.includes('vmt')) {
+              return res.status(200).json({
+                success: false,
+                status: 'blocked',
+                message: 'Acceso Restringido: La interfaz de Coordinador Zonal está habilitada únicamente para Villa María del Triunfo.'
+              });
+            }
           }
-        } catch (e) {}
 
-        if (rpersRes && rpersRes.rows && rpersRes.rows.length > 0) {
-          const rp = rpersRes.rows[0];
-          const userDni = (rp.dni || '').toString().trim();
-          const votoManualRes = await db.query(`SELECT numero_mesa, origen FROM votos_detalle WHERE TRIM(dni) = $1 AND origen = 'MANUAL' LIMIT 1`, [userDni]);
-          const votoImagenRes = await db.query(`SELECT numero_mesa, origen FROM votos_detalle WHERE TRIM(dni) = $1 AND origen = 'IMAGEN' LIMIT 1`, [userDni]);
+          let votoManualRes = { rows: [] };
+          let votoImagenRes = { rows: [] };
+          try {
+            votoManualRes = await db.query(`SELECT numero_mesa, origen FROM votos_detalle WHERE TRIM(dni) = $1 AND origen = 'MANUAL' LIMIT 1`, [userDni]);
+            votoImagenRes = await db.query(`SELECT numero_mesa, origen FROM votos_detalle WHERE TRIM(dni) = $1 AND origen = 'IMAGEN' LIMIT 1`, [userDni]);
+          } catch (e) {}
 
-          const ubicacionVMT = (rp.distrito_asignado || rp.distrito_donde_vota || 'Lima')
+          const ubicacionVMT = (u.distrito_asignado || u.distrito_donde_vota || 'Lima')
             .toString()
             .toLowerCase()
             .normalize("NFD")
             .replace(/[\u0300-\u036f]/g, "")
             .trim();
-          const isPersoneroVMT = ubicacionVMT.includes('villa maria del triunfo') || ubicacionVMT === 'vmt';
+          const isVMT = ubicacionVMT.includes('villa maria del triunfo') || ubicacionVMT === 'vmt';
+
+          let tipoInterfaz = 'personero_conteo';
+          if (isZonal) {
+            tipoInterfaz = 'coordinador_zonal';
+          } else if (t === 'rcoordinadores' || (rol && rol.toLowerCase().includes('coordinador'))) {
+            tipoInterfaz = 'coordinador_local';
+          } else if (isVMT) {
+            tipoInterfaz = 'personero_asistencia';
+          }
 
           const userObj = {
             dni: userDni,
-            nombre: rp.nombres_y_apellidos,
-            rol: 'Personero',
-            ubicacion: rp.distrito_asignado || rp.distrito_donde_vota || 'Lima',
-            colegio: rp.local_de_votacion_asignado || rp.local_de_votacion || '',
-            mesa: rp.mesa_asignada || rp.mesa_de_sufragio || '',
-            tabla_origen: 'rpersoneros',
-            origenHoja: 'rpersoneros',
-            tipo_interfaz: isPersoneroVMT ? 'personero_asistencia' : 'personero_conteo',
+            nombre: u.nombres_y_apellidos,
+            rol: rol,
+            ubicacion: u.distrito_asignado || u.distrito_donde_vota || 'Lima',
+            colegio: u.local_de_votacion_asignado || u.local_de_votacion || '',
+            mesa: u.mesa_asignada || u.mesa_de_sufragio || '',
+            tabla_origen: t,
+            origenHoja: t,
+            tipo_interfaz: tipoInterfaz,
             voto_manual_enviado: votoManualRes.rows.length > 0,
             voto_imagen_enviado: votoImagenRes.rows.length > 0
           };
@@ -192,7 +214,7 @@ export default async function handler(req, res) {
           return res.status(200).json({
             success: true,
             status: 'success',
-            role: 'Personero',
+            role: rol,
             token: `TOKEN-${userDni}`,
             user: userObj,
             usuario: userObj,
@@ -203,7 +225,7 @@ export default async function handler(req, res) {
         return res.status(200).json({
           success: false,
           status: 'error',
-          message: 'Usuario no encontrado en el padrón electoral. Verifica tu DNI o nombre.'
+          message: 'Usuario no encontrado en el padrón electoral. Verifica tu DNI, clave o nombre.'
         });
       }
 

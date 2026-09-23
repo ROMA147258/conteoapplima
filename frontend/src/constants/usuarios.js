@@ -1,7 +1,10 @@
 // --- BASE DE DATOS DE BRIGADISTAS (RPERSONEROS Y RCOORDINADORES) ---
 export const BRIGADISTAS_DB = [
   { dni: "Admin#2026$Secure!VotoReal", nombre: "Super Administrador", ubicacion: "", rol: "Admin", credenciales: "Confirmado", preguntas: "Aprobado", origenHoja: "Rpersoneros" },
+  { dni: "43599476", clave_acceso: "ZN5019", nombre: "Esteban Tito Cirineo Condor", ubicacion: "Villa María del Triunfo", colegio: "IE 7054 VILLA MARIA DEL TRIUNFO", mesa: "", rol: "Coordinador Zonal", tipo_interfaz: "coordinador_zonal", credenciales: "Confirmado", preguntas: "Aprobado", origenHoja: "rcoordinadoresz" },
   { dni: "45804148", clave_acceso: "ZN7942", nombre: "Carmen Patricia Arias Baldeon", ubicacion: "Villa María del Triunfo", colegio: "IE 6093 JUAN VALER SANDOVAL", colegios: "IE 6093 JUAN VALER SANDOVAL, IE EMBLEMATICA JUAN GUERRERO QUIMPER, IE 6015 SANTISIMO SAGRADO CORAZON DE JESUS", mesa: "", rol: "Coordinador Zonal", tipo_interfaz: "coordinador_zonal", credenciales: "Confirmado", preguntas: "Aprobado", origenHoja: "rcoordinadoresz" },
+  { dni: "41542273", nombre: "SANCHEZ CORRALES LUCERO", ubicacion: "Villa María del Triunfo", colegio: "IE 7054 VILLA MARIA DEL TRIUNFO", mesa: "", rol: "Coordinador de Local", tipo_interfaz: "coordinador_local", credenciales: "Confirmado", preguntas: "Aprobado", origenHoja: "rcoordinadores" },
+  { dni: "10091491", nombre: "Rosabel García Fernández", ubicacion: "Villa María del Triunfo", colegio: "IE 7054 VILLA MARIA DEL TRIUNFO", mesa: "901234", rol: "Personero", tipo_interfaz: "personero_asistencia", credenciales: "Confirmado", preguntas: "Aprobado", origenHoja: "rpersoneros" },
   { dni: "10229164", nombre: "ANTONIA ROMERO LINARES", ubicacion: "Villa María del Triunfo", colegio: "IE 6093 JUAN VALER SANDOVAL", mesa: "", rol: "Coordinador de Local", tipo_interfaz: "coordinador_local", credenciales: "Confirmado", preguntas: "Aprobado", origenHoja: "rcoordinadores" },
   { dni: "20902097", nombre: "SILVIA PAULINA PORTILLO VICTORIO", ubicacion: "Villa María del Triunfo", colegio: "IE 6093 JUAN VALER SANDOVAL", mesa: "No aplica", rol: "Personero", tipo_interfaz: "personero_asistencia", credenciales: "Confirmado", preguntas: "Aprobado", origenHoja: "rpersoneros" },
   { dni: "25869378", nombre: "Diego Salas", ubicacion: "Los Olivos", colegio: "IE 2025 INMACULADA CONCEPCION", mesa: "578858", rol: "Personero", credenciales: "Confirmado", preguntas: "Aprobado", origenHoja: "Rpersoneros" },
@@ -22,28 +25,7 @@ export function buscarBrigadista(dni, nombre, cachedUsers = null) {
   const matchesUser = (u) => {
     if (!u) return false;
 
-    // Verificar si el registro tiene estado de credenciales y preguntas (ambos deben estar válidos)
-    if (
-      u.origenHoja === 'Rpersoneros' ||
-      u.origenHoja === 'rpersoneros' ||
-      u.origenHoja === 'Rcoordinadores' ||
-      u.origenHoja === 'rcoordinadores' ||
-      u.origenHoja === 'rcoordinadoresz' ||
-      u.Credenciales !== undefined ||
-      u.credenciales !== undefined ||
-      u.Preguntas !== undefined ||
-      u.preguntas !== undefined
-    ) {
-      const cred = (u.Credenciales || u.credenciales || '').toString().trim().toLowerCase();
-      const preg = (u.Preguntas || u.preguntas || '').toString().trim().toLowerCase();
-
-      const isConfirmed = Boolean(cred && (cred.includes('confirmad') || cred === 'si' || cred === '1' || cred === 'aprobado'));
-      const isAprobado = preg ? Boolean(preg.includes('aprobad') || preg === 'si' || preg === '1') : true;
-
-      if (!isConfirmed || !isAprobado) return false;
-    }
-
-    // Match por Clave de Acceso (ej: ZN7942)
+    // Match por Clave de Acceso (ej: ZN7942 o ZN5019)
     const uClave = normStr(u.clave_acceso || u.clave || '');
     if (uClave && searchKey && (uClave === searchKey || searchKey.includes(uClave))) {
       return true;
@@ -52,7 +34,7 @@ export function buscarBrigadista(dni, nombre, cachedUsers = null) {
     const uDniDigits = cleanDigits(u.dni || u.DNI);
     const uNameNorm = normStr(u.nombre || u.Nombres_y_Apellidos);
 
-    if (targetDigits.length > 0 && uDniDigits.length > 0) {
+    if (targetDigits.length >= 6 && uDniDigits.length >= 6) {
       const targetPadded = targetDigits.padStart(8, '0');
       const uPadded = uDniDigits.padStart(8, '0');
       if (uDniDigits === targetDigits || uPadded === targetPadded) {
@@ -61,10 +43,10 @@ export function buscarBrigadista(dni, nombre, cachedUsers = null) {
     }
 
     if (targetNombre) {
-      const typedWords = targetNombre.split(/\s+/).filter(w => w.length >= 3);
+      const typedWords = targetNombre.split(/\s+/).filter(w => w.length >= 2);
       if (typedWords.length > 0) {
-        const anyWordMatch = typedWords.some(word => uNameNorm.includes(word));
-        if (anyWordMatch) return true;
+        const allWordsMatch = typedWords.every(word => uNameNorm.includes(word));
+        if (allWordsMatch) return true;
       }
     }
 
