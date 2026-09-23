@@ -122,19 +122,28 @@ export default async function handler(req, res) {
               status: 'success',
               role: rol,
               token: `TOKEN-${userDni}`,
-              user: {
-                dni: userDni,
-                nombre: u.nombres_y_apellidos,
-                rol: rol,
-                ubicacion: u.distrito_asignado || u.distrito_donde_vota || 'Lima',
-                colegio: u.local_de_votacion_asignado || u.local_de_votacion || '',
-                mesa: '',
-                tabla_origen: t,
-                origenHoja: t,
-                tipo_interfaz: isZonal ? 'coordinador_zonal' : 'coordinador_local',
-                voto_manual_enviado: votoManualRes.rows.length > 0,
-                voto_imagen_enviado: votoImagenRes.rows.length > 0
-              }
+            const userObj = {
+              dni: userDni,
+              nombre: u.nombres_y_apellidos,
+              rol: rol,
+              ubicacion: u.distrito_asignado || u.distrito_donde_vota || 'Lima',
+              colegio: u.local_de_votacion_asignado || u.local_de_votacion || '',
+              mesa: '',
+              tabla_origen: t,
+              origenHoja: t,
+              tipo_interfaz: isZonal ? 'coordinador_zonal' : 'coordinador_local',
+              voto_manual_enviado: votoManualRes.rows.length > 0,
+              voto_imagen_enviado: votoImagenRes.rows.length > 0
+            };
+
+            return res.status(200).json({
+              success: true,
+              status: 'success',
+              role: rol,
+              token: `TOKEN-${userDni}`,
+              user: userObj,
+              usuario: userObj,
+              data: userObj
             });
           }
         }
@@ -163,24 +172,28 @@ export default async function handler(req, res) {
             .trim();
           const isPersoneroVMT = ubicacionVMT.includes('villa maria del triunfo') || ubicacionVMT === 'vmt';
 
+          const userObj = {
+            dni: userDni,
+            nombre: rp.nombres_y_apellidos,
+            rol: 'Personero',
+            ubicacion: rp.distrito_asignado || rp.distrito_donde_vota || 'Lima',
+            colegio: rp.local_de_votacion_asignado || rp.local_de_votacion || '',
+            mesa: rp.mesa_asignada || rp.mesa_de_sufragio || '',
+            tabla_origen: 'rpersoneros',
+            origenHoja: 'rpersoneros',
+            tipo_interfaz: isPersoneroVMT ? 'personero_asistencia' : 'personero_conteo',
+            voto_manual_enviado: votoManualRes.rows.length > 0,
+            voto_imagen_enviado: votoImagenRes.rows.length > 0
+          };
+
           return res.status(200).json({
             success: true,
             status: 'success',
             role: 'Personero',
             token: `TOKEN-${userDni}`,
-            user: {
-              dni: userDni,
-              nombre: rp.nombres_y_apellidos,
-              rol: 'Personero',
-              ubicacion: rp.distrito_asignado || rp.distrito_donde_vota || 'Lima',
-              colegio: rp.local_de_votacion_asignado || rp.local_de_votacion || '',
-              mesa: mesaStr,
-              tabla_origen: 'rpersoneros',
-              origenHoja: 'rpersoneros',
-              tipo_interfaz: isPersoneroVMT ? 'personero_asistencia' : 'personero_conteo',
-              voto_manual_enviado: votoManualRes.rows.length > 0,
-              voto_imagen_enviado: votoImagenRes.rows.length > 0
-            }
+            user: userObj,
+            usuario: userObj,
+            data: userObj
           });
         }
 
