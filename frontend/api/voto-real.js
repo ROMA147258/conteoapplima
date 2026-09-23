@@ -158,36 +158,10 @@ export default async function handler(req, res) {
           const u = foundUser;
           const t = foundTable;
 
-          // Validar que el usuario esté Confirmado y Aprobado
-          const cred = (u.credenciales || '').toString().trim().toLowerCase();
-          const preg = (u.preguntas || '').toString().trim().toLowerCase();
-          const isConfirmed = Boolean(cred && (cred.includes('confirmad') || cred.includes('aprobad') || cred === 'si' || cred === '1'));
-          const isAprobado = preg ? Boolean(preg.includes('aprobad') || preg === 'si' || preg === '1') : true;
-
-          if (!isConfirmed || !isAprobado) {
-            return res.status(200).json({
-              success: false,
-              status: 'blocked',
-              message: 'Acceso Denegado: Tus credenciales se encuentran en estado Bloqueado o tu evaluación de preguntas está Pendiente. Solo el personal Confirmado y Aprobado puede ingresar.'
-            });
-          }
-
           const userDni = (u.dni || '').toString().trim();
           const isDistrital = t === 'rcoordinadoresd' || (u.rol_a_desempenar || '').toLowerCase().includes('distrit');
           const isZonal = t === 'rcoordinadoresz' || (u.rol_a_desempenar || '').toLowerCase().includes('zonal');
           const rol = u.rol_a_desempenar || (isDistrital ? 'Coordinador Distrital' : isZonal ? 'Coordinador Zonal' : t === 'rcoordinadores' ? 'Coordinador de Local' : 'Personero');
-
-          // Restricción Zonal solo VMT (solo para Zonal)
-          if (isZonal) {
-            const ubNorm = (u.distrito_asignado || u.distrito_donde_vota || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-            if (!ubNorm.includes('villa maria del triunfo') && !ubNorm.includes('vmt')) {
-              return res.status(200).json({
-                success: false,
-                status: 'blocked',
-                message: 'Acceso Restringido: La interfaz de Coordinador Zonal está habilitada únicamente para Villa María del Triunfo.'
-              });
-            }
-          }
 
           let votoManualRes = { rows: [] };
           let votoImagenRes = { rows: [] };
@@ -768,16 +742,14 @@ case 'registrar_votos': {
         });
       }
 
-      // 7. OBTENER PERSONEROS, COORDINADORES Y COLEGIOS SINCRONIZADOS (DISTRITAL / ZONAL / LOCAL) - REGISTROS APROBADOS DE TODOS LOS DISTRITOS
+      // 7. OBTENER PERSONEROS, COORDINADORES Y COLEGIOS SINCRONIZADOS (DISTRITAL / ZONAL / LOCAL) - TODOS LOS REGISTROS DE TODOS LOS DISTRITOS
       case 'obtener_personeros_por_colegio':
       case 'obtener_personeros': {
-        const approvedFilter = "WHERE (credenciales ILIKE '%confirmad%' OR credenciales ILIKE '%aprobad%') AND (preguntas ILIKE '%aprobad%' OR preguntas IS NULL)";
-
         const [pRes, clRes, czRes, cdRes, colRes] = await Promise.all([
-          db.query(`SELECT * FROM rpersoneros ${approvedFilter}`),
-          db.query(`SELECT * FROM rcoordinadores ${approvedFilter}`),
-          db.query(`SELECT * FROM rcoordinadoresz ${approvedFilter}`),
-          db.query(`SELECT * FROM rcoordinadoresd ${approvedFilter}`),
+          db.query('SELECT * FROM rpersoneros'),
+          db.query('SELECT * FROM rcoordinadores'),
+          db.query('SELECT * FROM rcoordinadoresz'),
+          db.query('SELECT * FROM rcoordinadoresd'),
           db.query('SELECT * FROM colegios')
         ]);
 
@@ -930,15 +902,13 @@ case 'registrar_votos': {
         });
       }
 
-      // 12. OBTENER USUARIOS GENERAL (SOLO APROBADOS Y CONFIRMADOS DE TODOS LOS DISTRITOS)
+      // 12. OBTENER USUARIOS GENERAL (TODOS LOS REGISTROS DE TODOS LOS DISTRITOS)
       case 'obtener_usuarios': {
-        const approvedFilter = "WHERE (credenciales ILIKE '%confirmad%' OR credenciales ILIKE '%aprobad%') AND (preguntas ILIKE '%aprobad%' OR preguntas IS NULL)";
-
         const [pRes, clRes, czRes, cdRes] = await Promise.all([
-          db.query(`SELECT * FROM rpersoneros ${approvedFilter}`),
-          db.query(`SELECT * FROM rcoordinadores ${approvedFilter}`),
-          db.query(`SELECT * FROM rcoordinadoresz ${approvedFilter}`),
-          db.query(`SELECT * FROM rcoordinadoresd ${approvedFilter}`)
+          db.query('SELECT * FROM rpersoneros'),
+          db.query('SELECT * FROM rcoordinadores'),
+          db.query('SELECT * FROM rcoordinadoresz'),
+          db.query('SELECT * FROM rcoordinadoresd')
         ]);
         const allUsers = [
           ...cdRes.rows.map(r => ({ ...r, tabla_origen: 'rcoordinadoresd', rol: 'Coordinador Distrital' })),

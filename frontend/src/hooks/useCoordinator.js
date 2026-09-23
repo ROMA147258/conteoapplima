@@ -9,6 +9,7 @@ export const useCoordinator = () => {
   const [infoColegios, setInfoColegios] = useState([]);
   const [coordinadoresLocales, setCoordinadoresLocales] = useState([]);
   const [coordinadoresZonales, setCoordinadoresZonales] = useState([]);
+  const [coordinadoresDistritales, setCoordinadoresDistritales] = useState([]);
   const [asistencias, setAsistencias] = useState([]);
   const [confirmacionesCoord, setConfirmacionesCoord] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -45,6 +46,7 @@ export const useCoordinator = () => {
       if (resPersoneros?.info_colegios) setInfoColegios(resPersoneros.info_colegios);
       if (resPersoneros?.coordinadores_locales) setCoordinadoresLocales(resPersoneros.coordinadores_locales);
       if (resPersoneros?.coordinadores_zonales) setCoordinadoresZonales(resPersoneros.coordinadores_zonales);
+      if (resPersoneros?.coordinadores_distritales) setCoordinadoresDistritales(resPersoneros.coordinadores_distritales);
       if (resAsist?.asistencia) setAsistencias(resAsist.asistencia);
       if (resConf?.confirmaciones) setConfirmacionesCoord(resConf.confirmaciones);
     } catch (e) {
@@ -171,6 +173,7 @@ export const useCoordinator = () => {
     infoColegios,
     coordinadoresLocales,
     coordinadoresZonales,
+    coordinadoresDistritales,
     asistencias,
     confirmacionesCoord,
     isLoading,
