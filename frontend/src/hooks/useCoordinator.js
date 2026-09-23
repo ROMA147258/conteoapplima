@@ -27,36 +27,24 @@ export const useCoordinator = () => {
       const distQuery = currentUser.ubicacion || currentUser.distrito || '';
       const origenQuery = currentUser.origenHoja || currentUser.tabla_origen || '';
 
-      // Solo en la carga inicial traemos el catálogo completo de colegios y personeros
-      const promises = [
+      const [resPersoneros, resAsist, resConf] = await Promise.all([
+        apiGet({
+          action: 'obtener_personeros_por_colegio',
+          colegio: colQuery,
+          local: colQuery,
+          distrito: distQuery,
+          ubicacion: distQuery,
+          origenHoja: origenQuery,
+          tabla_origen: origenQuery
+        }, apiUrl),
         apiGet({ action: 'obtener_asistencia' }, apiUrl),
         apiGet({ action: 'obtener_confirmaciones_por_colegio', colegio: colQuery, local: colQuery, distrito: distQuery, ubicacion: distQuery }, apiUrl)
-      ];
-
-      if (!isBackground) {
-        promises.push(
-          apiGet({
-            action: 'obtener_personeros_por_colegio',
-            colegio: colQuery,
-            local: colQuery,
-            distrito: distQuery,
-            ubicacion: distQuery,
-            origenHoja: origenQuery,
-            tabla_origen: origenQuery
-          }, apiUrl)
-        );
-      }
-
-      const results = await Promise.all(promises);
-      const resAsist = results[0];
-      const resConf = results[1];
-      const resPersoneros = !isBackground ? results[2] : null;
+      ]);
 
       if (resPersoneros?.personeros) setPersoneros(resPersoneros.personeros);
       if (resPersoneros?.info_colegios) setInfoColegios(resPersoneros.info_colegios);
       if (resPersoneros?.coordinadores_locales) setCoordinadoresLocales(resPersoneros.coordinadores_locales);
       if (resPersoneros?.coordinadores_zonales) setCoordinadoresZonales(resPersoneros.coordinadores_zonales);
-      if (resPersoneros?.coordinadores_distritales) setCoordinadoresDistritales(resPersoneros.coordinadores_distritales);
       if (resAsist?.asistencia) setAsistencias(resAsist.asistencia);
       if (resConf?.confirmaciones) setConfirmacionesCoord(resConf.confirmaciones);
     } catch (e) {
@@ -68,10 +56,10 @@ export const useCoordinator = () => {
 
   useEffect(() => {
     fetchCoordinatorData(false);
-    // Polling inteligente en segundo plano cada 20 segundos sólo para asistencias (ahorra 95% de ancho de banda)
+    // Polling automático continuo en segundo plano cada 8 segundos (sin necesidad de presionar nada)
     const interval = setInterval(() => {
       fetchCoordinatorData(true);
-    }, 20000);
+    }, 8000);
     return () => clearInterval(interval);
   }, [fetchCoordinatorData]);
 
