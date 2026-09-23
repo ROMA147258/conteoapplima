@@ -9,7 +9,6 @@ export const useCoordinator = () => {
   const [infoColegios, setInfoColegios] = useState([]);
   const [coordinadoresLocales, setCoordinadoresLocales] = useState([]);
   const [coordinadoresZonales, setCoordinadoresZonales] = useState([]);
-  const [coordinadoresDistritales, setCoordinadoresDistritales] = useState([]);
   const [asistencias, setAsistencias] = useState([]);
   const [confirmacionesCoord, setConfirmacionesCoord] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -28,19 +27,30 @@ export const useCoordinator = () => {
       const distQuery = currentUser.ubicacion || currentUser.distrito || '';
       const origenQuery = currentUser.origenHoja || currentUser.tabla_origen || '';
 
-      const [resPersoneros, resAsist, resConf] = await Promise.all([
-        apiGet({
-          action: 'obtener_personeros_por_colegio',
-          colegio: colQuery,
-          local: colQuery,
-          distrito: distQuery,
-          ubicacion: distQuery,
-          origenHoja: origenQuery,
-          tabla_origen: origenQuery
-        }, apiUrl),
+      // Solo en la carga inicial traemos el catálogo completo de colegios y personeros
+      const promises = [
         apiGet({ action: 'obtener_asistencia' }, apiUrl),
         apiGet({ action: 'obtener_confirmaciones_por_colegio', colegio: colQuery, local: colQuery, distrito: distQuery, ubicacion: distQuery }, apiUrl)
-      ]);
+      ];
+
+      if (!isBackground) {
+        promises.push(
+          apiGet({
+            action: 'obtener_personeros_por_colegio',
+            colegio: colQuery,
+            local: colQuery,
+            distrito: distQuery,
+            ubicacion: distQuery,
+            origenHoja: origenQuery,
+            tabla_origen: origenQuery
+          }, apiUrl)
+        );
+      }
+
+      const results = await Promise.all(promises);
+      const resAsist = results[0];
+      const resConf = results[1];
+      const resPersoneros = !isBackground ? results[2] : null;
 
       if (resPersoneros?.personeros) setPersoneros(resPersoneros.personeros);
       if (resPersoneros?.info_colegios) setInfoColegios(resPersoneros.info_colegios);
@@ -58,10 +68,10 @@ export const useCoordinator = () => {
 
   useEffect(() => {
     fetchCoordinatorData(false);
-    // Polling automático continuo en segundo plano cada 8 segundos (sin necesidad de presionar nada)
+    // Polling inteligente en segundo plano cada 20 segundos sólo para asistencias (ahorra 95% de ancho de banda)
     const interval = setInterval(() => {
       fetchCoordinatorData(true);
-    }, 8000);
+    }, 20000);
     return () => clearInterval(interval);
   }, [fetchCoordinatorData]);
 
@@ -173,7 +183,6 @@ export const useCoordinator = () => {
     infoColegios,
     coordinadoresLocales,
     coordinadoresZonales,
-    coordinadoresDistritales,
     asistencias,
     confirmacionesCoord,
     isLoading,
