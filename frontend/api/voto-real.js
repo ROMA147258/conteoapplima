@@ -157,6 +157,21 @@ export default async function handler(req, res) {
         if (foundUser) {
           const u = foundUser;
           const t = foundTable;
+
+          // Validar que el usuario esté Confirmado y Aprobado
+          const cred = (u.credenciales || '').toString().trim().toLowerCase();
+          const preg = (u.preguntas || '').toString().trim().toLowerCase();
+          const isConfirmed = Boolean(cred && (cred.includes('confirmad') || cred.includes('aprobad') || cred === 'si' || cred === '1'));
+          const isAprobado = preg ? Boolean(preg.includes('aprobad') || preg === 'si' || preg === '1') : true;
+
+          if (!isConfirmed || !isAprobado) {
+            return res.status(200).json({
+              success: false,
+              status: 'blocked',
+              message: 'Acceso Denegado: Tus credenciales se encuentran en estado Bloqueado o tu evaluación de preguntas está Pendiente. Solo el personal Confirmado y Aprobado puede ingresar.'
+            });
+          }
+
           const userDni = (u.dni || '').toString().trim();
           const isDistrital = t === 'rcoordinadoresd' || (u.rol_a_desempenar || '').toLowerCase().includes('distrit');
           const isZonal = t === 'rcoordinadoresz' || (u.rol_a_desempenar || '').toLowerCase().includes('zonal');
@@ -689,6 +704,9 @@ case 'registrar_votos': {
       
 
       // 3. ASISTENCIA
+      
+
+      // 3. ASISTENCIA
       case 'registrar_asistencia': {
         const { nombre, dni, distrito, local, mesa, confirmacion, foto_url, ubicacion_gps } = payload;
         await db.query(`
@@ -750,14 +768,16 @@ case 'registrar_votos': {
         });
       }
 
-      // 7. OBTENER PERSONEROS, COORDINADORES Y COLEGIOS (DISTRITAL / ZONAL / LOCAL)
+      // 7. OBTENER PERSONEROS, COORDINADORES Y COLEGIOS SINCRONIZADOS (DISTRITAL / ZONAL / LOCAL) - REGISTROS APROBADOS DE TODOS LOS DISTRITOS
       case 'obtener_personeros_por_colegio':
       case 'obtener_personeros': {
+        const approvedFilter = "WHERE (credenciales ILIKE '%confirmad%' OR credenciales ILIKE '%aprobad%') AND (preguntas ILIKE '%aprobad%' OR preguntas IS NULL)";
+
         const [pRes, clRes, czRes, cdRes, colRes] = await Promise.all([
-          db.query('SELECT * FROM rpersoneros'),
-          db.query('SELECT * FROM rcoordinadores'),
-          db.query('SELECT * FROM rcoordinadoresz'),
-          db.query('SELECT * FROM rcoordinadoresd'),
+          db.query(`SELECT * FROM rpersoneros ${approvedFilter}`),
+          db.query(`SELECT * FROM rcoordinadores ${approvedFilter}`),
+          db.query(`SELECT * FROM rcoordinadoresz ${approvedFilter}`),
+          db.query(`SELECT * FROM rcoordinadoresd ${approvedFilter}`),
           db.query('SELECT * FROM colegios')
         ]);
 
@@ -776,6 +796,8 @@ case 'registrar_votos': {
           mesa: r.mesa_asignada || r.mesa_de_sufragio || '',
           Mesa_Asignada: r.mesa_asignada || r.mesa_de_sufragio || '',
           rol: r.rol_a_desempenar || 'Personero',
+          credenciales: r.credenciales,
+          preguntas: r.preguntas,
           tabla_origen: 'rpersoneros',
           origenHoja: 'rpersoneros'
         }));
@@ -791,6 +813,8 @@ case 'registrar_votos': {
           colegio: r.local_de_votacion_asignado || r.local_de_votacion || '',
           local: r.local_de_votacion_asignado || r.local_de_votacion || '',
           rol: r.rol_a_desempenar || 'Coordinador de Local',
+          credenciales: r.credenciales,
+          preguntas: r.preguntas,
           tabla_origen: 'rcoordinadores',
           origenHoja: 'rcoordinadores'
         }));
@@ -808,6 +832,8 @@ case 'registrar_votos': {
           local: r.local_de_votacion_asignado || r.local_de_votacion || '',
           clave_acceso: r.clave_acceso,
           rol: r.rol_a_desempenar || 'Coordinador Zonal',
+          credenciales: r.credenciales,
+          preguntas: r.preguntas,
           tabla_origen: 'rcoordinadoresz',
           origenHoja: 'rcoordinadoresz'
         }));
@@ -825,6 +851,8 @@ case 'registrar_votos': {
           local: r.local_de_votacion_asignado || r.local_de_votacion || '',
           clave_acceso: r.clave_acceso,
           rol: r.rol_a_desempenar || 'Coordinador Distrital',
+          credenciales: r.credenciales,
+          preguntas: r.preguntas,
           tabla_origen: 'rcoordinadoresd',
           origenHoja: 'rcoordinadoresd'
         }));
@@ -902,13 +930,15 @@ case 'registrar_votos': {
         });
       }
 
-      // 12. OBTENER USUARIOS GENERAL
+      // 12. OBTENER USUARIOS GENERAL (SOLO APROBADOS Y CONFIRMADOS DE TODOS LOS DISTRITOS)
       case 'obtener_usuarios': {
+        const approvedFilter = "WHERE (credenciales ILIKE '%confirmad%' OR credenciales ILIKE '%aprobad%') AND (preguntas ILIKE '%aprobad%' OR preguntas IS NULL)";
+
         const [pRes, clRes, czRes, cdRes] = await Promise.all([
-          db.query('SELECT * FROM rpersoneros'),
-          db.query('SELECT * FROM rcoordinadores'),
-          db.query('SELECT * FROM rcoordinadoresz'),
-          db.query('SELECT * FROM rcoordinadoresd')
+          db.query(`SELECT * FROM rpersoneros ${approvedFilter}`),
+          db.query(`SELECT * FROM rcoordinadores ${approvedFilter}`),
+          db.query(`SELECT * FROM rcoordinadoresz ${approvedFilter}`),
+          db.query(`SELECT * FROM rcoordinadoresd ${approvedFilter}`)
         ]);
         const allUsers = [
           ...cdRes.rows.map(r => ({ ...r, tabla_origen: 'rcoordinadoresd', rol: 'Coordinador Distrital' })),

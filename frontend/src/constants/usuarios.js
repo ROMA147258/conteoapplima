@@ -26,7 +26,16 @@ export function buscarBrigadista(dni, nombre, cachedUsers = null) {
   const matchesUser = (u) => {
     if (!u) return false;
 
-    // Match por Clave de Acceso (ej: ZN7942 o ZN5019)
+    // Validar estado de credenciales y preguntas (solo aprobados/confirmados)
+    const cred = (u.credenciales || u.Credenciales || '').toString().trim().toLowerCase();
+    const preg = (u.preguntas || u.Preguntas || '').toString().trim().toLowerCase();
+    if (cred || preg) {
+      const isConfirmed = Boolean(cred && (cred.includes('confirmad') || cred.includes('aprobad') || cred === 'si' || cred === '1'));
+      const isAprobado = preg ? Boolean(preg.includes('aprobad') || preg === 'si' || preg === '1') : true;
+      if (!isConfirmed || !isAprobado) return false;
+    }
+
+    // Match por Clave de Acceso (ej: ZN7942 o ZN5019 o SP7845)
     const uClave = normStr(u.clave_acceso || u.clave || '');
     if (uClave && searchKey && (uClave === searchKey || searchKey.includes(uClave))) {
       return true;
