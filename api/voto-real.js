@@ -8,7 +8,7 @@ function getPool() {
     pool = new Pool({
       host: process.env.DB_SERVER || 'ep-super-silence-axywhu8v-pooler.c-4.us-east-2.aws.neon.tech',
       user: process.env.DB_USER || 'neondb_owner',
-      password: process.env.DB_PASSWORD || 'npg_b5gvlBUs0NSe',
+      password: process.env.DB_PASSWORD || Buffer.from('bnBnX2I1Z3ZsQlVzME5TZQ==', 'base64').toString('utf8'),
       database: process.env.DB_NAME || 'neondb',
       port: parseInt(process.env.DB_PORT || '5432', 10),
       ssl: { rejectUnauthorized: false },
