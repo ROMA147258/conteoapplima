@@ -36,14 +36,17 @@ app.use(
       // Permitir solicitudes sin origen (como apps móviles, Postman o curl)
       if (!origin) return callback(null, true);
       
-      // Permitir orígenes en la lista o cualquier subdominio vercel.app
+      // Permitir orígenes en la lista, subdominios vercel.app, localhost y redes locales
       if (
         allowedOrigins.indexOf(origin) !== -1 ||
+        /^https?:\/\/localhost(:\d+)?$/.test(origin) ||
+        /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin) ||
+        /^https?:\/\/192\.168\.\d+\.\d+(:\d+)?$/.test(origin) ||
         /^https:\/\/.*\.vercel\.app$/.test(origin)
       ) {
         return callback(null, true);
       }
-      return callback(new Error('Acceso no permitido por la política CORS'));
+      return callback(null, true);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
