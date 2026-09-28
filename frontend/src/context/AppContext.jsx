@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { DEFAULT_API_URL, fetchServerConfig, apiPost, apiGet } from '../services/api';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { DEFAULT_API_URL, fetchServerConfig, apiPost, apiGet, serverLogout } from '../services/api';
 import { buscarBrigadista, esCoordinador } from '../constants/usuarios';
 import { isCountingTimeEnabled, isLlegadaButtonUnlocked } from '../utils/helpers';
+import InactivityWarningModal from '../components/modals/InactivityWarningModal';
 
 const AppContext = createContext(null);
 
@@ -307,9 +308,20 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  // Estado de aviso de inactividad
+  const [inactivityModal, setInactivityModal] = useState({
+    isOpen: false,
+    countdown: 20
+  });
+
+  const logout = useCallback(() => {
+    // 1. Notificar e invalidar token en el servidor
+    serverLogout(apiUrl);
+
+    // 2. Limpiar sesión en el cliente
     setCurrentUser(null);
     sessionStorage.removeItem('votoReal_user');
+    sessionStorage.removeItem('votoReal_token');
     sessionStorage.removeItem('votoReal_popupEntradaMostrar');
     localStorage.removeItem('votoReal_mesa_activa');
     localStorage.removeItem('votoReal_colegio_activo');
@@ -318,52 +330,87 @@ export const AppProvider = ({ children }) => {
     setOcrRawDetail('');
     setIsScannerModalOpen(false);
     setIsOcrDetailModalOpen(false);
+    setInactivityModal({ isOpen: false, countdown: 20 });
     setCurrentView('view-login');
     showToast('Sesión cerrada correctamente.', 'info');
-  };
+  }, [apiUrl, showToast]);
 
-  // Auto-cierre de sesión ultra-estricto estilo banco (Ahorro máximo de recursos y seguridad total)
+  // Protección de sesión por inactividad física (90s) y segundo plano (25s) con Modal Popup
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      setInactivityModal({ isOpen: false, countdown: 20 });
+      return;
+    }
 
-    let inactivityTimer;
-    const INACTIVITY_TIMEOUT = 90 * 1000; // 1.5 minutos (90 segundos) sin tocar la pantalla / mouse
+    let warningTimer = null;
+    let countdownInterval = null;
+    let backgroundTimer = null;
 
-    const resetInactivity = () => {
-      clearTimeout(inactivityTimer);
-      inactivityTimer = setTimeout(() => {
-        logout();
-        showToast('Sesión cerrada por inactividad (90s).', 'warning');
-      }, INACTIVITY_TIMEOUT);
+    const TOTAL_TIMEOUT_MS = 90 * 1000; // 90 segundos total
+    const WARNING_TIME_MS = 70 * 1000;  // Aviso a los 70 segundos (20s restantes)
+
+    const clearAllTimers = () => {
+      if (warningTimer) clearTimeout(warningTimer);
+      if (countdownInterval) clearInterval(countdownInterval);
+      if (backgroundTimer) clearTimeout(backgroundTimer);
     };
 
-    // Eventos de interacción del usuario
-    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
-    events.forEach(event => window.addEventListener(event, resetInactivity, { passive: true }));
+    const startCountdown = (startSec = 20) => {
+      let currentSec = startSec;
+      setInactivityModal({ isOpen: true, countdown: currentSec });
+
+      if (countdownInterval) clearInterval(countdownInterval);
+      countdownInterval = setInterval(() => {
+        currentSec -= 1;
+        if (currentSec <= 0) {
+          clearInterval(countdownInterval);
+          setInactivityModal({ isOpen: false, countdown: 0 });
+          logout();
+          showToast('Sesión cerrada por inactividad.', 'warning');
+        } else {
+          setInactivityModal(prev => ({ ...prev, countdown: currentSec }));
+        }
+      }, 1000);
+    };
+
+    const resetInactivity = () => {
+      clearAllTimers();
+      setInactivityModal({ isOpen: false, countdown: 20 });
+
+      warningTimer = setTimeout(() => {
+        startCountdown(20);
+      }, WARNING_TIME_MS);
+    };
+
+    // Escuchar interacciones físicas del usuario
+    const userEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
+    userEvents.forEach(evt => window.addEventListener(evt, resetInactivity, { passive: true }));
     resetInactivity();
 
-    // Si la persona cambia de app, bloquea el celular o minimiza la pestaña (25 segundos)
-    let hiddenTimer;
+    // Detección de cambio de pestaña o segundo plano en móviles (25s)
     const handleVisibility = () => {
       if (document.hidden) {
-        hiddenTimer = setTimeout(() => {
+        backgroundTimer = setTimeout(() => {
           logout();
-          showToast('Sesión cerrada automáticamente al salir de la aplicación.', 'info');
-        }, 25 * 1000); // 25 segundos en segundo plano
+          showToast('Sesión cerrada por seguridad al salir de la aplicación.', 'info');
+        }, 25 * 1000);
       } else {
-        clearTimeout(hiddenTimer);
+        if (backgroundTimer) clearTimeout(backgroundTimer);
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
-      clearTimeout(inactivityTimer);
-      clearTimeout(hiddenTimer);
-      events.forEach(event => window.removeEventListener(event, resetInactivity));
+      clearAllTimers();
+      userEvents.forEach(evt => window.removeEventListener(evt, resetInactivity));
       document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, [currentUser]);
+  }, [currentUser, logout, showToast]);
+
+  const handleStayLoggedIn = () => {
+    setInactivityModal({ isOpen: false, countdown: 20 });
+  };
 
   return (
     <AppContext.Provider value={{
@@ -394,8 +441,16 @@ export const AppProvider = ({ children }) => {
       fetchUsersDb
     }}>
       {children}
+      <InactivityWarningModal
+        isOpen={inactivityModal.isOpen}
+        countdown={inactivityModal.countdown}
+        maxCountdown={20}
+        onStayLoggedIn={handleStayLoggedIn}
+        onLogout={logout}
+      />
     </AppContext.Provider>
   );
 };
 
 export const useApp = () => useContext(AppContext);
+

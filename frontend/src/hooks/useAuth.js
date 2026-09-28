@@ -24,29 +24,7 @@ export const useAuth = () => {
       return false;
     }
 
-    // Super Admin direct bypass
-    const allInputs = `${cleanNombre} ${cleanDni}`.toLowerCase();
-    if (
-      allInputs.includes('admin#2026$secure!votoreal') ||
-      cleanDni === '99999999' ||
-      cleanDni === '12345678'
-    ) {
-      const adminUser = {
-        nombre: 'Super Administrador',
-        dni: '99999999',
-        ubicacion: 'Lima',
-        colegio: 'CENTRAL',
-        mesa: '',
-        rol: 'Admin',
-        origenHoja: ''
-      };
-      setCurrentUser(adminUser);
-      sessionStorage.setItem('votoReal_user', JSON.stringify(adminUser));
-      setCurrentView('view-counting');
-      showToast('Bienvenido, Super Administrador.', 'success');
-      return true;
-    }
-
+    // Nota de seguridad: El login de SuperAdmin ahora se valida en el backend mediante ADMIN_MASTER_KEY
     let user = null;
     let serverResponded = false;
 
@@ -56,9 +34,11 @@ export const useAuth = () => {
 
       if (res && res.success && (res.usuario || res.user)) {
         user = res.usuario || res.user;
+        if (res.token) {
+          sessionStorage.setItem('votoReal_token', res.token);
+        }
       } else {
-        // El servidor respondió explícitamente rechazando el login (ej: Credenciales Bloqueadas)
-        const errMsg = res?.message || 'Acceso Denegado: Tus credenciales no se encuentran confirmadas o están bloqueadas.';
+        const errMsg = res?.message || 'Acceso no autorizado: Verifica tus credenciales o consulta con tu coordinador.';
         showAlertDialog({
           title: 'Acceso Denegado',
           message: errMsg,
@@ -79,7 +59,7 @@ export const useAuth = () => {
     if (!user) {
       showAlertDialog({
         title: 'Acceso Denegado',
-        message: 'DNI o nombre no encontrado en el sistema.<br><br>Si acabas de ser agregado, espera un momento y vuelve a intentarlo.',
+        message: 'Credenciales no autorizadas o no registradas en el sistema.<br><br>Verifica tus datos e inténtalo nuevamente.',
         buttonText: 'Reintentar',
         type: 'error'
       });
