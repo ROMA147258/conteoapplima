@@ -960,6 +960,73 @@ case 'registrar_votos': {
         });
       }
 
+      // 13. PROCESAR ACTA OCR CON GEMINI VISION (SERVERLESS SEGURO)
+      case 'procesar_acta_ocr': {
+        const { imageBase64, mimeType = 'image/jpeg', distrito = 'Lima', seccion = 'ambos', prompt } = payload;
+        const key = process.env.GEMINI_API_KEY || payload.geminiApiKey || '';
+        if (!key) {
+          return res.status(200).json({
+            success: false,
+            message: 'GEMINI_API_KEY no configurada en las variables de entorno del servidor.'
+          });
+        }
+
+        const cleanBase64 = (imageBase64 || '').includes(',') ? imageBase64.split(',')[1] : imageBase64;
+        const defaultPrompt = prompt || `Eres un perito experto en escaneo de actas electorales peruanas (ONPE / JNE). Analiza esta imagen con precisión absoluta y extrae cada uno de los votos manuscritos o impresos para cada organización política. Devuelve ÚNICAMENTE un JSON válido con la estructura de votos provincial y distrital.`;
+
+        const modelsToTry = ['gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-2.5-flash'];
+        for (const model of modelsToTry) {
+          try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+            const geminiRes = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [
+                  {
+                    parts: [
+                      { text: defaultPrompt },
+                      { inline_data: { mime_type: mimeType, data: cleanBase64 } }
+                    ]
+                  }
+                ],
+                generationConfig: {
+                  temperature: 0.1,
+                  response_mime_type: 'application/json'
+                }
+              })
+            });
+
+            if (geminiRes.ok) {
+              const data = await geminiRes.json();
+              const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+              if (rawText) {
+                return res.status(200).json({
+                  success: true,
+                  rawText: rawText,
+                  provider: 'gemini',
+                  model: model
+                });
+              }
+            }
+          } catch (mErr) {
+            console.warn(`[OCR Vercel] Error con modelo ${model}:`, mErr.message);
+          }
+        }
+        return res.status(200).json({
+          success: false,
+          message: 'No se pudo procesar el acta con los modelos de Gemini disponibles.'
+        });
+      }
+
+      case 'obtener_config_ocr': {
+        return res.status(200).json({
+          provider: 'gemini',
+          model: 'gemini-2.5-flash',
+          hasServerKey: !!process.env.GEMINI_API_KEY
+        });
+      }
+
       default:
         return res.status(200).json({ success: false, message: `Acción '${action}' no reconocida` });
     }
@@ -968,3 +1035,4 @@ case 'registrar_votos': {
     return res.status(500).json({ success: false, message: 'Error en base de datos: ' + err.message });
   }
 }
+

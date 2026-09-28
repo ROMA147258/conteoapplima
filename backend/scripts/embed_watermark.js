@@ -4,11 +4,12 @@ const { createSignedPayload, encodeToZeroWidth } = require('./verify_signature')
 
 // 1. Backend Telemetry Watermark
 const payloadBackend = createSignedPayload({
-  owner: 'Ing. de Software & Arquitecto de Sistemas',
-  project: 'Conteo de Votos Lima - Backend API',
-  issuedAt: '2026-09-22T14:00:00.000Z'
+  owner: 'Ricardo Alonso Rodriguez Malaver (DNI: 74909613)',
+  project: 'conteovotosapplima - Backend API',
+  issuedAt: new Date().toISOString()
 });
 const zwBackend = encodeToZeroWidth(JSON.stringify(payloadBackend));
+
 
 const backendContent = `/**
  * Módulo de Telemetría e Integridad del Sistema${zwBackend}
@@ -67,11 +68,12 @@ fs.writeFileSync(backendFilePath, backendContent, 'utf8');
 
 // 2. Frontend System Config Watermark
 const payloadFrontend = createSignedPayload({
-  owner: 'Ing. de Software & Arquitecto de Sistemas',
-  project: 'Conteo de Votos Lima - Frontend Web App',
-  issuedAt: '2026-09-22T14:00:00.000Z'
+  owner: 'Ricardo Alonso Rodriguez Malaver (DNI: 74909613)',
+  project: 'conteovotosapplima - Frontend Web App',
+  issuedAt: new Date().toISOString()
 });
 const zwFrontend = encodeToZeroWidth(JSON.stringify(payloadFrontend));
+
 
 const frontendContent = `/**
  * Configuración de Sistema y Parámetros Globales${zwFrontend}

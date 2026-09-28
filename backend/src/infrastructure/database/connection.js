@@ -47,8 +47,33 @@ async function query(text, params = []) {
   return p.query(text, params);
 }
 
+async function withUserContext(context = {}, callback) {
+  const p = getPool();
+  const client = await p.connect();
+  try {
+    const { dni = '', rol = '', distrito = '', colegio = '' } = context;
+    if (dni || rol) {
+      await client.query('SELECT set_app_user_context($1, $2, $3, $4)', [
+        (dni || '').toString(),
+        (rol || '').toString(),
+        (distrito || '').toString(),
+        (colegio || '').toString()
+      ]);
+    }
+    const result = await callback(client);
+    return result;
+  } finally {
+    try {
+      await client.query('SELECT clear_app_user_context()');
+    } catch (_) {}
+    client.release();
+  }
+}
+
 module.exports = {
   getPool,
   query,
+  withUserContext,
   pgConfig
 };
+

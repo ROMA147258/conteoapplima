@@ -404,14 +404,8 @@ export async function analizarImagenActa(imageSrc, options = {}) {
   const mimeType = imageSrc.includes(';') ? (imageSrc.split(';')[0].split(':')[1] || 'image/jpeg') : 'image/jpeg';
   const currentDistrict = options.currentDistrict || 'Lima';
   const seccion = options.seccion || 'ambos';
-  const defaultKey = (typeof atob === 'function') 
-    ? atob('QVEuQWI4Uk42SmRJcnA0OWxxS2FNMmF5OTZCU0FFQW91Vzl4RkNmNkNTamdSNGpVLV9rRlE=') 
-    : '';
-
   const geminiApiKey = options.geminiApiKey || 
-                       (typeof localStorage !== 'undefined' ? localStorage.getItem('votoReal_geminiApiKey') : '') ||
-                       import.meta.env?.VITE_GEMINI_API_KEY ||
-                       defaultKey;
+                       (typeof localStorage !== 'undefined' ? localStorage.getItem('votoReal_geminiApiKey') : '') || '';
 
   // 1. Intentar llamar al backend si está disponible (Localhost / Proxy)
   try {

@@ -55,6 +55,30 @@ async function runMigrations() {
       }
     }
 
+    // 3. Ejecutar scripts de migración adicionales pendientes (ej. 010_row_level_security.sql)
+    if (fs.existsSync(migrationsDir)) {
+      const files = fs.readdirSync(migrationsDir)
+        .filter(f => f.endsWith('.sql') && f.startsWith('0') && !f.includes('seed'))
+        .sort();
+
+      for (const file of files) {
+        const checkMigration = await client.query(
+          'SELECT 1 FROM schemamigrations WHERE migration_name = $1',
+          [file]
+        );
+        if (checkMigration.rows.length === 0) {
+          console.log(`⏳ [Ejecutando migración]: ${file}...`);
+          const sqlContent = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+          await client.query(sqlContent);
+          await client.query(
+            'INSERT INTO schemamigrations (migration_name) VALUES ($1)',
+            [file]
+          );
+          console.log(`   ✓ ${file} ejecutado y registrado con éxito.`);
+        }
+      }
+    }
+
     const countRes = await client.query('SELECT COUNT(*) AS total_mesas FROM mesas');
     console.log(`📊 Mesas verificadas en base de datos: ${countRes.rows[0]?.total_mesas || 0}`);
 
