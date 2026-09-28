@@ -18,5 +18,17 @@ export default defineConfig({
   preview: {
     port: 5173,
     host: '0.0.0.0'
+  },
+  build: {
+    target: 'es2020',
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-icons': ['lucide-react']
+        }
+      }
+    }
   }
 });
